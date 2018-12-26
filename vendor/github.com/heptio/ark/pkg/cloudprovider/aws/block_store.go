@@ -17,7 +17,9 @@ limitations under the License.
 package aws
 
 import (
+	"os"
 	"regexp"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -25,7 +27,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
 
@@ -95,6 +96,8 @@ func (b *blockStore) CreateVolumeFromSnapshot(snapshotID, volumeType, volumeAZ s
 		return "", errors.Errorf("expected 1 snapshot from DescribeSnapshots for %s, got %v", snapshotID, count)
 	}
 
+	// filter tags through getTagsForCluster() function in order to apply
+	// proper ownership tags to restored volumes
 	req := &ec2.CreateVolumeInput{
 		SnapshotId:       &snapshotID,
 		AvailabilityZone: &volumeAZ,
@@ -102,7 +105,7 @@ func (b *blockStore) CreateVolumeFromSnapshot(snapshotID, volumeType, volumeAZ s
 		TagSpecifications: []*ec2.TagSpecification{
 			{
 				ResourceType: aws.String(ec2.ResourceTypeVolume),
-				Tags:         snapRes.Snapshots[0].Tags,
+				Tags:         getTagsForCluster(snapRes.Snapshots[0].Tags),
 			},
 		},
 	}
@@ -178,6 +181,29 @@ func (b *blockStore) CreateSnapshot(volumeID, volumeAZ string, tags map[string]s
 	}
 
 	return *res.SnapshotId, nil
+}
+
+func getTagsForCluster(snapshotTags []*ec2.Tag) []*ec2.Tag {
+	var result []*ec2.Tag
+
+	clusterName, haveAWSClusterNameEnvVar := os.LookupEnv("AWS_CLUSTER_NAME")
+
+	if haveAWSClusterNameEnvVar {
+		result = append(result, ec2Tag("kubernetes.io/cluster/"+clusterName, "owned"))
+		result = append(result, ec2Tag("KubernetesCluster", clusterName))
+	}
+
+	for _, tag := range snapshotTags {
+		if haveAWSClusterNameEnvVar && (strings.HasPrefix(*tag.Key, "kubernetes.io/cluster/") || *tag.Key == "KubernetesCluster") {
+			// if the AWS_CLUSTER_NAME variable is found we want current cluster
+			// to overwrite the old ownership on volumes
+			continue
+		}
+
+		result = append(result, ec2Tag(*tag.Key, *tag.Value))
+	}
+
+	return result
 }
 
 func getTags(arkTags map[string]string, volumeTags []*ec2.Tag) []*ec2.Tag {

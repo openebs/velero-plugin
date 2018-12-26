@@ -12,5 +12,5 @@ func main() {
 }
 
 func cstorSnapPlugin(logger logrus.FieldLogger) (interface{}, error) {
-	return &cstorSnap{FieldLogger: logger}, nil
+	return &BlockStore{Log: logger}, nil
 }

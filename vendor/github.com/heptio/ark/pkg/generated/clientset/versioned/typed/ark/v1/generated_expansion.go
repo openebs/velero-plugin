@@ -22,8 +22,6 @@ type BackupExpansion interface{}
 
 type BackupStorageLocationExpansion interface{}
 
-type ConfigExpansion interface{}
-
 type DeleteBackupRequestExpansion interface{}
 
 type DownloadRequestExpansion interface{}
@@ -37,3 +35,5 @@ type ResticRepositoryExpansion interface{}
 type RestoreExpansion interface{}
 
 type ScheduleExpansion interface{}
+
+type VolumeSnapshotLocationExpansion interface{}

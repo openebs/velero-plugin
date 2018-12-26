@@ -23,7 +23,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-
 	corev1api "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
@@ -96,15 +95,15 @@ func (b *backupper) BackupPodVolumes(backup *arkv1api.Backup, pod *corev1api.Pod
 		return nil, nil
 	}
 
-	repo, err := b.repoEnsurer.EnsureRepo(b.ctx, backup.Namespace, pod.Namespace)
+	repo, err := b.repoEnsurer.EnsureRepo(b.ctx, backup.Namespace, pod.Namespace, backup.Spec.StorageLocation)
 	if err != nil {
 		return nil, []error{err}
 	}
 
 	// get a single non-exclusive lock since we'll wait for all individual
 	// backups to be complete before releasing it.
-	b.repoManager.repoLocker.Lock(pod.Namespace)
-	defer b.repoManager.repoLocker.Unlock(pod.Namespace)
+	b.repoManager.repoLocker.Lock(repo.Name)
+	defer b.repoManager.repoLocker.Unlock(repo.Name)
 
 	resultsChan := make(chan *arkv1api.PodVolumeBackup)
 
@@ -220,7 +219,8 @@ func newPodVolumeBackup(backup *arkv1api.Backup, pod *corev1api.Pod, volumeName,
 				"ns":         pod.Namespace,
 				"volume":     volumeName,
 			},
-			RepoIdentifier: repoIdentifier,
+			BackupStorageLocation: backup.Spec.StorageLocation,
+			RepoIdentifier:        repoIdentifier,
 		},
 	}
 }

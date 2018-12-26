@@ -21,7 +21,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-
 	corev1api "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -57,28 +56,9 @@ func (a *serviceAction) Execute(obj runtime.Unstructured, restore *api.Restore) 
 		delete(spec, "clusterIP")
 	}
 
-	preservedPorts, err := getPreservedPorts(obj)
-	if err != nil {
+	if err := deleteNodePorts(obj, &spec); err != nil {
 		return nil, nil, err
 	}
-
-	ports, err := collections.GetSlice(obj.UnstructuredContent(), "spec.ports")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	for _, port := range ports {
-		p := port.(map[string]interface{})
-		var name string
-		if nameVal, ok := p["name"]; ok {
-			name = nameVal.(string)
-		}
-		if preservedPorts[name] {
-			continue
-		}
-		delete(p, "nodePort")
-	}
-
 	return obj, nil, nil
 }
 
@@ -100,4 +80,33 @@ func getPreservedPorts(obj runtime.Unstructured) (map[string]bool, error) {
 		}
 	}
 	return preservedPorts, nil
+}
+
+func deleteNodePorts(obj runtime.Unstructured, spec *map[string]interface{}) error {
+	if serviceType, _ := collections.GetString(*spec, "type"); serviceType == "ExternalName" {
+		return nil
+	}
+
+	preservedPorts, err := getPreservedPorts(obj)
+	if err != nil {
+		return err
+	}
+
+	ports, err := collections.GetSlice(obj.UnstructuredContent(), "spec.ports")
+	if err != nil {
+		return err
+	}
+
+	for _, port := range ports {
+		p := port.(map[string]interface{})
+		var name string
+		if nameVal, ok := p["name"]; ok {
+			name = nameVal.(string)
+		}
+		if preservedPorts[name] {
+			continue
+		}
+		delete(p, "nodePort")
+	}
+	return nil
 }

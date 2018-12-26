@@ -20,3 +20,7 @@ metadata:
   namespace: heptio-ark
 spec:
   provider: cstor-blockstore
+  config:
+    bucket: <YOUR_BUCKET>
+    prefix: <PREFIX_FOR_BACKUP_NAME >
+    provider: <GCP_OR_AWS>

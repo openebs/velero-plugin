@@ -28,8 +28,6 @@ type Interface interface {
 	Backups() BackupInformer
 	// BackupStorageLocations returns a BackupStorageLocationInformer.
 	BackupStorageLocations() BackupStorageLocationInformer
-	// Configs returns a ConfigInformer.
-	Configs() ConfigInformer
 	// DeleteBackupRequests returns a DeleteBackupRequestInformer.
 	DeleteBackupRequests() DeleteBackupRequestInformer
 	// DownloadRequests returns a DownloadRequestInformer.
@@ -44,6 +42,8 @@ type Interface interface {
 	Restores() RestoreInformer
 	// Schedules returns a ScheduleInformer.
 	Schedules() ScheduleInformer
+	// VolumeSnapshotLocations returns a VolumeSnapshotLocationInformer.
+	VolumeSnapshotLocations() VolumeSnapshotLocationInformer
 }
 
 type version struct {
@@ -65,11 +65,6 @@ func (v *version) Backups() BackupInformer {
 // BackupStorageLocations returns a BackupStorageLocationInformer.
 func (v *version) BackupStorageLocations() BackupStorageLocationInformer {
 	return &backupStorageLocationInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
-}
-
-// Configs returns a ConfigInformer.
-func (v *version) Configs() ConfigInformer {
-	return &configInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // DeleteBackupRequests returns a DeleteBackupRequestInformer.
@@ -105,4 +100,9 @@ func (v *version) Restores() RestoreInformer {
 // Schedules returns a ScheduleInformer.
 func (v *version) Schedules() ScheduleInformer {
 	return &scheduleInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// VolumeSnapshotLocations returns a VolumeSnapshotLocationInformer.
+func (v *version) VolumeSnapshotLocations() VolumeSnapshotLocationInformer {
+	return &volumeSnapshotLocationInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }

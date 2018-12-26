@@ -18,16 +18,17 @@ package restic
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
 	"github.com/pkg/errors"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	corev1listers "k8s.io/client-go/listers/core/v1"
 
 	arkv1api "github.com/heptio/ark/pkg/apis/ark/v1"
+	"github.com/heptio/ark/pkg/cloudprovider/azure"
 	arkv1listers "github.com/heptio/ark/pkg/generated/listers/ark/v1"
 	"github.com/heptio/ark/pkg/util/filesystem"
 )
@@ -36,7 +37,6 @@ const (
 	DaemonSet                   = "restic"
 	InitContainer               = "restic-wait"
 	DefaultMaintenanceFrequency = 24 * time.Hour
-	ResticLocationConfigKey     = "restic-location"
 
 	podAnnotationPrefix       = "snapshot.ark.heptio.com/"
 	volumesToBackupAnnotation = "backup.ark.heptio.com/backup-volumes"
@@ -106,21 +106,24 @@ func GetVolumesToBackup(obj metav1.Object) []string {
 // SnapshotIdentifier uniquely identifies a restic snapshot
 // taken by Ark.
 type SnapshotIdentifier struct {
-	// Repo is the name of the restic repository where the
-	// snapshot is located
-	Repo string
+	// VolumeNamespace is the namespace of the pod/volume that
+	// the restic snapshot is for.
+	VolumeNamespace string
 
-	// SnapshotID is the short ID of the restic snapshot
+	// BackupStorageLocation is the backup's storage location
+	// name.
+	BackupStorageLocation string
+
+	// SnapshotID is the short ID of the restic snapshot.
 	SnapshotID string
 }
 
 // GetSnapshotsInBackup returns a list of all restic snapshot ids associated with
 // a given Ark backup.
 func GetSnapshotsInBackup(backup *arkv1api.Backup, podVolumeBackupLister arkv1listers.PodVolumeBackupLister) ([]SnapshotIdentifier, error) {
-	selector, err := labels.Parse(fmt.Sprintf("%s=%s", arkv1api.BackupNameLabel, backup.Name))
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
+	selector := labels.Set(map[string]string{
+		arkv1api.BackupNameLabel: backup.Name,
+	}).AsSelector()
 
 	podVolumeBackups, err := podVolumeBackupLister.List(selector)
 	if err != nil {
@@ -133,8 +136,9 @@ func GetSnapshotsInBackup(backup *arkv1api.Backup, podVolumeBackupLister arkv1li
 			continue
 		}
 		res = append(res, SnapshotIdentifier{
-			Repo:       item.Spec.Pod.Namespace,
-			SnapshotID: item.Status.SnapshotID,
+			VolumeNamespace:       item.Spec.Pod.Namespace,
+			BackupStorageLocation: backup.Spec.StorageLocation,
+			SnapshotID:            item.Status.SnapshotID,
 		})
 	}
 
@@ -192,4 +196,27 @@ func NewPodVolumeRestoreListOptions(name, uid string) metav1.ListOptions {
 	return metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s,%s=%s", arkv1api.RestoreNameLabel, name, arkv1api.RestoreUIDLabel, uid),
 	}
+}
+
+// AzureCmdEnv returns a list of environment variables (in the format var=val) that
+// should be used when running a restic command for an Azure backend. This list is
+// the current environment, plus the Azure-specific variables restic needs, namely
+// a storage account name and key.
+func AzureCmdEnv(backupLocationLister arkv1listers.BackupStorageLocationLister, namespace, backupLocation string) ([]string, error) {
+	loc, err := backupLocationLister.BackupStorageLocations(namespace).Get(backupLocation)
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting backup storage location")
+	}
+
+	azureVars, err := azure.GetResticEnvVars(loc.Spec.Config)
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting azure restic env vars")
+	}
+
+	env := os.Environ()
+	for k, v := range azureVars {
+		env = append(env, fmt.Sprintf("%s=%s", k, v))
+	}
+
+	return env, nil
 }

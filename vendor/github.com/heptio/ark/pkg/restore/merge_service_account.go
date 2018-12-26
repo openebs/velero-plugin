@@ -21,7 +21,6 @@ import (
 
 	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/pkg/errors"
-
 	corev1api "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -47,8 +46,8 @@ func mergeServiceAccounts(fromCluster, fromBackup *unstructured.Unstructured) (*
 
 	for i := len(backupSA.Secrets) - 1; i >= 0; i-- {
 		secret := &backupSA.Secrets[i]
-		if strings.HasPrefix(secret.Name, "default-token-") {
-			// Copy all secrets *except* default-token
+		if strings.HasPrefix(secret.Name, backupSA.Name+"-token-") {
+			// Copy all secrets *except* -token-
 			backupSA.Secrets = append(backupSA.Secrets[:i], backupSA.Secrets[i+1:]...)
 			break
 		}

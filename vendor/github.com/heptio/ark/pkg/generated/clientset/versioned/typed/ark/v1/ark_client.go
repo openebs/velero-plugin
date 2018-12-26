@@ -29,7 +29,6 @@ type ArkV1Interface interface {
 	RESTClient() rest.Interface
 	BackupsGetter
 	BackupStorageLocationsGetter
-	ConfigsGetter
 	DeleteBackupRequestsGetter
 	DownloadRequestsGetter
 	PodVolumeBackupsGetter
@@ -37,6 +36,7 @@ type ArkV1Interface interface {
 	ResticRepositoriesGetter
 	RestoresGetter
 	SchedulesGetter
+	VolumeSnapshotLocationsGetter
 }
 
 // ArkV1Client is used to interact with features provided by the ark.heptio.com group.
@@ -50,10 +50,6 @@ func (c *ArkV1Client) Backups(namespace string) BackupInterface {
 
 func (c *ArkV1Client) BackupStorageLocations(namespace string) BackupStorageLocationInterface {
 	return newBackupStorageLocations(c, namespace)
-}
-
-func (c *ArkV1Client) Configs(namespace string) ConfigInterface {
-	return newConfigs(c, namespace)
 }
 
 func (c *ArkV1Client) DeleteBackupRequests(namespace string) DeleteBackupRequestInterface {
@@ -82,6 +78,10 @@ func (c *ArkV1Client) Restores(namespace string) RestoreInterface {
 
 func (c *ArkV1Client) Schedules(namespace string) ScheduleInterface {
 	return newSchedules(c, namespace)
+}
+
+func (c *ArkV1Client) VolumeSnapshotLocations(namespace string) VolumeSnapshotLocationInterface {
+	return newVolumeSnapshotLocations(c, namespace)
 }
 
 // NewForConfig creates a new ArkV1Client for the given config.

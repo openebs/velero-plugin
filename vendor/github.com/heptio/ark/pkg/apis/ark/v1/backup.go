@@ -61,6 +61,9 @@ type BackupSpec struct {
 
 	// StorageLocation is a string containing the name of a BackupStorageLocation where the backup should be stored.
 	StorageLocation string `json:"storageLocation"`
+
+	// VolumeSnapshotLocations is a list containing names of VolumeSnapshotLocations associated with this backup.
+	VolumeSnapshotLocations []string `json:"volumeSnapshotLocations"`
 }
 
 // BackupHooks contains custom behaviors that should be executed at different phases of the backup.
@@ -170,7 +173,12 @@ type BackupStatus struct {
 	// VolumeBackups is a map of PersistentVolume names to
 	// information about the backed-up volume in the cloud
 	// provider API.
-	VolumeBackups map[string]*VolumeBackupInfo `json:"volumeBackups"`
+	//
+	// Deprecated: this field is considered read-only as of v0.10
+	// and will be removed in a subsequent release. The information
+	// previously contained here is now stored in a file in backup
+	// storage.
+	VolumeBackups map[string]*VolumeBackupInfo `json:"volumeBackups,omitempty"`
 
 	// ValidationErrors is a slice of all validation errors (if
 	// applicable).
@@ -187,6 +195,14 @@ type BackupStatus struct {
 	// Completion time is recorded before uploading the backup object.
 	// The server's time is used for CompletionTimestamps
 	CompletionTimestamp metav1.Time `json:"completionTimestamp"`
+
+	// VolumeSnapshotsAttempted is the total number of attempted
+	// volume snapshots for this backup.
+	VolumeSnapshotsAttempted int `json:"volumeSnapshotsAttempted"`
+
+	// VolumeSnapshotsCompleted is the total number of successfully
+	// completed volume snapshots for this backup.
+	VolumeSnapshotsCompleted int `json:"volumeSnapshotsCompleted"`
 }
 
 // VolumeBackupInfo captures the required information about
