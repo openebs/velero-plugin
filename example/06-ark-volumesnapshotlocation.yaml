@@ -16,7 +16,7 @@
 apiVersion: ark.heptio.com/v1
 kind: VolumeSnapshotLocation
 metadata:
-  name: gcp-default
+  name: <LOCATION_NAME>
   namespace: heptio-ark
 spec:
   provider: cstor-blockstore
@@ -24,3 +24,4 @@ spec:
     bucket: <YOUR_BUCKET>
     prefix: <PREFIX_FOR_BACKUP_NAME >
     provider: <GCP_OR_AWS>
+    region: <AWS_REGION>

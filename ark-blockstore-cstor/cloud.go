@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"os"
 
 	"github.com/sirupsen/logrus"
 	"gocloud.dev/blob"
@@ -55,20 +56,22 @@ func (c *cloudUtils) setupGCP(ctx context.Context, bucket string) (*blob.Bucket,
 // setupAWS creates a connection to Simple Cloud Storage Service (S3).
 func (c *cloudUtils) setupAWS(ctx context.Context, bucketName, region string) (*blob.Bucket, error) {
 	var awsRegion *string
+	var awscred string
+
 	if region == "" {
 		awsRegion = aws.String("us-east-2")
 	} else {
 		awsRegion = aws.String(region)
 	}
 
+	if awscred = os.Getenv("AWS_SHARED_CREDENTIALS_FILE"); len(awscred) == 0 {
+		return nil, errors.New("error fetching aws credentials")
+	}
+
+	credentials := credentials.NewSharedCredentials(awscred, "default")
 	d := &aws.Config{
-		// Either hard-code the region or use AWS_REGION.
 		Region: awsRegion,
-		// credentials.NewEnvCredentials assumes two environment variables are
-		// present:
-		// 1. AWS_ACCESS_KEY_ID, and
-		// 2. AWS_SECRET_ACCESS_KEY.
-		Credentials: credentials.NewEnvCredentials(),
+		Credentials: credentials,
 	}
 
 	s := session.Must(session.NewSession(d))
