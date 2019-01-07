@@ -152,12 +152,16 @@ func (s *serverUtils) acceptVolumeClient(fd, epfd int, snapInfo *snapServer, clc
 	volsnap.cloud = clconn
         volsnap.offset = 0
 	volsnap.readLen = READ_BUFFER_LEN
-	volsnap.buffer = make([]byte,1, volsnap.readLen)
+	volsnap.buffer = make([]byte, volsnap.readLen)
 	volsnap.status = SNAP_INIT
 	volsnap.next = nil
 
 	event = new(syscall.EpollEvent)
-	event.Events = syscall.EPOLLIN | syscall.EPOLLRDHUP | syscall.EPOLLHUP | syscall.EPOLLERR | EPOLLET
+	if snapInfo.snap_type == SNAP_BACKUP {
+		event.Events = syscall.EPOLLIN | syscall.EPOLLRDHUP | syscall.EPOLLHUP | syscall.EPOLLERR | EPOLLET
+	} else {
+		event.Events = syscall.EPOLLOUT | syscall.EPOLLRDHUP | syscall.EPOLLHUP | syscall.EPOLLERR | EPOLLET
+	}
 	s.addSnapClientToEvent(volsnap, event)
 	if err := syscall.EpollCtl(epfd, syscall.EPOLL_CTL_ADD, connFd, event); err != nil {
 		s.Log.Errorf("Failed to add client fd to epoll: %v", err)
