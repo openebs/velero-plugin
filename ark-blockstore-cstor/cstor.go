@@ -212,3 +212,20 @@ func (p *cstorSnap) getSnapInfo(snapshotID string) (*Snapshot, error) {
 		}, nil
 	}
 }
+
+func (p *cstorSnap) createVolume(snapshotID string, config map[string]string) (string, error) {
+	p.Log.Infof("createVolume cstor called %v %v", snapshotID, config)
+	s := strings.Split(snapshotID, "-ark-bkp-")
+	volumeID := s[0]
+	snapName := s[1]
+
+	p.Log.Infof("Restoring snapshot %s for volume:%s", snapName, volumeID)
+
+	clutils := &cloudUtils{Log: p.Log}
+	ret := clutils.RestoreSnapshot(volumeID, snapName, config)
+	if ret != true {
+		return "", errors.New("Failed to restore snapshot")
+	} else {
+		return volumeID, nil
+	}
+}

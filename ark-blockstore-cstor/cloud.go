@@ -36,11 +36,8 @@ func (c *cloudUtils) setupBucket(ctx context.Context, provider, bucket, region s
 	}
 }
 
-// setupGCP creates a connection to Google Cloud Storage (GCS).
 func (c *cloudUtils) setupGCP(ctx context.Context, bucket string) (*blob.Bucket, error) {
-	// DefaultCredentials assumes a user has logged in with gcloud.
-	// See here for more information:
-	// https://cloud.google.com/docs/authentication/getting-started
+	/* TBD: use cred file using env variable */
 	creds, err := gcp.DefaultCredentials(ctx)
 	if err != nil {
 		return nil, err
@@ -53,7 +50,6 @@ func (c *cloudUtils) setupGCP(ctx context.Context, bucket string) (*blob.Bucket,
 	return gcsblob.OpenBucket(ctx, bucket, d, nil)
 }
 
-// setupAWS creates a connection to Simple Cloud Storage Service (S3).
 func (c *cloudUtils) setupAWS(ctx context.Context, bucketName, region string) (*blob.Bucket, error) {
 	var awsRegion *string
 	var awscred string
@@ -112,25 +108,30 @@ func (c *cloudUtils) getObjectInfo(volumeID, bkpname string, config map[string]s
 }
 
 func (c *cloudUtils) UploadObject(obj *objectInfo) bool {
-        c.Log.Infof("Uploading snapshot to  '%s' with provider(%s) to bucket(%s):region(%s)", obj.file, obj.provider, obj.bucket, obj.region)
+        c.Log.Infof("Uploading snapshot to  '%v' with provider(%v) to bucket(%v):region(%v)", obj.file, obj.provider, obj.bucket, obj.region)
 
 	ctx := context.Background()
 	b, err := c.setupBucket(context.Background(), obj.provider, obj.bucket, obj.region)
 	if err != nil {
-		c.Log.Errorf("Failed to setup bucket: %s", err)
+		c.Log.Errorf("Failed to setup bucket: %v", err)
 		return false
 	}
 
 	w, err := b.NewWriter(ctx, obj.file, nil)
 	if err != nil {
-		c.Log.Errorf("Failed to obtain writer: %s", err)
+		c.Log.Errorf("Failed to obtain writer: %v", err)
 		return false
 	}
 
 	sutils := &serverUtils{Log: c.Log}
-	err = sutils.backupSnapshot(w)
+	wConn, err := sutils.GetCloudConn(w, nil, SNAP_BACKUP)
 	if err != nil {
-		c.Log.Errorf("Failed to send snapshot to bucket: %s", err)
+		return false
+	}
+
+	err = sutils.backupSnapshot(wConn, SNAP_BACKUP)
+	if err != nil {
+		c.Log.Errorf("Failed to send snapshot to bucket: %v", err)
 		w.Close()
 		if b.Delete(ctx, obj.file) != nil {
 			c.Log.Errorf("Failed to removed errored snapshot from cloud")
@@ -139,11 +140,50 @@ func (c *cloudUtils) UploadObject(obj *objectInfo) bool {
 	}
 
 	if err = w.Close(); err != nil {
+		c.Log.Errorf("Failed to close cloud conn: %v", err)
+		return false
+	}
+
+	c.Log.Infof("successfully uploaded object:%v to %v", obj.file, obj.provider)
+
+	return true
+}
+
+func (c *cloudUtils) RestoreObject(obj *objectInfo) bool {
+	c.Log.Infof("Restoring snapshot to  '%s' with provider(%s) to bucket(%s):region(%s)", obj.file, obj.provider, obj.bucket, obj.region)
+
+	ctx := context.Background()
+	b, err := c.setupBucket(context.Background(), obj.provider, obj.bucket, obj.region)
+	if err != nil {
+		c.Log.Errorf("Failed to setup bucket: %s", err)
+		return false
+	}
+
+	r, err := b.NewReader(ctx, obj.file, nil)
+	if err != nil {
+		c.Log.Errorf("Failed to obtain reader: %s", err)
+		return false
+	}
+
+	sutils := &serverUtils{Log: c.Log}
+	rConn, err := sutils.GetCloudConn(nil, r, SNAP_RESTORE)
+	if err != nil {
+		return false
+	}
+
+	err = sutils.backupSnapshot(rConn, SNAP_RESTORE)
+	if err != nil {
+		c.Log.Errorf("Failed to receive snapshot from bucket: %s", err)
+		r.Close()
+		return false
+	}
+
+	if err = r.Close(); err != nil {
 		c.Log.Errorf("Failed to close: %s", err)
 		return false
 	}
 
-	c.Log.Infof("successfully uploaded object:%s to %s", obj.file, obj.provider)
+	c.Log.Infof("successfully restored object:%s to %s", obj.file, obj.provider)
 
 	return true
 }
@@ -181,6 +221,21 @@ func (c *cloudUtils) RemoveSnapshot(volumeID, bkpname string, config map[string]
 
 	if b.Delete(ctx, obj.file) != nil {
 		c.Log.Errorf("Failed to removed errored snapshot from cloud")
+		return false
+	}
+	return true
+}
+
+func (c *cloudUtils) RestoreSnapshot(volumeID, snapName string, config map[string]string) bool {
+	obj, err := c.getObjectInfo(volumeID, snapName, config)
+	if err != nil {
+		c.Log.Errorf("Insufficient data for restoring snapshot from cloud")
+		return false
+	}
+
+	resp := c.RestoreObject(obj)
+	if resp != true{
+		c.Log.Errorf("got error while uploading snapshot")
 		return false
 	}
 	return true

@@ -50,7 +50,13 @@ func (p *BlockStore) CreateVolumeFromSnapshot(snapshotID, volumeType, volumeAZ s
 		return "", fmt.Errorf("Invalid volume type(%s)", volumeType)
 	}
 
-	return snapshotID, nil
+	volumeID, resp := cstorIf.createVolume(snapshotID, p.config)
+	if resp != nil {
+		return "", fmt.Errorf("Failed to create restore:%s", resp)
+	}
+
+	return volumeID, fmt.Errorf("Failed to restore")
+//	return volumeID, nil
 }
 
 // GetVolumeInfo Get information about the volume
