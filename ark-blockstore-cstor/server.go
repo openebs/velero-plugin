@@ -225,14 +225,18 @@ func (s *serverUtils) handleReadEvent(event syscall.EpollEvent) error {
 	}
 	s.Log.Info("volsnap %v", volsnap)
 	writer = (*blob.Writer)(volsnap.cloud)
-	nbytes, e := s.readFromVolume(volsnap)
-	if e != nil {
-		return e
-	} else {
-		if nbytes > 0 {
-			_, err := writer.Write(volsnap.buffer[:nbytes])
-			if err != nil {
-				return fmt.Errorf("write returned error(%v)", err)
+	for {
+		nbytes, e := s.readFromVolume(volsnap)
+		if e != nil {
+			return e
+		} else {
+			if nbytes > 0 {
+				_, err := writer.Write(volsnap.buffer[:nbytes])
+				if err != nil {
+					return fmt.Errorf("write returned error(%v)", err)
+				}
+			} else {
+				return nil //connection closed
 			}
 		}
 	}
