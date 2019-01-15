@@ -7,10 +7,10 @@ import (
 
 func main() {
 	arkplugin.NewServer(arkplugin.NewLogger()).
-		RegisterBlockStore("cstor-blockstore", cstorSnapPlugin).
+		RegisterBlockStore("cstor-blockstore", openebsSnapPlugin).
 		Serve()
 }
 
-func cstorSnapPlugin(logger logrus.FieldLogger) (interface{}, error) {
+func openebsSnapPlugin(logger logrus.FieldLogger) (interface{}, error) {
 	return &BlockStore{Log: logger}, nil
 }

@@ -76,7 +76,7 @@ func (s *serverUtils) updateMaxSnapCnt(snapOp snapOperation) {
 	if snapOp == SNAP_BACKUP {
 		snapStats.required_cnt = 1
 	} else if snapOp == SNAP_RESTORE {
-		snapStats.required_cnt = 3	/* TBD: set according to RF */
+		snapStats.required_cnt = 1	/* TBD: set according to RF */
 	}
 }
 
@@ -160,7 +160,8 @@ func (s *serverUtils) acceptVolumeClient(fd, epfd int, snapInfo *snapServer, clc
 	if snapInfo.snap_type == SNAP_BACKUP {
 		event.Events = syscall.EPOLLIN | syscall.EPOLLRDHUP | syscall.EPOLLHUP | syscall.EPOLLERR | EPOLLET
 	} else {
-		event.Events = syscall.EPOLLOUT | syscall.EPOLLRDHUP | syscall.EPOLLHUP | syscall.EPOLLERR | EPOLLET
+		syscall.SetsockoptInt(connFd, syscall.SOL_TCP, syscall.TCP_NODELAY, 1)
+		event.Events = syscall.EPOLLOUT | syscall.EPOLLRDHUP | syscall.EPOLLHUP | syscall.EPOLLERR
 	}
 	s.addSnapClientToEvent(volsnap, event)
 	if err := syscall.EpollCtl(epfd, syscall.EPOLL_CTL_ADD, connFd, event); err != nil {

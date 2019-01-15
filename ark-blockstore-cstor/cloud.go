@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"fmt"
 
 	"github.com/sirupsen/logrus"
 	"gocloud.dev/blob"
@@ -17,11 +18,11 @@ import (
 
 type cloudUtils struct {
 	Log logrus.FieldLogger
+	ctx context.Context
+	bucket *blob.Bucket
+	provider, bucketname, region, prefix string
 }
 
-type objectInfo struct {
-	file, provider, bucket, region string
-}
 
 // setupBucket creates a connection to a particular cloud provider's blob storage.
 func (c *cloudUtils) setupBucket(ctx context.Context, provider, bucket, region string) (*blob.Bucket, error) {
@@ -31,7 +32,6 @@ func (c *cloudUtils) setupBucket(ctx context.Context, provider, bucket, region s
 	case "gcp":
 		return c.setupGCP(ctx, bucket)
 	default:
-		c.Log.Errorf("Provier(%s) is not supported", provider)
 		return nil, errors.New("Provider is not supported")
 	}
 }
@@ -74,50 +74,44 @@ func (c *cloudUtils) setupAWS(ctx context.Context, bucketName, region string) (*
 	return s3blob.OpenBucket(ctx, bucketName, s, nil)
 }
 
-func (c *cloudUtils) getObjectInfo(volumeID, bkpname string, config map[string]string) (*objectInfo, error) {
-        filename := volumeID + "-" + bkpname
-
+func (c *cloudUtils) InitCloudConn(config map[string]string) error {
         provider, terr := config["provider"]
         if terr != true {
-                return nil, errors.New("Failed to get provider name")
+                return errors.New("Failed to get provider name")
         }
+	c.provider = provider
 
         bucketName, terr := config["bucket"]
         if terr != true {
-                return nil, errors.New("Failed to get bucket name")
+                return errors.New("Failed to get bucket name")
         }
+	c.bucketname = bucketName
 
         prefix, terr := config["prefix"]
         if terr != true {
                 prefix =  ""
         }
-
-        destfile := backupDir + "/" + bkpname + "/" + prefix + "-" + filename
+	c.prefix = prefix
 
         region, terr := config["region"]
         if terr != true {
                 c.Log.Infof("No region provided..")
         }
+	c.region = region
 
-	return &objectInfo{
-			file: destfile,
-			provider: provider,
-			bucket: bucketName,
-			region: region,
-		}, nil
+        c.ctx = context.Background()
+        b, err := c.setupBucket(c.ctx, provider, bucketName, region)
+        if err != nil {
+                return fmt.Errorf("Failed to setup bucket: %v", err)
+        }
+	c.bucket = b
+	return nil
 }
 
-func (c *cloudUtils) UploadObject(obj *objectInfo) bool {
-        c.Log.Infof("Uploading snapshot to  '%v' with provider(%v) to bucket(%v):region(%v)", obj.file, obj.provider, obj.bucket, obj.region)
+func (c *cloudUtils) UploadSnapshot(file string) bool {
+	c.Log.Infof("Uploading snapshot to  '%v' with provider(%v) to bucket(%v):region(%v)", file, c.provider, c.bucketname, c.region)
 
-	ctx := context.Background()
-	b, err := c.setupBucket(context.Background(), obj.provider, obj.bucket, obj.region)
-	if err != nil {
-		c.Log.Errorf("Failed to setup bucket: %v", err)
-		return false
-	}
-
-	w, err := b.NewWriter(ctx, obj.file, nil)
+	w, err := c.bucket.NewWriter(c.ctx, file, nil)
 	if err != nil {
 		c.Log.Errorf("Failed to obtain writer: %v", err)
 		return false
@@ -131,9 +125,9 @@ func (c *cloudUtils) UploadObject(obj *objectInfo) bool {
 
 	err = sutils.backupSnapshot(wConn, SNAP_BACKUP)
 	if err != nil {
-		c.Log.Errorf("Failed to send snapshot to bucket: %v", err)
+		c.Log.Errorf("Failed to upload snapshot to bucket: %v", err)
 		w.Close()
-		if b.Delete(ctx, obj.file) != nil {
+		if c.bucket.Delete(c.ctx, file) != nil {
 			c.Log.Errorf("Failed to removed errored snapshot from cloud")
 		}
 		return false
@@ -143,23 +137,22 @@ func (c *cloudUtils) UploadObject(obj *objectInfo) bool {
 		c.Log.Errorf("Failed to close cloud conn: %v", err)
 		return false
 	}
-
-	c.Log.Infof("successfully uploaded object:%v to %v", obj.file, obj.provider)
-
+	c.Log.Infof("successfully uploaded object:%v to %v", file, c.provider)
 	return true
 }
 
-func (c *cloudUtils) RestoreObject(obj *objectInfo) bool {
-	c.Log.Infof("Restoring snapshot to  '%s' with provider(%s) to bucket(%s):region(%s)", obj.file, obj.provider, obj.bucket, obj.region)
+func (c *cloudUtils) RemoveSnapshot(filename string) bool {
+	c.Log.Infof("Removing snapshot:'%s' from bucket(%s) provider(%s):region(%s)", filename, c.bucket, c.provider, c.region)
 
-	ctx := context.Background()
-	b, err := c.setupBucket(context.Background(), obj.provider, obj.bucket, obj.region)
-	if err != nil {
-		c.Log.Errorf("Failed to setup bucket: %s", err)
+	if c.bucket.Delete(c.ctx, filename) != nil {
+		c.Log.Errorf("Failed to removed errored snapshot from cloud")
 		return false
 	}
+	return true
+}
 
-	r, err := b.NewReader(ctx, obj.file, nil)
+func (c *cloudUtils) RestoreSnapshot(file string) bool {
+	r, err := c.bucket.NewReader(c.ctx, file, nil)
 	if err != nil {
 		c.Log.Errorf("Failed to obtain reader: %s", err)
 		return false
@@ -173,70 +166,54 @@ func (c *cloudUtils) RestoreObject(obj *objectInfo) bool {
 
 	err = sutils.backupSnapshot(rConn, SNAP_RESTORE)
 	if err != nil {
-		c.Log.Errorf("Failed to receive snapshot from bucket: %s", err)
+		c.Log.Errorf("Failed to receive snapshot from bucket: %v", err)
 		r.Close()
 		return false
 	}
 
 	if err = r.Close(); err != nil {
-		c.Log.Errorf("Failed to close: %s", err)
+		c.Log.Errorf("Failed to close reader: %v", err)
 		return false
 	}
 
-	c.Log.Infof("successfully restored object:%s to %s", obj.file, obj.provider)
+	c.Log.Infof("successfully restored object:%s from %s", file, c.provider)
 
 	return true
 }
 
-func (c *cloudUtils) UploadSnapshot(volumeID, bkpname string, config map[string]string) bool {
-	obj, err := c.getObjectInfo(volumeID, bkpname, config)
+func (c *cloudUtils) WriteToFile(data []byte, file string) bool {
+	c.Log.Infof("Writing to '%v' with provider(%v) to bucket(%v):region(%v)", file, c.provider, c.bucketname, c.region)
+
+	w, err := c.bucket.NewWriter(c.ctx, file, nil)
 	if err != nil {
-		c.Log.Errorf("Insufficient data for cloud upload")
+		c.Log.Errorf("Failed to obtain writer: %v", err)
+		return false
+	}
+	_, err = w.Write(data)
+	if err != nil {
+		c.Log.Errorf("Failed to write data to file:%v", file)
+		c.bucket.Delete(c.ctx, file)
 		return false
 	}
 
-	resp := c.UploadObject(obj)
-        if resp != true{
-                c.Log.Errorf("got error while uploading snapshot")
+	if err = w.Close(); err != nil {
+		c.Log.Errorf("Failed to close cloud conn: %v", err)
 		return false
-        }
+	}
+	c.Log.Infof("successfully writtern object:%v to %v", file, c.provider)
 	return true
+
 }
 
-func (c *cloudUtils) RemoveSnapshot(volumeID, bkpname string, config map[string]string) bool {
-	obj, err := c.getObjectInfo(volumeID, bkpname, config)
+func (c *cloudUtils) ReadFromFile(file string) ([]byte, bool) {
+	c.Log.Infof("Reading from '%v' with provider(%v) to bucket(%v):region(%v)", file, c.provider, c.bucketname, c.region)
+
+	data, err := c.bucket.ReadAll(c.ctx, file)
 	if err != nil {
-		c.Log.Errorf("Insufficient data for removing snapshot from cloud")
-		return false
-	}
-	c.Log.Infof("Removing snapshot:'%s' from bucket(%s) provider(%s):region(%s)", obj.file, obj.bucket, obj.provider, obj.region)
-
-	ctx := context.Background()
-
-	b, err := c.setupBucket(context.Background(), obj.provider, obj.bucket, obj.region)
-	if err != nil {
-		c.Log.Errorf("Failed to setup bucket: %s", err)
-		return false
+		c.Log.Errorf("Failed to read data from file:%v", file)
+		return nil, false
 	}
 
-	if b.Delete(ctx, obj.file) != nil {
-		c.Log.Errorf("Failed to removed errored snapshot from cloud")
-		return false
-	}
-	return true
-}
-
-func (c *cloudUtils) RestoreSnapshot(volumeID, snapName string, config map[string]string) bool {
-	obj, err := c.getObjectInfo(volumeID, snapName, config)
-	if err != nil {
-		c.Log.Errorf("Insufficient data for restoring snapshot from cloud")
-		return false
-	}
-
-	resp := c.RestoreObject(obj)
-	if resp != true{
-		c.Log.Errorf("got error while uploading snapshot")
-		return false
-	}
-	return true
+	c.Log.Infof("successfully read object:%v to %v", file, c.provider)
+	return data, true
 }
