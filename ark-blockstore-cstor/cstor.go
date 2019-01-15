@@ -2,7 +2,7 @@ package main
 
 import (
         "errors"
-//        "bytes"
+        "bytes"
         "fmt"
         "strings"
         "io/ioutil"
@@ -22,12 +22,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"github.com/heptio/ark/pkg/util/collections"
 	v1 "k8s.io/api/core/v1"
-//        v1alpha1 "github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
+        v1alpha1 "github.com/payes/maya/pkg/apis/openebs.io/v1alpha1"
 )
 
 const (
 	mayaAPIServiceName = "maya-apiserver-service"
-	snapshotCreatePath = "/latest/snapshots/"
+	backupCreatePath = "/latest/backups/"
 	operator = "openebs"
 	casType = "cstor"
 	backupDir = "backups"
@@ -46,11 +46,11 @@ type cstorSnapPlugin struct {
 }
 
 type Snapshot struct {
-        volID, backupName, namespace, az string
+        volID, backupName, namespace string
 }
 
 type Volume struct {
-        volname, volType, az, namespace, pvc, bkpname string
+        volname, casType, namespace, pvc, backupName string
 }
 
 func (p *cstorSnapPlugin) getServerAddress() string {
@@ -134,7 +134,7 @@ func (p *cstorSnapPlugin) GetVolumeID(pv runtime.Unstructured) (string, error) {
                 ns, _ := collections.GetString(pv.UnstructuredContent(), "spec.claimRef.namespace")
                 p.volumes[volumeID] = &Volume{
 			volname: volumeID,
-                        volType: sc,
+                        casType: sc,
                         namespace: ns,
                 }
         }
@@ -161,7 +161,7 @@ func (p *cstorSnapPlugin) DeleteSnapshot(snapshotID string) error {
 		return fmt.Errorf("Got insufficient info vol:%s snap:%s ns:%s", snapInfo.volID, snapInfo.backupName, snapInfo.namespace)
 	}
 
-        url := p.mayaAddr + snapshotCreatePath + snapInfo.backupName
+        url := p.mayaAddr + backupCreatePath + snapInfo.backupName
 
         req, err := http.NewRequest("DELETE", url, nil)
 
@@ -205,7 +205,6 @@ func (p *cstorSnapPlugin) DeleteSnapshot(snapshotID string) error {
 }
 
 func (p *cstorSnapPlugin) CreateSnapshot(volumeID, volumeAZ string, tags map[string]string) (string, error) {
-//	var snap v1alpha1.CASSnapshot
 	var vol *Volume
 
 	bkpname, terr := tags["ark.heptio.com/backup"]
@@ -218,7 +217,7 @@ func (p *cstorSnapPlugin) CreateSnapshot(volumeID, volumeAZ string, tags map[str
 	}
 
 	vol = p.volumes[volumeID]
-	vol.bkpname = bkpname
+	vol.backupName = bkpname
 	err := p.backupPVC(volumeID)
 	if err != nil {
 		return "", errors.New("failed to create backup for PVC")
@@ -226,36 +225,26 @@ func (p *cstorSnapPlugin) CreateSnapshot(volumeID, volumeAZ string, tags map[str
 
 	p.Log.Infof("creating snapshot %v", bkpname)
 
-/*
-        snap.Namespace = vol.namespace
-        snap.Name = vol.backupName
-        snap.Spec.CasType = casType
-        snap.Spec.VolumeName = volumeID
+	bkpSpec := &v1alpha1.CStorBackupSpec{
+		Name: bkpname,
+		VolumeName: volumeID,
+		CasType: casType,
+		BackupDest: p.cstorServerAddr,
+	}
 
-        url := p.mayaAddr + snapshotCreatePath
+	bkp := &v1alpha1.CStorBackup {
+		ObjectMeta: metav1.ObjectMeta {
+			Namespace: vol.namespace,
+		},
+		Spec: *bkpSpec,
+	}
 
-        snapBytes, _ := json.Marshal(snap)
-        req, err := http.NewRequest("POST", url, bytes.NewBuffer(snapBytes))
-        req.Header.Add("Content-Type", "application/json")
+        url := p.mayaAddr + backupCreatePath
 
-        c := &http.Client{
-		Timeout: 60 * time.Second,
-        }
-
-        resp, err := c.Do(req)
+        bkpData, _ := json.Marshal(bkp)
+        _, err = p.httpRestCall(url, bkpData)
         if err != nil {
-                return "", fmt.Errorf("Error when connecting maya-apiserver %v", err)
-        }
-        defer resp.Body.Close()
-
-        _, err = ioutil.ReadAll(resp.Body)
-        if err != nil {
-                return "", fmt.Errorf("Unable to read response from maya-apiserver %v", err)
-        }
-
-        code := resp.StatusCode
-        if code != http.StatusOK {
-                return "", fmt.Errorf("Status error: %v\n", http.StatusText(code))
+                return "", fmt.Errorf("Error calling REST api:%v", err)
         }
 
 	p.Log.Infof("Snapshot Successfully Created")
@@ -264,11 +253,11 @@ func (p *cstorSnapPlugin) CreateSnapshot(volumeID, volumeAZ string, tags map[str
 		return "", fmt.Errorf("Error creating remote file name for backup")
 	}
 
-	ret := p.cl.UploadSnapshot(filename, p.config)
+	ret := p.cl.UploadSnapshot(filename)
 	if ret != true {
 		return "", errors.New("Failed to upload snapshot")
 	}
-*/
+
 	return volumeID + "-ark-bkp-" + bkpname, nil
 }
 
@@ -302,9 +291,6 @@ func (p *cstorSnapPlugin) getSnapInfo(snapshotID string) (*Snapshot, error) {
 }
 
 func (p *cstorSnapPlugin) CreateVolumeFromSnapshot(snapshotID, volumeType, volumeAZ string, iops *int64) (string, error) {
-//	var vol *Volume
-	var newVolName string
-
 	if volumeType != "cstor-snapshot" {
 		return "", fmt.Errorf("Invalid volume type(%s)", volumeType)
 	}
@@ -315,25 +301,47 @@ func (p *cstorSnapPlugin) CreateVolumeFromSnapshot(snapshotID, volumeType, volum
 
 	p.Log.Infof("Restoring snapshot %s for volume:%s", snapName, volumeID)
 
-	newVolName, e := p.createPVC(volumeID, snapName)
+	newVol, e := p.createPVC(volumeID, snapName)
 	if e != nil {
 		return "", fmt.Errorf("Failed to restore PVC")
 	}
 
-	p.Log.Infof("New volume(%v) created", newVolName)
+	p.Log.Infof("New volume(%v) created", newVol)
+
+	restoreSpec := &v1alpha1.CStorRestoreSpec{
+		Name: newVol.backupName,
+		VolumeName: newVol.volname,
+		CasType: newVol.casType,
+		RestoreSrc: p.cstorServerAddr,
+	}
+
+	restore := &v1alpha1.CStorRestore {
+		ObjectMeta: metav1.ObjectMeta {
+			Namespace: newVol.namespace,
+		},
+		Spec: *restoreSpec,
+	}
+
+        url := p.mayaAddr + backupCreatePath
+
+        restoreData, _ := json.Marshal(restore)
+	_, err := p.httpRestCall(url, restoreData)
+	if err != nil {
+		return "", fmt.Errorf("Error calling REST api:%v", err)
+	}
 
 	filename := p.generateRemoteFilename(volumeID, snapName)
 	if filename == "" {
 		return "", fmt.Errorf("Error creating remote file name for backup")
 	}
-/*
+
 	ret := p.cl.RestoreSnapshot(filename)
 	if ret != true {
 		return "", errors.New("Failed to restore snapshot")
 	} else {
 		return volumeID, nil
 	}
-*/
+
 	return volumeID, nil
 }
 
@@ -341,37 +349,42 @@ func (p *cstorSnapPlugin) GetVolumeInfo(volumeID, volumeAZ string) (string, *int
         return "cstor-snapshot", nil, nil
 }
 
-func (p *cstorSnapPlugin) createPVC(volumeID, snapName string) (string, error) {
+func (p *cstorSnapPlugin) createPVC(volumeID, snapName string) (*Volume, error) {
 	var pvc v1.PersistentVolumeClaim
 	var data []byte
 	var ok bool
 
 	filename := p.generateRemoteFilename(volumeID, snapName)
 	if filename == "" {
-		return "", errors.New("Error creating remote file name for pvc backup")
+		return nil, errors.New("Error creating remote file name for pvc backup")
 	}
 
 	if data, ok = p.cl.ReadFromFile(filename + ".pvc"); !ok {
-                return "", errors.New("Failed to upload PVC")
+                return nil, errors.New("Failed to upload PVC")
         }
 
 	if err := json.Unmarshal(data, &pvc); err != nil {
-		return "", errors.New("Failed to decode pvc")
+		return nil, errors.New("Failed to decode pvc")
 	}
 
 	rpvc, er := p.K8sClient.PersistentVolumeClaims(pvc.Namespace).Create(&pvc)
 	if er != nil {
-		return "", fmt.Errorf("Failed to create PVC err:%v", er)
+		return nil, fmt.Errorf("Failed to create PVC err:%v", er)
 	}
 
 	for {
 		pvc, er := p.K8sClient.PersistentVolumeClaims(rpvc.Namespace).Get(rpvc.Name, metav1.GetOptions{})
 		if er != nil || pvc.Status.Phase == v1.ClaimLost {
 			p.K8sClient.PersistentVolumeClaims(pvc.Namespace).Delete(rpvc.Name, nil)
-			return "", fmt.Errorf("Failed to create PVC err:%v", er)
+			return nil, fmt.Errorf("Failed to create PVC err:%v", er)
 		}
 		if pvc.Status.Phase == v1.ClaimBound {
-			return pvc.Spec.VolumeName, nil
+			return &Volume {
+				volname: pvc.Spec.VolumeName,
+				namespace: pvc.Namespace,
+				backupName: snapName,
+				casType: *pvc.Spec.StorageClassName,
+			}, nil
 		}
 	}
 }
@@ -409,7 +422,7 @@ func (p *cstorSnapPlugin) backupPVC(volumeID string) error {
 		return errors.New("Error doing json parsing")
 	}
 
-	filename := p.generateRemoteFilename(vol.volname, vol.bkpname)
+	filename := p.generateRemoteFilename(vol.volname, vol.backupName)
 	if filename == "" {
 		return errors.New("Error creating remote file name for pvc backup")
 	}
@@ -433,4 +446,30 @@ func (p *cstorSnapPlugin) SetVolumeID(pv runtime.Unstructured, volumeID string) 
 
 	metadataMap["volumeID"] = volumeID
 	return pv, nil
+}
+
+func (p *cstorSnapPlugin) httpRestCall(url string, data []byte) ([]byte, error) {
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(data))
+	req.Header.Add("Content-Type", "application/json")
+
+	c := &http.Client{
+		Timeout: 60 * time.Second,
+	}
+
+	resp, err := c.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("Error when connecting maya-apiserver %v", err)
+	}
+	defer resp.Body.Close()
+
+	respdata, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to read response from maya-apiserver %v", err)
+	}
+
+	code := resp.StatusCode
+	if code != http.StatusOK {
+		return nil, fmt.Errorf("Status error: %v\n", http.StatusText(code))
+	}
+	return respdata, nil
 }

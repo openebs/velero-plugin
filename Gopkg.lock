@@ -361,15 +361,20 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:dea3c89e1df54a288bf8392accc1d7b3e3965633f709c4a34ad4d2ca31425970"
+  digest = "1:5ef4c8235c664fce39985ac313e6b48d4d3617f394013f9a34aec31d6bbb8d09"
   name = "github.com/openebs/maya"
-  packages = [
-    "pkg/apis/openebs.io",
-    "pkg/apis/openebs.io/v1alpha1",
-  ]
+  packages = ["pkg/apis/openebs.io"]
   pruneopts = "UT"
   revision = "9124db1d2c5054b63b6194e3c0b836eae54424a7"
   version = "0.8.0"
+
+[[projects]]
+  branch = "demo"
+  digest = "1:87e6ccd88c73e30f99f121059e5d79d5289269e75166168ee6b1bb6e52459859"
+  name = "github.com/payes/maya"
+  packages = ["pkg/apis/openebs.io/v1alpha1"]
+  pruneopts = "UT"
+  revision = "0f76e9993bf399d5bc6787c48514f0510d70dea4"
 
 [[projects]]
   branch = "master"
@@ -828,15 +833,17 @@
     "github.com/heptio/ark/pkg/cloudprovider",
     "github.com/heptio/ark/pkg/plugin",
     "github.com/heptio/ark/pkg/util/collections",
-    "github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1",
+    "github.com/payes/maya/pkg/apis/openebs.io/v1alpha1",
     "github.com/sirupsen/logrus",
     "gocloud.dev/blob",
     "gocloud.dev/blob/gcsblob",
     "gocloud.dev/blob/s3blob",
     "gocloud.dev/gcp",
+    "k8s.io/api/core/v1",
     "k8s.io/apimachinery/pkg/apis/meta/v1",
     "k8s.io/apimachinery/pkg/runtime",
     "k8s.io/client-go/kubernetes",
+    "k8s.io/client-go/kubernetes/typed/core/v1",
     "k8s.io/client-go/rest",
   ]
   solver-name = "gps-cdcl"
