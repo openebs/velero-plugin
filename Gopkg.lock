@@ -223,15 +223,11 @@
   revision = "69ff559dc25f3b435631604f573a5fa1efdb6433"
 
 [[projects]]
-  branch = "master"
-  digest = "1:1f0c8665817a698bf12c6ad29922d6cdb85ecaa54dd404d77f91f58c6bccd84e"
+  digest = "1:4696673158df85903b2be4ee4b7cc1d12de34b0c5def8c050ca428e28430fac9"
   name = "github.com/hashicorp/go-plugin"
-  packages = [
-    ".",
-    "internal/proto",
-  ]
+  packages = ["."]
   pruneopts = "UT"
-  revision = "f444068e8f5a19853177f7aa0aea7e7d95b5b528"
+  revision = "e2fbc6864d18d3c37b6cde4297ec9fca266d28f1"
 
 [[projects]]
   digest = "1:3f90d23757c18b1e07bf11494dbe737ee2c44d881c0f41e681611abdadad62fa"
@@ -351,14 +347,6 @@
   pruneopts = "UT"
   revision = "4b7aa43c6742a2c18fdef89dd197aaae7dac7ccd"
   version = "1.0.1"
-
-[[projects]]
-  digest = "1:9ec6cf1df5ad1d55cf41a43b6b1e7e118a91bade4f68ff4303379343e40c0e25"
-  name = "github.com/oklog/run"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "4dadeb3030eda0273a12382bb2348ffc7c9d1a39"
-  version = "v1.0.0"
 
 [[projects]]
   digest = "1:5ef4c8235c664fce39985ac313e6b48d4d3617f394013f9a34aec31d6bbb8d09"

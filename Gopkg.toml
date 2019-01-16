@@ -60,6 +60,10 @@
   revision = "69ff559dc25f3b435631604f573a5fa1efdb6433"
 
 [[override]]
+  name = "github.com/hashicorp/go-plugin"
+  revision = "e2fbc6864d18d3c37b6cde4297ec9fca266d28f1"
+
+[[override]]
   name = "golang.org/x/oauth2"
   revision = "master"
 
