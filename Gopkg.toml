@@ -71,4 +71,4 @@
 
 [[constraint]]
   name = "github.com/payes/maya"
-  branch = "demo"
+  branch = "master"

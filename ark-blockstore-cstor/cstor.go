@@ -7,7 +7,7 @@ import (
         "strings"
         "io/ioutil"
         "net/http"
-//        "encoding/json"
+	b64 "encoding/base64"
         "time"
         "strconv"
 	"net"
@@ -28,6 +28,7 @@ import (
 const (
 	mayaAPIServiceName = "maya-apiserver-service"
 	backupCreatePath = "/latest/backups/"
+	restorePath = "/latest/restore/"
 	operator = "openebs"
 	casType = "cstor"
 	backupDir = "backups"
@@ -146,7 +147,7 @@ func (p *cstorSnapPlugin) DeleteSnapshot(snapshotID string) error {
         var snapInfo *Snapshot
         var err error
 
-        p.Log.Infof("Deleting snapshot", snapshotID)
+        p.Log.Infof("Deleting snapshot %v", snapshotID)
         if _, exists := p.snapshots[snapshotID]; !exists {
                 snapInfo, err = p.getSnapInfo(snapshotID)
                 if err != nil {
@@ -253,6 +254,10 @@ func (p *cstorSnapPlugin) CreateSnapshot(volumeID, volumeAZ string, tags map[str
 		return "", fmt.Errorf("Error creating remote file name for backup")
 	}
 
+	/*
+	 * For backup, we are downloading snapshot from one replica only
+	 */
+	MaxRetryCount = 1
 	ret := p.cl.UploadSnapshot(filename)
 	if ret != true {
 		return "", errors.New("Failed to upload snapshot")
@@ -291,6 +296,8 @@ func (p *cstorSnapPlugin) getSnapInfo(snapshotID string) (*Snapshot, error) {
 }
 
 func (p *cstorSnapPlugin) CreateVolumeFromSnapshot(snapshotID, volumeType, volumeAZ string, iops *int64) (string, error) {
+	var restoreResp v1alpha1.RestoreResp
+
 	if volumeType != "cstor-snapshot" {
 		return "", fmt.Errorf("Invalid volume type(%s)", volumeType)
 	}
@@ -322,26 +329,43 @@ func (p *cstorSnapPlugin) CreateVolumeFromSnapshot(snapshotID, volumeType, volum
 		Spec: *restoreSpec,
 	}
 
-        url := p.mayaAddr + backupCreatePath
+        url := p.mayaAddr + restorePath
 
         restoreData, _ := json.Marshal(restore)
-	_, err := p.httpRestCall(url, restoreData)
+	resp, err := p.httpRestCall(url, restoreData)
 	if err != nil {
-		return "", fmt.Errorf("Error calling REST api:%v", err)
+		p.Log.Errorf("Error executing REST api : %v", err)
+		return "", fmt.Errorf("Error executing REST api for restore : %v", err)
 	}
 
+	r := strings.Replace(string(resp), "\"", "", -1)
+	dresp, err := b64.StdEncoding.DecodeString(string(r))
+	if err != nil {
+		p.Log.Errorf("Error decoding respons : %v", err)
+		return "", fmt.Errorf("Error failed to decode response : %v", err)
+	}
+
+	if err := json.Unmarshal(dresp, &restoreResp); err != nil {
+		p.Log.Errorf("Error failed to unmarshal response : %v", err)
+		return "", fmt.Errorf("Error failed to unmarshal:%v", err)
+	}
+
+	MaxRetryCount = restoreResp.ReplicaCount
 	filename := p.generateRemoteFilename(volumeID, snapName)
 	if filename == "" {
+		p.Log.Errorf("Error failed to create remote file-name for backup")
 		return "", fmt.Errorf("Error creating remote file name for backup")
 	}
 
 	ret := p.cl.RestoreSnapshot(filename)
 	if ret != true {
+		p.Log.Errorf("Failed to restore snapshot")
 		return "", errors.New("Failed to restore snapshot")
 	} else {
 		return volumeID, nil
 	}
 
+	p.Log.Infof("Restore completed..")
 	return volumeID, nil
 }
 
@@ -367,6 +391,14 @@ func (p *cstorSnapPlugin) createPVC(volumeID, snapName string) (*Volume, error) 
 		return nil, errors.New("Failed to decode pvc")
 	}
 
+	newVol, err := p.checkIfPVCExist(pvc)
+	if err == nil {
+		newVol.backupName = snapName
+		return newVol, nil
+	}
+
+	pvc.Annotations = make(map[string]string)
+	pvc.Annotations["openebs.io/created-through"] = "restore"
 	rpvc, er := p.K8sClient.PersistentVolumeClaims(pvc.Namespace).Create(&pvc)
 	if er != nil {
 		return nil, fmt.Errorf("Failed to create PVC err:%v", er)
@@ -379,6 +411,7 @@ func (p *cstorSnapPlugin) createPVC(volumeID, snapName string) (*Volume, error) 
 			return nil, fmt.Errorf("Failed to create PVC err:%v", er)
 		}
 		if pvc.Status.Phase == v1.ClaimBound {
+			p.Log.Infof("PVC(%v) created..", pvc.Name)
 			return &Volume {
 				volname: pvc.Spec.VolumeName,
 				namespace: pvc.Namespace,
@@ -395,7 +428,7 @@ func (p *cstorSnapPlugin) backupPVC(volumeID string) error {
 
 	pvcs, err := p.K8sClient.PersistentVolumeClaims(vol.namespace).List(metav1.ListOptions{})
 	if err != nil {
-		p.Log.Errorf("Error fetching PVCS %v", err)
+		p.Log.Errorf("Error fetching PVC list : %v", err)
 		return errors.New("Failed to fetch PVC list")
 	}
 
@@ -407,7 +440,7 @@ func (p *cstorSnapPlugin) backupPVC(volumeID string) error {
 	}
 
 	if bkpPvc == nil {
-		p.Log.Errorf("Failed to find PVC for PV:%v", vol.volname)
+		p.Log.Errorf("Failed to find PVC for PV : %v", vol.volname)
 		return fmt.Errorf("Failed to find PVC for volume:%v", vol.volname)
 	}
 
@@ -472,4 +505,22 @@ func (p *cstorSnapPlugin) httpRestCall(url string, data []byte) ([]byte, error) 
 		return nil, fmt.Errorf("Status error: %v\n", http.StatusText(code))
 	}
 	return respdata, nil
+}
+
+func (p *cstorSnapPlugin) checkIfPVCExist(pvc v1.PersistentVolumeClaim) (*Volume, error) {
+	rpvc, err := p.K8sClient.PersistentVolumeClaims(pvc.Namespace).Get(pvc.Name, metav1.GetOptions{})
+	if err != nil || pvc.Status.Phase == v1.ClaimLost{
+		return nil, fmt.Errorf("PVC:%v does not exist", pvc.Name)
+	} else {
+		if rpvc.Status.Phase == v1.ClaimLost {
+			p.Log.Infof("PVC:%v is not bound yet!", rpvc.Name)
+			panic(fmt.Errorf("PVC:%v is not bound yet!", rpvc.Name))
+		} else {
+			return &Volume {
+				volname: rpvc.Spec.VolumeName,
+				namespace: rpvc.Namespace,
+				casType: *rpvc.Spec.StorageClassName,
+			}, nil
+		}
+	}
 }

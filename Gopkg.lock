@@ -357,12 +357,12 @@
   version = "0.8.0"
 
 [[projects]]
-  branch = "demo"
-  digest = "1:87e6ccd88c73e30f99f121059e5d79d5289269e75166168ee6b1bb6e52459859"
+  branch = "master"
+  digest = "1:b6da11d0736308036c48b3d31a454300ed59ebdd871b2f2ec465de660494646d"
   name = "github.com/payes/maya"
   packages = ["pkg/apis/openebs.io/v1alpha1"]
   pruneopts = "UT"
-  revision = "0f76e9993bf399d5bc6787c48514f0510d70dea4"
+  revision = "5e2c80a46d26bfc6f71b5bf5bca02ff18b36ec34"
 
 [[projects]]
   branch = "master"

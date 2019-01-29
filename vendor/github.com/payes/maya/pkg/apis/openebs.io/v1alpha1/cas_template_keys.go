@@ -120,6 +120,15 @@ const (
 
 	// DiskListCTP indicates the list of disks
 	DiskListCTP StoragePoolTLPProperty = "diskList"
+	// DiskDeviceListCTP indicates the list of device id of disks
+	// If device is is not present for a disk, it contians the device path.
+	DiskDeviceListCTP StoragePoolTLPProperty = "diskDeviceIdList"
+	// NOodeNameCTP is the name of node where cstorpool will be ceated
+	NodeNameCTP StoragePoolTLPProperty = "nodeName"
+	// PoolTypeCTP is the type of cstorpool that will be ceated
+	PoolTypeCTP StoragePoolTLPProperty = "poolType"
+	// InitPhaseCTP is the init phase for the cstorpool CR that will be ceated
+	InitPhaseCTP StoragePoolTLPProperty = "phase"
 )
 
 // VolumeTLPProperty is used to define properties that comes
@@ -153,6 +162,13 @@ const (
 	//  The corresponding value will be accessed as
 	// {{ .Volume.pvc }}
 	PersistentVolumeClaimVTP VolumeTLPProperty = "pvc"
+
+	// IsRestoreVolumePropertyVTP indicates if the volume is being
+	// created using a backedup volume
+	//NOTE:
+	// The Corresponding value will be accessed as
+	// {{ .Volume.isRestoreVol }}
+	IsRestoreVolumePropertyVTP VolumeTLPProperty = "isRestoreVol"
 
 	// StorageClassVTP is the StorageClass of the volume
 	//

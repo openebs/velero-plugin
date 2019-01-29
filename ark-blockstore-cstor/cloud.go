@@ -20,7 +20,7 @@ type cloudUtils struct {
 	Log logrus.FieldLogger
 	ctx context.Context
 	bucket *blob.Bucket
-	provider, bucketname, region, prefix string
+	provider, bucketname, region, prefix, file string
 }
 
 
@@ -110,33 +110,17 @@ func (c *cloudUtils) InitCloudConn(config map[string]string) error {
 
 func (c *cloudUtils) UploadSnapshot(file string) bool {
 	c.Log.Infof("Uploading snapshot to  '%v' with provider(%v) to bucket(%v):region(%v)", file, c.provider, c.bucketname, c.region)
-
-	w, err := c.bucket.NewWriter(c.ctx, file, nil)
-	if err != nil {
-		c.Log.Errorf("Failed to obtain writer: %v", err)
-		return false
-	}
-
-	sutils := &serverUtils{Log: c.Log}
-	wConn, err := sutils.GetCloudConn(w, nil, SNAP_BACKUP)
-	if err != nil {
-		return false
-	}
-
-	err = sutils.backupSnapshot(wConn, SNAP_BACKUP)
+	c.file = file
+	sutils := &serverUtils{Log: c.Log, cl: c}
+	err := sutils.backupSnapshot(SNAP_BACKUP)
 	if err != nil {
 		c.Log.Errorf("Failed to upload snapshot to bucket: %v", err)
-		w.Close()
 		if c.bucket.Delete(c.ctx, file) != nil {
 			c.Log.Errorf("Failed to removed errored snapshot from cloud")
 		}
 		return false
 	}
 
-	if err = w.Close(); err != nil {
-		c.Log.Errorf("Failed to close cloud conn: %v", err)
-		return false
-	}
 	c.Log.Infof("successfully uploaded object:%v to %v", file, c.provider)
 	return true
 }
@@ -152,32 +136,14 @@ func (c *cloudUtils) RemoveSnapshot(filename string) bool {
 }
 
 func (c *cloudUtils) RestoreSnapshot(file string) bool {
-	r, err := c.bucket.NewReader(c.ctx, file, nil)
-	if err != nil {
-		c.Log.Errorf("Failed to obtain reader: %s", err)
-		return false
-	}
-
-	sutils := &serverUtils{Log: c.Log}
-	rConn, err := sutils.GetCloudConn(nil, r, SNAP_RESTORE)
-	if err != nil {
-		return false
-	}
-
-	err = sutils.backupSnapshot(rConn, SNAP_RESTORE)
+	c.file = file
+	sutils := &serverUtils{Log: c.Log, cl: c}
+	err := sutils.backupSnapshot(SNAP_RESTORE)
 	if err != nil {
 		c.Log.Errorf("Failed to receive snapshot from bucket: %v", err)
-		r.Close()
 		return false
 	}
-
-	if err = r.Close(); err != nil {
-		c.Log.Errorf("Failed to close reader: %v", err)
-		return false
-	}
-
 	c.Log.Infof("successfully restored object:%s from %s", file, c.provider)
-
 	return true
 }
 
@@ -216,4 +182,49 @@ func (c *cloudUtils) ReadFromFile(file string) ([]byte, bool) {
 
 	c.Log.Infof("successfully read object:%v to %v", file, c.provider)
 	return data, true
+}
+
+func (c *cloudUtils) CreateCloudConn(opType snapOperation) (cloudConn) {
+	sutils := &serverUtils{Log: c.Log}
+	switch (opType) {
+	case SNAP_BACKUP:
+		w, err := c.bucket.NewWriter(c.ctx, c.file, nil)
+		if err != nil {
+			c.Log.Errorf("Failed to obtain writer: %v", err)
+			return nil
+		}
+
+		wConn, err := sutils.GetCloudConn(w, nil, SNAP_BACKUP)
+		if err != nil {
+			return nil
+		}
+		return wConn
+	case SNAP_RESTORE:
+		r, err := c.bucket.NewReader(c.ctx, c.file, nil)
+		if err != nil {
+			c.Log.Errorf("Failed to obtain reader: %s", err)
+			return nil
+		}
+
+		rConn, err := sutils.GetCloudConn(nil, r, SNAP_RESTORE)
+		if err != nil {
+			return nil
+		}
+		return rConn
+	}
+	return nil
+}
+
+func (c *cloudUtils) DestroyCloudConn(clconn cloudConn, opType snapOperation) {
+	switch (opType) {
+	case SNAP_BACKUP:
+		w := (*blob.Writer)(clconn)
+		_ = w.Close()
+		return
+	case SNAP_RESTORE:
+		r := (*blob.Reader)(clconn)
+		_ = r.Close()
+		return
+	}
+	return
 }

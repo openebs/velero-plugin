@@ -22,7 +22,10 @@ const (
 
 type serverUtils struct {
 	Log logrus.FieldLogger
+	cl *cloudUtils
 }
+
+var MaxRetryCount int
 
 type snapOperationStatus int
 const (
@@ -72,14 +75,6 @@ func (s *serverUtils) getVolSnapStatus(volsnap *snapClient) snapOperationStatus 
 	return volsnap.status
 }
 
-func (s *serverUtils) updateMaxSnapCnt(snapOp snapOperation) {
-	if snapOp == SNAP_BACKUP {
-		snapStats.required_cnt = 1
-	} else if snapOp == SNAP_RESTORE {
-		snapStats.required_cnt = 1	/* TBD: set according to RF */
-	}
-}
-
 func (s *serverUtils) appendToSnapList(snapEntry *snapClient) {
 	if snapStats.snapFirst == nil {
 		snapStats.snapFirst = snapEntry
@@ -96,14 +91,16 @@ func (s *serverUtils) removeFromSnapList(snapEntry *snapClient) {
 	var prevSnap *snapClient = nil
 
 	if snapStats.snapFirst == nil || snapStats.running_cnt == 0 {
-		panic(errors.New("snapList is empty"))
+		s.Log.Errorf("snapclient list is emptry")
+		panic(errors.New("snapclient list is empty"))
 	} else if snapStats.snapFirst == snapEntry {
-		snapStats.snapFirst = nil
+		snapStats.snapFirst = snapEntry.next
 	} else {
 		curSnap := snapStats.snapFirst
 		for curSnap != snapEntry {
 			if curSnap.next == nil {
-				panic(errors.New("snapentry not found."))
+				s.Log.Errorf("entry not found in snapclient list")
+				panic(errors.New("entry not found in snapclient list."))
 			}
 
 			prevSnap = curSnap
@@ -135,7 +132,7 @@ func (s *serverUtils) addSnapClientToEvent(volsnap *snapClient, event *syscall.E
 }
 
 
-func (s *serverUtils) acceptVolumeClient(fd, epfd int, snapInfo *snapServer, clconn cloudConn) (int, error) {
+func (s *serverUtils) acceptVolumeClient(fd, epfd int, snapInfo *snapServer) (int, error) {
 	var event *syscall.EpollEvent
 	var volsnap *snapClient
 
@@ -149,12 +146,17 @@ func (s *serverUtils) acceptVolumeClient(fd, epfd int, snapInfo *snapServer, clc
 
 	volsnap = new(snapClient)
 	volsnap.volumeFd = connFd
-	volsnap.cloud = clconn
+	volsnap.cloud = s.cl.CreateCloudConn(snapInfo.snap_type)
         volsnap.offset = 0
 	volsnap.readLen = READ_BUFFER_LEN
 	volsnap.buffer = make([]byte, volsnap.readLen)
 	volsnap.status = SNAP_INIT
 	volsnap.next = nil
+
+	if volsnap.cloud == nil {
+		s.Log.Errorf("Failed to create new cloud connection")
+		panic(errors.New("Failed to create cloud connection"))
+	}
 
 	event = new(syscall.EpollEvent)
 	if snapInfo.snap_type == SNAP_BACKUP {
@@ -224,7 +226,7 @@ func (s *serverUtils) handleReadEvent(event syscall.EpollEvent) error {
 	if snapStats.snap_type != SNAP_BACKUP {
 		return errors.New("Invalid backup operation\n")
 	}
-	s.Log.Info("volsnap %v", volsnap)
+
 	writer = (*blob.Writer)(volsnap.cloud)
 	for {
 		nbytes, e := s.readFromVolume(volsnap)
@@ -261,11 +263,12 @@ func (s *serverUtils) handleWriteEvent(event syscall.EpollEvent) error {
 		}
 	} else if nbytes == 0 {
 		s.updateVolSnapStatus(volsnap, SNAP_DONE)
-		s.Log.Infof("got nbytes 0 while reading from cloud")
+		s.Log.Infof("Downloading of snapshot finished for %v", volsnap.volumeFd)
 		return e
 	} else {
 		s.updateVolSnapStatus(volsnap, SNAP_FAILURE)
-		return errors.New("read error")
+		s.Log.Errorf("Error in dowloading snapshot for %v : %v", volsnap.volumeFd, e)
+		return errors.New("Error in dowloading snapshot")
 	}
 	return nil
 }
@@ -283,7 +286,6 @@ func (s *serverUtils) GetCloudConn(bwriter *blob.Writer, breader *blob.Reader, s
 
 func (s *serverUtils) errorHandlerForVolClient(err error, event syscall.EpollEvent, efd int) {
 	var volsnap *snapClient = s.getSnapClientFromEvent(event)
-
 	/* TBD: identifying errored backup/restore */
 	if s.getVolSnapStatus(volsnap) == SNAP_DONE ||
 		event.Events&syscall.EPOLLHUP != 0 ||
@@ -295,11 +297,12 @@ func (s *serverUtils) errorHandlerForVolClient(err error, event syscall.EpollEve
 
 	syscall.Close(volsnap.volumeFd)
 	_ = syscall.EpollCtl(efd, syscall.EPOLL_CTL_DEL, volsnap.volumeFd, nil)
+	s.cl.DestroyCloudConn(volsnap.cloud, snapStats.snap_type)
 	s.removeFromSnapList(volsnap)
-	s.Log.Infof("snap operation success:%v min:%v", snapStats.success_cnt, snapStats.required_cnt)
+	s.Log.Infof("Snap operation completed:%v required:%v", snapStats.success_cnt, snapStats.required_cnt)
 }
 
-func (s *serverUtils) backupSnapshot(clconn cloudConn, snapOp snapOperation) error {
+func (s *serverUtils) backupSnapshot(snapOp snapOperation) error {
 	var event syscall.EpollEvent
 	var events [MaxEpollEvents]syscall.EpollEvent
 
@@ -338,7 +341,7 @@ func (s *serverUtils) backupSnapshot(clconn cloudConn, snapOp snapOperation) err
 	snapStats.snap_type = snapOp
 	snapStats.creation_time = time.Now()
 	snapStats.status = SNAP_INIT
-	s.updateMaxSnapCnt(snapOp)
+	snapStats.required_cnt = MaxRetryCount
 
 	for {
 		nevents, e := syscall.EpollWait(epfd, events[:], -1)
@@ -350,7 +353,7 @@ func (s *serverUtils) backupSnapshot(clconn cloudConn, snapOp snapOperation) err
 		for ev := 0; ev < nevents; ev++ {
 			var err error
 			if int(events[ev].Fd) == fd {
-				_, err = s.acceptVolumeClient(fd, epfd, &snapStats, clconn)
+				_, err = s.acceptVolumeClient(fd, epfd, &snapStats)
 				if err != nil {
 					s.Log.Errorf("Failed to accept connection: %s", err)
 					continue

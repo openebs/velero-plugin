@@ -20,6 +20,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+//RestoreResp contains resp for cstore restore request
+type RestoreResp struct {
+	ReplicaCount int `json:"replicaCount,string"`
+}
+
 // +genclient
 // +genclient:noStatus
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -39,6 +44,7 @@ type CStorRestoreSpec struct {
 	VolumeName string `json:"volumeName"`
 	CasType    string `json:"casType"`
 	RestoreSrc string `json:"backupSrc"`
+	TargetIP   string `json:"targetIP"`
 }
 
 // CStorRestorePhase is to hold result of action.
