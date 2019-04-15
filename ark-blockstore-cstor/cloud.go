@@ -3,26 +3,28 @@ package main
 import (
 	"context"
 	"errors"
-	"os"
 	"fmt"
+	"os"
 
-	"github.com/sirupsen/logrus"
-	"gocloud.dev/blob"
-	"gocloud.dev/blob/gcsblob"
-	"gocloud.dev/gcp"
-	"gocloud.dev/blob/s3blob"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/sirupsen/logrus"
+	"gocloud.dev/blob"
+	"gocloud.dev/blob/gcsblob"
+	"gocloud.dev/blob/s3blob"
+	"gocloud.dev/gcp"
 )
 
+// cloudUtils defines resource used for cloud related operation
 type cloudUtils struct {
-	Log logrus.FieldLogger
-	ctx context.Context
-	bucket *blob.Bucket
+	Log                                        logrus.FieldLogger
+	ctx                                        context.Context
+	bucket                                     *blob.Bucket
 	provider, bucketname, region, prefix, file string
+	// exitServer, if server connection needs to be stopped or not
+	exitServer bool
 }
-
 
 // setupBucket creates a connection to a particular cloud provider's blob storage.
 func (c *cloudUtils) setupBucket(ctx context.Context, provider, bucket, region string) (*blob.Bucket, error) {
@@ -66,7 +68,7 @@ func (c *cloudUtils) setupAWS(ctx context.Context, bucketName, region string) (*
 
 	credentials := credentials.NewSharedCredentials(awscred, "default")
 	d := &aws.Config{
-		Region: awsRegion,
+		Region:      awsRegion,
 		Credentials: credentials,
 	}
 
@@ -75,35 +77,35 @@ func (c *cloudUtils) setupAWS(ctx context.Context, bucketName, region string) (*
 }
 
 func (c *cloudUtils) InitCloudConn(config map[string]string) error {
-        provider, terr := config["provider"]
-        if terr != true {
-                return errors.New("Failed to get provider name")
-        }
+	provider, terr := config["provider"]
+	if terr != true {
+		return errors.New("Failed to get provider name")
+	}
 	c.provider = provider
 
-        bucketName, terr := config["bucket"]
-        if terr != true {
-                return errors.New("Failed to get bucket name")
-        }
+	bucketName, terr := config["bucket"]
+	if terr != true {
+		return errors.New("Failed to get bucket name")
+	}
 	c.bucketname = bucketName
 
-        prefix, terr := config["prefix"]
-        if terr != true {
-                prefix =  ""
-        }
+	prefix, terr := config["prefix"]
+	if terr != true {
+		prefix = ""
+	}
 	c.prefix = prefix
 
-        region, terr := config["region"]
-        if terr != true {
-                c.Log.Infof("No region provided..")
-        }
+	region, terr := config["region"]
+	if terr != true {
+		c.Log.Infof("No region provided..")
+	}
 	c.region = region
 
-        c.ctx = context.Background()
-        b, err := c.setupBucket(c.ctx, provider, bucketName, region)
-        if err != nil {
-                return fmt.Errorf("Failed to setup bucket: %v", err)
-        }
+	c.ctx = context.Background()
+	b, err := c.setupBucket(c.ctx, provider, bucketName, region)
+	if err != nil {
+		return fmt.Errorf("Failed to setup bucket: %v", err)
+	}
 	c.bucket = b
 	return nil
 }
@@ -112,7 +114,7 @@ func (c *cloudUtils) UploadSnapshot(file string) bool {
 	c.Log.Infof("Uploading snapshot to  '%v' with provider(%v) to bucket(%v):region(%v)", file, c.provider, c.bucketname, c.region)
 	c.file = file
 	sutils := &serverUtils{Log: c.Log, cl: c}
-	err := sutils.backupSnapshot(SNAP_BACKUP)
+	err := sutils.backupSnapshot(SnapBackup)
 	if err != nil {
 		c.Log.Errorf("Failed to upload snapshot to bucket: %v", err)
 		if c.bucket.Delete(c.ctx, file) != nil {
@@ -138,7 +140,7 @@ func (c *cloudUtils) RemoveSnapshot(filename string) bool {
 func (c *cloudUtils) RestoreSnapshot(file string) bool {
 	c.file = file
 	sutils := &serverUtils{Log: c.Log, cl: c}
-	err := sutils.backupSnapshot(SNAP_RESTORE)
+	err := sutils.backupSnapshot(SnapRestore)
 	if err != nil {
 		c.Log.Errorf("Failed to receive snapshot from bucket: %v", err)
 		return false
@@ -184,29 +186,29 @@ func (c *cloudUtils) ReadFromFile(file string) ([]byte, bool) {
 	return data, true
 }
 
-func (c *cloudUtils) CreateCloudConn(opType snapOperation) (cloudConn) {
+func (c *cloudUtils) CreateCloudConn(opType snapOperation) cloudConn {
 	sutils := &serverUtils{Log: c.Log}
-	switch (opType) {
-	case SNAP_BACKUP:
+	switch opType {
+	case SnapBackup:
 		w, err := c.bucket.NewWriter(c.ctx, c.file, nil)
 		if err != nil {
 			c.Log.Errorf("Failed to obtain writer: %v", err)
 			return nil
 		}
 
-		wConn, err := sutils.GetCloudConn(w, nil, SNAP_BACKUP)
+		wConn, err := sutils.GetCloudConn(w, nil, SnapBackup)
 		if err != nil {
 			return nil
 		}
 		return wConn
-	case SNAP_RESTORE:
+	case SnapRestore:
 		r, err := c.bucket.NewReader(c.ctx, c.file, nil)
 		if err != nil {
 			c.Log.Errorf("Failed to obtain reader: %s", err)
 			return nil
 		}
 
-		rConn, err := sutils.GetCloudConn(nil, r, SNAP_RESTORE)
+		rConn, err := sutils.GetCloudConn(nil, r, SnapRestore)
 		if err != nil {
 			return nil
 		}
@@ -216,12 +218,12 @@ func (c *cloudUtils) CreateCloudConn(opType snapOperation) (cloudConn) {
 }
 
 func (c *cloudUtils) DestroyCloudConn(clconn cloudConn, opType snapOperation) {
-	switch (opType) {
-	case SNAP_BACKUP:
+	switch opType {
+	case SnapBackup:
 		w := (*blob.Writer)(clconn)
 		_ = w.Close()
 		return
-	case SNAP_RESTORE:
+	case SnapRestore:
 		r := (*blob.Reader)(clconn)
 		_ = r.Close()
 		return

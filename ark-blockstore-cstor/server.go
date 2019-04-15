@@ -1,68 +1,91 @@
 package main
 
 import (
+	"errors"
+	"fmt"
 	"net"
 	"syscall"
 	"time"
 	"unsafe"
-	"errors"
-	"fmt"
 
 	"github.com/sirupsen/logrus"
 	"gocloud.dev/blob"
 )
 
 const (
-	EPOLLET        = 1 << 31
+	//EPOLLET defines flag for edge-triggered
+	EPOLLET = 1 << 31
+
+	//MaxEpollEvents defines max number of events returned by epoll_wait
 	MaxEpollEvents = 32
-	MaxClient	= 10
-	RecieverPort	= 9000
-	READ_BUFFER_LEN = 32*1024
+
+	//MaxClient defines max number of connection a server can accept
+	MaxClient = 10
+
+	//RecieverPort defines port number on which server should listen for new connection
+	RecieverPort = 9000
+
+	//ReadBufferLen defines max number of bytes should be read from wire
+	ReadBufferLen = 32 * 1024
+
+	//EPOLLTIMEOUT defines timeout for epoll_wait
+	EPOLLTIMEOUT = 5 * 1000 // 5 second
 )
 
 type serverUtils struct {
 	Log logrus.FieldLogger
-	cl *cloudUtils
+	cl  *cloudUtils
 }
 
+//MaxRetryCount defines max retry count
 var MaxRetryCount int
 
 type snapOperationStatus int
+
 const (
-	SNAP_INIT	snapOperationStatus = 1
-	SNAP_DONE	snapOperationStatus = 1 << 1
-	SNAP_FAILURE	snapOperationStatus = 1 << 2
+	//SnapInit : snapshot transfer is initialized
+	SnapInit snapOperationStatus = 1
+
+	//SnapDone : snapshot transfer is completed
+	SnapDone snapOperationStatus = 1 << 1
+
+	//SnapFailure : snapshot transfer failed
+	SnapFailure snapOperationStatus = 1 << 2
 )
 
 type snapOperation int
+
 const (
-	SNAP_BACKUP	snapOperation	= 1
-	SNAP_RESTORE	snapOperation	= 1 << 1
+	//SnapBackup : Snapshot backup operation
+	SnapBackup snapOperation = 1
+
+	//SnapRestore : Snapshot restore operation
+	SnapRestore snapOperation = 1 << 1
 )
 
 type cloudConn unsafe.Pointer
 
 type snapClient struct {
-	volumeFd int				/* client FD */
-	cloud cloudConn				/* cloud reader/writer */
+	volumeFd        int       /* client FD */
+	cloud           cloudConn /* cloud reader/writer */
 	offset, readLen uint64
-	buffer []byte
-	status snapOperationStatus
-	next *snapClient
+	buffer          []byte
+	status          snapOperationStatus
+	next            *snapClient
 }
 
 type snapServer struct {
-	snap_type snapOperation			/* backup or restore */
-	status snapOperationStatus		/* success or failure or in-progress */
-	creation_time time.Time			/* backup/restore start time */
-	success_cnt	int			/* number of workers exited successfully */
-	running_cnt	int			/* number of workers in progress */
-	failed_cnt	int			/* number of workers exited with error */
-	required_cnt int			/* number of completed workers either with error or success */
+	snapType      snapOperation       /* backup or restore */
+	status        snapOperationStatus /* success or failure or in-progress */
+	creationTime  time.Time           /* backup/restore start time */
+	successCount  int                 /* number of workers exited successfully */
+	runningCount  int                 /* number of workers in progress */
+	failedCount   int                 /* number of workers exited with error */
+	requiredCount int                 /* number of completed workers either with error or success */
 
 	/* worker details */
 	snapFirst *snapClient
-	snapLast *snapClient
+	snapLast  *snapClient
 }
 
 var snapStats snapServer
@@ -84,13 +107,13 @@ func (s *serverUtils) appendToSnapList(snapEntry *snapClient) {
 		lastEntry.next = snapEntry
 		snapStats.snapLast = snapEntry
 	}
-	snapStats.running_cnt++
+	snapStats.runningCount++
 }
 
 func (s *serverUtils) removeFromSnapList(snapEntry *snapClient) {
-	var prevSnap *snapClient = nil
+	var prevSnap *snapClient
 
-	if snapStats.snapFirst == nil || snapStats.running_cnt == 0 {
+	if snapStats.snapFirst == nil || snapStats.runningCount == 0 {
 		s.Log.Errorf("snapclient list is emptry")
 		panic(errors.New("snapclient list is empty"))
 	} else if snapStats.snapFirst == snapEntry {
@@ -100,7 +123,7 @@ func (s *serverUtils) removeFromSnapList(snapEntry *snapClient) {
 		for curSnap != snapEntry {
 			if curSnap.next == nil {
 				s.Log.Errorf("entry not found in snapclient list")
-				panic(errors.New("entry not found in snapclient list."))
+				panic(errors.New("entry not found in snapclient list"))
 			}
 
 			prevSnap = curSnap
@@ -108,7 +131,7 @@ func (s *serverUtils) removeFromSnapList(snapEntry *snapClient) {
 		}
 		prevSnap.next = curSnap.next
 	}
-	snapStats.running_cnt--
+	snapStats.runningCount--
 }
 
 func (s *serverUtils) getSnapClientFromEvent(event syscall.EpollEvent) *snapClient {
@@ -118,7 +141,7 @@ func (s *serverUtils) getSnapClientFromEvent(event syscall.EpollEvent) *snapClie
 	p := unsafe.Pointer(&event)
 	off = (*uint64)(unsafe.Pointer(uintptr(p) + unsafe.Offsetof(event.Fd)))
 	v = (**snapClient)(unsafe.Pointer(off))
-        return *v
+	return *v
 }
 
 func (s *serverUtils) addSnapClientToEvent(volsnap *snapClient, event *syscall.EpollEvent) {
@@ -130,7 +153,6 @@ func (s *serverUtils) addSnapClientToEvent(volsnap *snapClient, event *syscall.E
 	v = (**snapClient)(unsafe.Pointer(off))
 	*v = volsnap
 }
-
 
 func (s *serverUtils) acceptVolumeClient(fd, epfd int, snapInfo *snapServer) (int, error) {
 	var event *syscall.EpollEvent
@@ -146,11 +168,11 @@ func (s *serverUtils) acceptVolumeClient(fd, epfd int, snapInfo *snapServer) (in
 
 	volsnap = new(snapClient)
 	volsnap.volumeFd = connFd
-	volsnap.cloud = s.cl.CreateCloudConn(snapInfo.snap_type)
-        volsnap.offset = 0
-	volsnap.readLen = READ_BUFFER_LEN
+	volsnap.cloud = s.cl.CreateCloudConn(snapInfo.snapType)
+	volsnap.offset = 0
+	volsnap.readLen = ReadBufferLen
 	volsnap.buffer = make([]byte, volsnap.readLen)
-	volsnap.status = SNAP_INIT
+	volsnap.status = SnapInit
 	volsnap.next = nil
 
 	if volsnap.cloud == nil {
@@ -159,7 +181,7 @@ func (s *serverUtils) acceptVolumeClient(fd, epfd int, snapInfo *snapServer) (in
 	}
 
 	event = new(syscall.EpollEvent)
-	if snapInfo.snap_type == SNAP_BACKUP {
+	if snapInfo.snapType == SnapBackup {
 		event.Events = syscall.EPOLLIN | syscall.EPOLLRDHUP | syscall.EPOLLHUP | syscall.EPOLLERR | EPOLLET
 	} else {
 		syscall.SetsockoptInt(connFd, syscall.SOL_TCP, syscall.TCP_NODELAY, 1)
@@ -177,7 +199,7 @@ func (s *serverUtils) acceptVolumeClient(fd, epfd int, snapInfo *snapServer) (in
 }
 
 func (s *serverUtils) writeToVolume(volsnap *snapClient, dataLen int) error {
-	var index int = 0
+	var index int
 
 	if dataLen == 0 {
 		return nil
@@ -206,25 +228,24 @@ func (s *serverUtils) readFromVolume(volsnap *snapClient) (int, error) {
 	nbytes, e := syscall.Read(volsnap.volumeFd, volsnap.buffer)
 	if nbytes > 0 {
 		return nbytes, nil
-	} else if nbytes  < 0 {
+	} else if nbytes < 0 {
 		if e == syscall.EAGAIN {
 			return 0, nil
-		} else {
-			return (-1), fmt.Errorf("read retured errored for fd(%v) err:%v", volsnap.volumeFd, e)
 		}
+		return (-1), fmt.Errorf("read retured errored for fd(%v) err:%v", volsnap.volumeFd, e)
 	} else {
 		/* got EOF from volumeClient.. */
-		s.updateVolSnapStatus(volsnap, SNAP_DONE)
+		s.updateVolSnapStatus(volsnap, SnapDone)
 		return (-1), fmt.Errorf("connection closed for fd(%v)", volsnap.volumeFd)
 	}
 }
 
 func (s *serverUtils) handleReadEvent(event syscall.EpollEvent) error {
-	var volsnap *snapClient = s.getSnapClientFromEvent(event)
+	var volsnap = s.getSnapClientFromEvent(event)
 	var writer *blob.Writer
 
-	if snapStats.snap_type != SNAP_BACKUP {
-		return errors.New("Invalid backup operation\n")
+	if snapStats.snapType != SnapBackup {
+		return errors.New("Invalid backup operation")
 	}
 
 	writer = (*blob.Writer)(volsnap.cloud)
@@ -232,25 +253,24 @@ func (s *serverUtils) handleReadEvent(event syscall.EpollEvent) error {
 		nbytes, e := s.readFromVolume(volsnap)
 		if e != nil {
 			return e
-		} else {
-			if nbytes > 0 {
-				_, err := writer.Write(volsnap.buffer[:nbytes])
-				if err != nil {
-					return fmt.Errorf("write returned error(%v)", err)
-				}
-			} else {
-				return nil //connection closed
+		}
+		if nbytes > 0 {
+			_, err := writer.Write(volsnap.buffer[:nbytes])
+			if err != nil {
+				return fmt.Errorf("write returned error(%v)", err)
 			}
+		} else {
+			return nil //connection closed
 		}
 	}
 	return nil
 }
 
 func (s *serverUtils) handleWriteEvent(event syscall.EpollEvent) error {
-	var volsnap *snapClient = s.getSnapClientFromEvent(event)
+	var volsnap = s.getSnapClientFromEvent(event)
 	var reader *blob.Reader
 
-	if snapStats.snap_type != SNAP_RESTORE {
+	if snapStats.snapType != SnapRestore {
 		return errors.New("Invalid backup operation")
 	}
 
@@ -262,11 +282,11 @@ func (s *serverUtils) handleWriteEvent(event syscall.EpollEvent) error {
 			return e
 		}
 	} else if nbytes == 0 {
-		s.updateVolSnapStatus(volsnap, SNAP_DONE)
+		s.updateVolSnapStatus(volsnap, SnapDone)
 		s.Log.Infof("Downloading of snapshot finished for %v", volsnap.volumeFd)
 		return e
 	} else {
-		s.updateVolSnapStatus(volsnap, SNAP_FAILURE)
+		s.updateVolSnapStatus(volsnap, SnapFailure)
 		s.Log.Errorf("Error in dowloading snapshot for %v : %v", volsnap.volumeFd, e)
 		return errors.New("Error in dowloading snapshot")
 	}
@@ -274,32 +294,57 @@ func (s *serverUtils) handleWriteEvent(event syscall.EpollEvent) error {
 }
 
 func (s *serverUtils) GetCloudConn(bwriter *blob.Writer, breader *blob.Reader, snapOp snapOperation) (cloudConn, error) {
-	if snapOp != SNAP_BACKUP && snapOp != SNAP_RESTORE {
+	if snapOp != SnapBackup && snapOp != SnapRestore {
 		return nil, errors.New("Invalid snap operations")
 	}
-	if snapOp == SNAP_BACKUP {
+	if snapOp == SnapBackup {
 		return cloudConn(bwriter), nil
-	} else {
-		return cloudConn(breader), nil
 	}
+	return cloudConn(breader), nil
 }
 
 func (s *serverUtils) errorHandlerForVolClient(err error, event syscall.EpollEvent, efd int) {
-	var volsnap *snapClient = s.getSnapClientFromEvent(event)
+	var volsnap = s.getSnapClientFromEvent(event)
 	/* TBD: identifying errored backup/restore */
-	if s.getVolSnapStatus(volsnap) == SNAP_DONE ||
+	if s.getVolSnapStatus(volsnap) == SnapDone ||
 		event.Events&syscall.EPOLLHUP != 0 ||
-		event.Events&syscall.EPOLLERR != 0 || err == nil{
-		snapStats.success_cnt++
+		event.Events&syscall.EPOLLERR != 0 || err == nil {
+		snapStats.successCount++
 	} else {
-		snapStats.failed_cnt++
+		snapStats.failedCount++
 	}
 
 	syscall.Close(volsnap.volumeFd)
 	_ = syscall.EpollCtl(efd, syscall.EPOLL_CTL_DEL, volsnap.volumeFd, nil)
-	s.cl.DestroyCloudConn(volsnap.cloud, snapStats.snap_type)
+	s.cl.DestroyCloudConn(volsnap.cloud, snapStats.snapType)
 	s.removeFromSnapList(volsnap)
-	s.Log.Infof("Snap operation completed:%v required:%v", snapStats.success_cnt, snapStats.required_cnt)
+	s.Log.Infof("Snap operation completed:%v required:%v", snapStats.successCount, snapStats.requiredCount)
+}
+
+func (s *serverUtils) closeAllVolClient(efd int) {
+	var nextSnap *snapClient
+
+	if snapStats.snapFirst == nil || snapStats.runningCount == 0 {
+		return
+	}
+
+	curSnap := snapStats.snapFirst
+	for curSnap.next != nil {
+		if s.getVolSnapStatus(curSnap) == SnapDone {
+			snapStats.successCount++
+		} else {
+			snapStats.failedCount++
+		}
+
+		syscall.Close(curSnap.volumeFd)
+		_ = syscall.EpollCtl(efd, syscall.EPOLL_CTL_DEL, curSnap.volumeFd, nil)
+		s.cl.DestroyCloudConn(curSnap.cloud, snapStats.snapType)
+		s.Log.Infof("Snap operation closed:%v", curSnap.volumeFd)
+
+		nextSnap = curSnap.next
+		s.removeFromSnapList(curSnap)
+		curSnap = nextSnap
+	}
 }
 
 func (s *serverUtils) backupSnapshot(snapOp snapOperation) error {
@@ -338,16 +383,24 @@ func (s *serverUtils) backupSnapshot(snapOp snapOperation) error {
 		return e
 	}
 
-	snapStats.snap_type = snapOp
-	snapStats.creation_time = time.Now()
-	snapStats.status = SNAP_INIT
-	snapStats.required_cnt = MaxRetryCount
+	snapStats.snapType = snapOp
+	snapStats.creationTime = time.Now()
+	snapStats.status = SnapInit
+	snapStats.requiredCount = MaxRetryCount
+
+	s.Log.Infof("starting server with extserver :%v", s.cl.exitServer)
 
 	for {
-		nevents, e := syscall.EpollWait(epfd, events[:], -1)
+		nevents, e := syscall.EpollWait(epfd, events[:], EPOLLTIMEOUT)
 		if e != nil {
 			s.Log.Errorf("Epoll wait failed: %s", e)
 			return e
+		}
+
+		if nevents == 0 && s.cl.exitServer {
+			s.Log.Infof("Transfer done.. closing the server")
+			s.closeAllVolClient(epfd)
+			goto exit
 		}
 
 		for ev := 0; ev < nevents; ev++ {
@@ -373,13 +426,14 @@ func (s *serverUtils) backupSnapshot(snapOp snapOperation) error {
 					s.errorHandlerForVolClient(err, events[ev], epfd)
 				}
 
-				if snapStats.required_cnt == snapStats.success_cnt {
-					s.Log.Infof("snap operation success:%v min:%v", snapStats.success_cnt, snapStats.required_cnt)
-					goto exit
+				if snapStats.requiredCount == snapStats.successCount {
+					s.Log.Infof("snap operation success:%v min:%v", snapStats.successCount, snapStats.requiredCount)
+					//					goto exit
 				}
 			}
 		}
 	}
+
 exit:
 	syscall.Close(epfd)
 	syscall.Close(fd)

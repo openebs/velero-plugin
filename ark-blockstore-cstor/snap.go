@@ -6,9 +6,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-// Plugin for containing state for the blockstore plugin
+// BlockStore : Plugin for containing state for the blockstore plugin
 type BlockStore struct {
-	Log logrus.FieldLogger
+	Log    logrus.FieldLogger
 	plugin cloudprovider.BlockStore
 }
 

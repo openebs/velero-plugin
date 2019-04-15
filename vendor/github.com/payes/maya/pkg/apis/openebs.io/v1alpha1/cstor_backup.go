@@ -23,64 +23,55 @@ import (
 // +genclient
 // +genclient:noStatus
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// +resource:path=cstorbackups
+// +resource:path=backupcstor
 
-// CStorBackup describes a cstor volume resource created as custom resource
-type CStorBackup struct {
+// BackupCStor describes a cstor volume resource created as custom resource
+type BackupCStor struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec              CStorBackupSpec   `json:"spec"`
-	Status            CStorBackupStatus `json:"status"`
+	Spec              BackupCStorSpec   `json:"spec"`
+	Status            BackupCStorStatus `json:"status"`
 }
 
-// CStorBackupSpec is the spec for a CStorBackup resource
-type CStorBackupSpec struct {
-	Name         string `json:"name"`
+// BackupCStorSpec is the spec for a BackupCstor resource
+type BackupCStorSpec struct {
+	//	BackupID     string `json:"backupId"`
+	BackupName   string `json:"backupName"`
 	VolumeName   string `json:"volumeName"`
-	CasType      string `json:"casType"`
 	SnapName     string `json:"snapName"`
 	PrevSnapName string `json:"prevSnapName"`
 	BackupDest   string `json:"backupDest"`
 }
 
-// CStorBackupPhase is to hold result of action.
-type CStorBackupPhase string
+// BackupCStorStatus is to hold result of action.
+type BackupCStorStatus string
 
-// Status written onto CStorBackup objects.
+// Status written onto BackupCstor objects.
 const (
-	// CSBStatusEmpty ensures the create operation is to be done, if import fails.
-	CSBStatusEmpty CStorBackupPhase = ""
+	// BKPCStorStatusEmpty ensures the create operation is to be done, if import fails.
+	BKPCStorStatusEmpty BackupCStorStatus = ""
 
-	// CVRStatusOnline ensures the resource is available.
-	CSBStatusOnline CStorBackupPhase = "Healthy"
-	// CVRStatusOffline ensures the resource is not available.
-	CSBStatusOffline CStorBackupPhase = "Offline"
-	// CVRStatusDegraded means that the rebuilding has not yet started.
-	CSBStatusDegraded CStorBackupPhase = "Degraded"
-	// CSBStatusError means that the volume status could not be found.
-	CSBStatusError CStorBackupPhase = "Error"
-	// CSBStatusDeletionFailed ensures the resource deletion has failed.
-	CSBStatusDeletionFailed CStorBackupPhase = "Error"
-	// CSBStatusInvalid ensures invalid resource.
-	CSBStatusInvalid CStorBackupPhase = "Invalid"
-	// CSBStatusErrorDuplicate ensures error due to duplicate resource.
-	CSBStatusErrorDuplicate CStorBackupPhase = "Invalid"
-	// CSBStatusPending ensures pending task of cvr resource.
-	CSBStatusPending CStorBackupPhase = "Init"
+	// BKPCStorStatusDone , backup is completed.
+	BKPCStorStatusDone BackupCStorStatus = "Done"
+	// BKPCStorStatusFailed , backup is failed.
+	BKPCStorStatusFailed BackupCStorStatus = "Failed"
+	// BKPCStorStatusInit , backup is initialized.
+	BKPCStorStatusInit BackupCStorStatus = "Init"
+	// BKPCStorStatusPending , backup is pending.
+	BKPCStorStatusPending BackupCStorStatus = "Pending"
+	// BKPCStorStatusInProgress , backup is in progress.
+	BKPCStorStatusInProgress BackupCStorStatus = "Pending"
+	// BKPCStorStatusInvalid , backup operation is invalid.
+	BKPCStorStatusInvalid BackupCStorStatus = "Invalid"
 )
 
-// CStorBackupStatus is for handling status of cvr.
-type CStorBackupStatus struct {
-	Phase CStorBackupPhase `json:"phase"`
-}
-
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// +resource:path=cstorvolumereplicas
+// +resource:path=backupcstor
 
-// CStorBackupList is a list of CStorBackup resources
-type CStorBackupList struct {
+// BackupCStorList is a list of BackupCstor resources
+type BackupCStorList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
 
-	Items []CStorBackup `json:"items"`
+	Items []BackupCStor `json:"items"`
 }
