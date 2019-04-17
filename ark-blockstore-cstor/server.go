@@ -37,9 +37,6 @@ type serverUtils struct {
 	cl  *cloudUtils
 }
 
-//MaxRetryCount defines max retry count
-var MaxRetryCount int
-
 type snapOperationStatus int
 
 const (
@@ -75,13 +72,12 @@ type snapClient struct {
 }
 
 type snapServer struct {
-	snapType      snapOperation       /* backup or restore */
-	status        snapOperationStatus /* success or failure or in-progress */
-	creationTime  time.Time           /* backup/restore start time */
-	successCount  int                 /* number of workers exited successfully */
-	runningCount  int                 /* number of workers in progress */
-	failedCount   int                 /* number of workers exited with error */
-	requiredCount int                 /* number of completed workers either with error or success */
+	snapType     snapOperation       /* backup or restore */
+	status       snapOperationStatus /* success or failure or in-progress */
+	creationTime time.Time           /* backup/restore start time */
+	successCount int                 /* number of workers exited successfully */
+	runningCount int                 /* number of workers in progress */
+	failedCount  int                 /* number of workers exited with error */
 
 	/* worker details */
 	snapFirst *snapClient
@@ -263,7 +259,6 @@ func (s *serverUtils) handleReadEvent(event syscall.EpollEvent) error {
 			return nil //connection closed
 		}
 	}
-	return nil
 }
 
 func (s *serverUtils) handleWriteEvent(event syscall.EpollEvent) error {
@@ -318,7 +313,7 @@ func (s *serverUtils) errorHandlerForVolClient(err error, event syscall.EpollEve
 	_ = syscall.EpollCtl(efd, syscall.EPOLL_CTL_DEL, volsnap.volumeFd, nil)
 	s.cl.DestroyCloudConn(volsnap.cloud, snapStats.snapType)
 	s.removeFromSnapList(volsnap)
-	s.Log.Infof("Snap operation completed:%v required:%v", snapStats.successCount, snapStats.requiredCount)
+	s.Log.Infof("Snap operation completed:%v", snapStats.successCount)
 }
 
 func (s *serverUtils) closeAllVolClient(efd int) {
@@ -386,9 +381,6 @@ func (s *serverUtils) backupSnapshot(snapOp snapOperation) error {
 	snapStats.snapType = snapOp
 	snapStats.creationTime = time.Now()
 	snapStats.status = SnapInit
-	snapStats.requiredCount = MaxRetryCount
-
-	s.Log.Infof("starting server with extserver :%v", s.cl.exitServer)
 
 	for {
 		nevents, e := syscall.EpollWait(epfd, events[:], EPOLLTIMEOUT)
@@ -424,11 +416,6 @@ func (s *serverUtils) backupSnapshot(snapOp snapOperation) error {
 
 				if err != nil {
 					s.errorHandlerForVolClient(err, events[ev], epfd)
-				}
-
-				if snapStats.requiredCount == snapStats.successCount {
-					s.Log.Infof("snap operation success:%v min:%v", snapStats.successCount, snapStats.requiredCount)
-					//					goto exit
 				}
 			}
 		}

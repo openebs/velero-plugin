@@ -26,13 +26,14 @@ import (
 )
 
 const (
-	mayaAPIServiceName   = "maya-apiserver-service"
-	backupCreatePath     = "/latest/backups/"
-	restorePath          = "/latest/restore/"
-	operator             = "openebs"
-	casType              = "cstor"
-	backupDir            = "backups"
-	backupStatusInterval = 1
+	mayaAPIServiceName    = "maya-apiserver-service"
+	backupCreatePath      = "/latest/backups/"
+	restorePath           = "/latest/restore/"
+	operator              = "openebs"
+	casType               = "cstor"
+	backupDir             = "backups"
+	backupStatusInterval  = 5
+	restoreStatusInterval = 5
 )
 
 type cstorSnapPlugin struct {
@@ -76,8 +77,11 @@ type Volume struct {
 	//backupName is snapshot name for given volume
 	backupName string
 
-	//status is backup progress status for given volume
-	status v1alpha1.BackupCStorStatus
+	//backupStatus is backup progress status for given volume
+	backupStatus v1alpha1.BackupCStorStatus
+
+	//restoreStatus is restore progress status for given volume
+	restoreStatus v1alpha1.CStorRestoreStatus
 }
 
 func (p *cstorSnapPlugin) getServerAddress() string {
@@ -92,7 +96,7 @@ func (p *cstorSnapPlugin) getServerAddress() string {
 		networkIP, ok := netInterfaceAddress.(*net.IPNet)
 		if ok && !networkIP.IP.IsLoopback() && networkIP.IP.To4() != nil {
 			ip := networkIP.IP.String()
-			logrus.Infof("Resolved Host IP: " + ip)
+			p.Log.Infof("Resolved Host IP: " + ip)
 			return ip + ":" + strconv.Itoa(RecieverPort)
 		}
 	}
@@ -293,20 +297,15 @@ func (p *cstorSnapPlugin) CreateSnapshot(volumeID, volumeAZ string, tags map[str
 
 	go p.checkBackupStatus(bkp)
 
-	/*
-	 * For backup, we are downloading snapshot from one replica only
-	 */
-	MaxRetryCount = 1
 	ret := p.cl.UploadSnapshot(filename)
 	if ret != true {
 		return "", errors.New("Failed to upload snapshot")
 	}
 
-	p.Log.Infof("got status findal :%v", vol.status)
-	if vol.status == v1alpha1.BKPCStorStatusDone {
+	if vol.backupStatus == v1alpha1.BKPCStorStatusDone {
 		return volumeID + "-ark-bkp-" + bkpname, nil
 	}
-	return "", fmt.Errorf("Failed to upload snapshot:%v", vol.status)
+	return "", fmt.Errorf("Failed to upload snapshot:%v", vol.backupStatus)
 }
 
 func (p *cstorSnapPlugin) getSnapInfo(snapshotID string) (*Snapshot, error) {
@@ -338,8 +337,6 @@ func (p *cstorSnapPlugin) getSnapInfo(snapshotID string) (*Snapshot, error) {
 }
 
 func (p *cstorSnapPlugin) CreateVolumeFromSnapshot(snapshotID, volumeType, volumeAZ string, iops *int64) (string, error) {
-	var restoreResp v1alpha1.RestoreResp
-
 	p.cl.exitServer = false
 	if volumeType != "cstor-snapshot" {
 		return "", fmt.Errorf("Invalid volume type(%s)", volumeType)
@@ -359,10 +356,9 @@ func (p *cstorSnapPlugin) CreateVolumeFromSnapshot(snapshotID, volumeType, volum
 	p.Log.Infof("New volume(%v) created", newVol)
 
 	restoreSpec := &v1alpha1.CStorRestoreSpec{
-		Name:       newVol.backupName,
-		VolumeName: newVol.volname,
-		CasType:    newVol.casType,
-		RestoreSrc: p.cstorServerAddr,
+		RestoreName: newVol.backupName,
+		VolumeName:  newVol.volname,
+		RestoreSrc:  p.cstorServerAddr,
 	}
 
 	restore := &v1alpha1.CStorRestore{
@@ -382,23 +378,19 @@ func (p *cstorSnapPlugin) CreateVolumeFromSnapshot(snapshotID, volumeType, volum
 	}
 
 	r := strings.Replace(string(resp), "\"", "", -1)
-	dresp, err := b64.StdEncoding.DecodeString(string(r))
+	_, err = b64.StdEncoding.DecodeString(string(r))
 	if err != nil {
 		p.Log.Errorf("Error decoding respons : %v", err)
 		return "", fmt.Errorf("Error failed to decode response : %v", err)
 	}
 
-	if err := json.Unmarshal(dresp, &restoreResp); err != nil {
-		p.Log.Errorf("Error failed to unmarshal response : %v", err)
-		return "", fmt.Errorf("Error failed to unmarshal:%v", err)
-	}
-
-	MaxRetryCount = restoreResp.ReplicaCount
 	filename := p.generateRemoteFilename(volumeID, snapName)
 	if filename == "" {
 		p.Log.Errorf("Error failed to create remote file-name for backup")
 		return "", fmt.Errorf("Error creating remote file name for backup")
 	}
+
+	go p.checkRestoreStatus(restore, newVol)
 
 	ret := p.cl.RestoreSnapshot(filename)
 	if ret != true {
@@ -406,8 +398,12 @@ func (p *cstorSnapPlugin) CreateVolumeFromSnapshot(snapshotID, volumeType, volum
 		return "", errors.New("Failed to restore snapshot")
 	}
 
-	p.Log.Infof("Restore completed..")
-	return volumeID, nil
+	if newVol.restoreStatus == v1alpha1.RSTCStorStatusDone {
+		p.Log.Infof("Restore completed")
+		return volumeID, nil
+	}
+
+	return "", errors.New("Failed to restore snapshot")
 }
 
 func (p *cstorSnapPlugin) GetVolumeInfo(volumeID, volumeAZ string) (string, *int64, error) {
@@ -425,7 +421,7 @@ func (p *cstorSnapPlugin) createPVC(volumeID, snapName string) (*Volume, error) 
 	}
 
 	if data, ok = p.cl.ReadFromFile(filename + ".pvc"); !ok {
-		return nil, errors.New("Failed to upload PVC")
+		return nil, errors.New("Failed to download PVC")
 	}
 
 	if err := json.Unmarshal(data, &pvc); err != nil {
@@ -592,11 +588,42 @@ func (p *cstorSnapPlugin) checkBackupStatus(bkp *v1alpha1.BackupCStor) {
 			continue
 		}
 
-		bkpvolume.status = bs.Status
+		bkpvolume.backupStatus = bs.Status
 
 		switch bs.Status {
 		case v1alpha1.BKPCStorStatusDone, v1alpha1.BKPCStorStatusFailed, v1alpha1.BKPCStorStatusInvalid:
 			bkpdone = true
+			p.cl.exitServer = true
+		}
+	}
+}
+
+func (p *cstorSnapPlugin) checkRestoreStatus(rst *v1alpha1.CStorRestore, vol *Volume) {
+	var rstdone bool
+	url := p.mayaAddr + restorePath
+
+	rstData, _ := json.Marshal(rst)
+	for rstdone != true {
+		time.Sleep(restoreStatusInterval * time.Second)
+		var rs v1alpha1.CStorRestore
+
+		resp, err := p.httpRestCall(url, "GET", rstData)
+		if err != nil {
+			p.Log.Infof("Failed to fetch backup status:%v", err)
+			continue
+		}
+
+		err = json.Unmarshal(resp, &rs.Status)
+		if err != nil {
+			p.Log.Infof("Unmarshal failed", err)
+			continue
+		}
+
+		vol.restoreStatus = rs.Status
+
+		switch rs.Status {
+		case v1alpha1.RSTCStorStatusDone, v1alpha1.RSTCStorStatusFailed, v1alpha1.RSTCStorStatusInvalid:
+			rstdone = true
 			p.cl.exitServer = true
 		}
 	}

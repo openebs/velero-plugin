@@ -20,66 +20,57 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-//RestoreResp contains resp for cstore restore request
-type RestoreResp struct {
-	ReplicaCount int `json:"replicaCount,string"`
-}
-
 // +genclient
 // +genclient:noStatus
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// +resource:path=cstorbackups
+// +resource:path=cstorrestore
 
-// CStorRestore describes a cstor volume resource created as custom resource
+// CStorRestore describes a cstor restore resource created as a custom resource
 type CStorRestore struct {
 	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec              CStorRestoreSpec   `json:"spec"`
-	Status            CStorRestoreStatus `json:"status"`
+	metav1.ObjectMeta `json:"metadata,omitempty"` // set name to restore name + volume name + something like csp tag
+	Spec              CStorRestoreSpec            `json:"spec"`
+	Status            CStorRestoreStatus          `json:"status"`
 }
 
 // CStorRestoreSpec is the spec for a CStorRestore resource
 type CStorRestoreSpec struct {
-	Name       string `json:"name"`
-	VolumeName string `json:"volumeName"`
-	CasType    string `json:"casType"`
-	RestoreSrc string `json:"backupSrc"`
-	TargetIP   string `json:"targetIP"`
+	RestoreName   string `json:"restoreName"` // set restore name
+	VolumeName    string `json:"volumeName"`
+	RestoreSrc    string `json:"restoreSrc"`
+	MaxRetryCount int    `json:"maxretrycount"`
+	RetryCount    int    `json:"retrycount"`
 }
 
-// CStorRestorePhase is to hold result of action.
-type CStorRestorePhase string
+// CStorRestoreStatus is to hold result of action.
+type CStorRestoreStatus string
 
-// Status written onto CStorRestore objects.
+// Status written onto CStrorRestore object.
 const (
-	// RSTStatusEmpty ensures the create operation is to be done, if import fails.
-	RSTStatusEmpty CStorRestorePhase = ""
+	// RSTCStorStatusEmpty ensures the create operation is to be done, if import fails.
+	RSTCStorStatusEmpty CStorRestoreStatus = ""
 
-	// CVRStatusOnline ensures the resource is available.
-	RSTStatusOnline CStorRestorePhase = "Healthy"
-	// CVRStatusOffline ensures the resource is not available.
-	RSTStatusOffline CStorRestorePhase = "Offline"
-	// CVRStatusDegraded means that the rebuilding has not yet started.
-	RSTStatusDegraded CStorRestorePhase = "Degraded"
-	// RSTStatusError means that the volume status could not be found.
-	RSTStatusError CStorRestorePhase = "Error"
-	// RSTStatusDeletionFailed ensures the resource deletion has failed.
-	RSTStatusDeletionFailed CStorRestorePhase = "Error"
-	// RSTStatusInvalid ensures invalid resource.
-	RSTStatusInvalid CStorRestorePhase = "Invalid"
-	// RSTStatusErrorDuplicate ensures error due to duplicate resource.
-	RSTStatusErrorDuplicate CStorRestorePhase = "Duplicate"
-	// RSTStatusPending ensures pending task of cvr resource.
-	RSTStatusPending CStorRestorePhase = "Init"
+	// RSTCStorStatusDone , restore operation is completed.
+	RSTCStorStatusDone CStorRestoreStatus = "Done"
+
+	// RSTCStorStatusFailed , restore operation is failed.
+	RSTCStorStatusFailed CStorRestoreStatus = "Failed"
+
+	// RSTCStorStatusInit , restore operation is initialized.
+	RSTCStorStatusInit CStorRestoreStatus = "Init"
+
+	// RSTCStorStatusPending , restore operation is pending.
+	RSTCStorStatusPending CStorRestoreStatus = "Pending"
+
+	// RSTCStorStatusInProgress , restore operation is in progress.
+	RSTCStorStatusInProgress CStorRestoreStatus = "InProgress"
+
+	// RSTCStorStatusInvalid , restore operation is invalid.
+	RSTCStorStatusInvalid CStorRestoreStatus = "Invalid"
 )
 
-// CStorRestoreStatus is for handling status of cvr.
-type CStorRestoreStatus struct {
-	Phase CStorRestorePhase `json:"phase"`
-}
-
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// +resource:path=cstorvolumereplicas
+// +resource:path=cstorrestore
 
 // CStorRestoreList is a list of CStorRestore resources
 type CStorRestoreList struct {
