@@ -137,13 +137,13 @@ func (p *cstorSnapPlugin) getMapiAddr() string {
 func (p *cstorSnapPlugin) Init(config map[string]string) error {
 	conf, err := rest.InClusterConfig()
 	if err != nil {
-		p.Log.Errorf("Failed to get cluster config", err)
+		p.Log.Errorf("Failed to get cluster config : %v", err.Error())
 		return errors.New("Error fetching cluster config")
 	}
 
 	clientset, err := kubernetes.NewForConfig(conf)
 	if err != nil {
-		p.Log.Errorf("Error creating clientset", err)
+		p.Log.Errorf("Error creating clientset : %v", err.Error())
 		return errors.New("Error creating k8s client")
 	}
 
@@ -394,8 +394,8 @@ func (p *cstorSnapPlugin) CreateVolumeFromSnapshot(snapshotID, volumeType, volum
 	restoreData, _ := json.Marshal(restore)
 	_, err := p.httpRestCall(url, "POST", restoreData)
 	if err != nil {
-		p.Log.Errorf("Error executing REST api : %v", err)
-		return "", fmt.Errorf("Error executing REST api for restore : %v", err)
+		p.Log.Errorf("Error executing REST api : %v", err.Error())
+		return "", fmt.Errorf("Error executing REST api for restore : %v", err.Error())
 	}
 
 	filename := p.generateRemoteFilename(volumeID, snapName)
@@ -452,7 +452,7 @@ func (p *cstorSnapPlugin) createPVC(volumeID, snapName string) (*Volume, error) 
 	pvc.Annotations["openebs.io/created-through"] = "restore"
 	rpvc, er := p.K8sClient.PersistentVolumeClaims(pvc.Namespace).Create(&pvc)
 	if er != nil {
-		return nil, fmt.Errorf("Failed to create PVC err:%v", er)
+		return nil, fmt.Errorf("Failed to create PVC err:%v", er.Error())
 	}
 
 	for {
@@ -479,7 +479,7 @@ func (p *cstorSnapPlugin) backupPVC(volumeID string) error {
 
 	pvcs, err := p.K8sClient.PersistentVolumeClaims(vol.namespace).List(metav1.ListOptions{})
 	if err != nil {
-		p.Log.Errorf("Error fetching PVC list : %v", err)
+		p.Log.Errorf("Error fetching PVC list : %v", err.Error())
 		return errors.New("Failed to fetch PVC list")
 	}
 
@@ -542,7 +542,7 @@ func (p *cstorSnapPlugin) httpRestCall(url, reqtype string, data []byte) ([]byte
 
 	resp, err := c.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("Error when connecting maya-apiserver %v", err)
+		return nil, fmt.Errorf("Error when connecting maya-apiserver %v", err.Error())
 	}
 
 	defer func() {
@@ -551,7 +551,7 @@ func (p *cstorSnapPlugin) httpRestCall(url, reqtype string, data []byte) ([]byte
 
 	respdata, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to read response from maya-apiserver %v", err)
+		return nil, fmt.Errorf("Unable to read response from maya-apiserver %v", err.Error())
 	}
 
 	code := resp.StatusCode

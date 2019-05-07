@@ -30,7 +30,7 @@ GOFILES_NOVENDOR = $(shell find . -type f -name '*.go' -not -path "./vendor/*")
 
 IMAGE ?= openebs/ark-plugin
 
-TAG ?= mo
+TAG ?= ci
 
 ARCH ?= amd64
 
@@ -96,9 +96,7 @@ golint:
 	@gometalinter.v1 --install
 	@gometalinter.v1 --vendor --disable-all -E errcheck -E misspell ./...
 
-check: golint format vet
-
-ci-check: golint-travis format vet
+check: golint-travis format vet
 
 deploy-image:
 	docker push $(IMAGE):$(TAG)
