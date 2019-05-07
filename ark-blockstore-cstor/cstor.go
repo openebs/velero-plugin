@@ -1,8 +1,23 @@
+/*
+Copyright 2019 The OpenEBS Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package main
 
 import (
 	"bytes"
-	b64 "encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,7 +30,10 @@ import (
 
 	"github.com/heptio/ark/pkg/cloudprovider"
 	"github.com/heptio/ark/pkg/util/collections"
-	v1alpha1 "github.com/payes/maya/pkg/apis/openebs.io/v1alpha1"
+	/* Due to dependency conflict, please ensure openebs
+	 * dependency manually instead of using dep
+	 */
+	v1alpha1 "github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -208,7 +226,10 @@ func (p *cstorSnapPlugin) DeleteSnapshot(snapshotID string) error {
 	if err != nil {
 		return fmt.Errorf("Error when connecting maya-apiserver %v", err)
 	}
-	defer resp.Body.Close()
+
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	_, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
@@ -371,17 +392,10 @@ func (p *cstorSnapPlugin) CreateVolumeFromSnapshot(snapshotID, volumeType, volum
 	url := p.mayaAddr + restorePath
 
 	restoreData, _ := json.Marshal(restore)
-	resp, err := p.httpRestCall(url, "POST", restoreData)
+	_, err := p.httpRestCall(url, "POST", restoreData)
 	if err != nil {
 		p.Log.Errorf("Error executing REST api : %v", err)
 		return "", fmt.Errorf("Error executing REST api for restore : %v", err)
-	}
-
-	r := strings.Replace(string(resp), "\"", "", -1)
-	_, err = b64.StdEncoding.DecodeString(string(r))
-	if err != nil {
-		p.Log.Errorf("Error decoding respons : %v", err)
-		return "", fmt.Errorf("Error failed to decode response : %v", err)
 	}
 
 	filename := p.generateRemoteFilename(volumeID, snapName)
@@ -444,8 +458,8 @@ func (p *cstorSnapPlugin) createPVC(volumeID, snapName string) (*Volume, error) 
 	for {
 		pvc, er := p.K8sClient.PersistentVolumeClaims(rpvc.Namespace).Get(rpvc.Name, metav1.GetOptions{})
 		if er != nil || pvc.Status.Phase == v1.ClaimLost {
-			p.K8sClient.PersistentVolumeClaims(pvc.Namespace).Delete(rpvc.Name, nil)
-			return nil, fmt.Errorf("Failed to create PVC err:%v", er)
+			_ = p.K8sClient.PersistentVolumeClaims(pvc.Namespace).Delete(rpvc.Name, nil)
+			return nil, fmt.Errorf("Failed to create PVC err:%s", er.Error())
 		}
 		if pvc.Status.Phase == v1.ClaimBound {
 			p.Log.Infof("PVC(%v) created..", pvc.Name)
@@ -530,7 +544,10 @@ func (p *cstorSnapPlugin) httpRestCall(url, reqtype string, data []byte) ([]byte
 	if err != nil {
 		return nil, fmt.Errorf("Error when connecting maya-apiserver %v", err)
 	}
-	defer resp.Body.Close()
+
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	respdata, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
