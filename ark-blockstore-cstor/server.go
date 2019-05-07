@@ -1,3 +1,19 @@
+/*
+Copyright 2019 The OpenEBS Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package main
 
 import (
@@ -160,7 +176,11 @@ func (s *serverUtils) acceptVolumeClient(fd, epfd int, snapInfo *snapServer) (in
 		return (-1), err
 	}
 
-	syscall.SetNonblock(connFd, true)
+	if err = syscall.SetNonblock(connFd, true); err != nil {
+		_ = syscall.Close(connFd)
+		s.Log.Errorf("Failed to set non-blocking mode for client {%v}, closing it: %s", connFd, err.Error())
+		return (-1), err
+	}
 
 	volsnap = new(snapClient)
 	volsnap.volumeFd = connFd
@@ -180,13 +200,17 @@ func (s *serverUtils) acceptVolumeClient(fd, epfd int, snapInfo *snapServer) (in
 	if snapInfo.snapType == SnapBackup {
 		event.Events = syscall.EPOLLIN | syscall.EPOLLRDHUP | syscall.EPOLLHUP | syscall.EPOLLERR | EPOLLET
 	} else {
-		syscall.SetsockoptInt(connFd, syscall.SOL_TCP, syscall.TCP_NODELAY, 1)
+		err := syscall.SetsockoptInt(connFd, syscall.SOL_TCP, syscall.TCP_NODELAY, 1)
+		if err != nil {
+			s.Log.Errorf("Failed to set TCP_NODELAY for {%v} : {%v}", connFd, err.Error())
+			return (-1), err
+		}
 		event.Events = syscall.EPOLLOUT | syscall.EPOLLRDHUP | syscall.EPOLLHUP | syscall.EPOLLERR
 	}
 	s.addSnapClientToEvent(volsnap, event)
 	if err := syscall.EpollCtl(epfd, syscall.EPOLL_CTL_ADD, connFd, event); err != nil {
 		s.Log.Errorf("Failed to add client fd to epoll: %v", err)
-		syscall.Close(connFd)
+		_ = syscall.Close(connFd)
 		s.Log.Errorf("Connection closed for fd %v due to errors", connFd)
 		return (-1), err
 	}
@@ -309,7 +333,7 @@ func (s *serverUtils) errorHandlerForVolClient(err error, event syscall.EpollEve
 		snapStats.failedCount++
 	}
 
-	syscall.Close(volsnap.volumeFd)
+	_ = syscall.Close(volsnap.volumeFd)
 	_ = syscall.EpollCtl(efd, syscall.EPOLL_CTL_DEL, volsnap.volumeFd, nil)
 	s.cl.DestroyCloudConn(volsnap.cloud, snapStats.snapType)
 	s.removeFromSnapList(volsnap)
@@ -331,7 +355,7 @@ func (s *serverUtils) closeAllVolClient(efd int) {
 			snapStats.failedCount++
 		}
 
-		syscall.Close(curSnap.volumeFd)
+		_ = syscall.Close(curSnap.volumeFd)
 		_ = syscall.EpollCtl(efd, syscall.EPOLL_CTL_DEL, curSnap.volumeFd, nil)
 		s.cl.DestroyCloudConn(curSnap.cloud, snapStats.snapType)
 		s.Log.Infof("Snap operation closed:%v", curSnap.volumeFd)
@@ -351,7 +375,10 @@ func (s *serverUtils) backupSnapshot(snapOp snapOperation) error {
 		s.Log.Errorf("Failed to initialize socket: %s", err)
 		return err
 	}
-	defer syscall.Close(fd)
+
+	defer func() {
+		_ = syscall.Close(fd)
+	}()
 
 	if err = syscall.SetNonblock(fd, true); err != nil {
 		s.Log.Errorf("Failed to set non-blocking socket: %s", err)
@@ -361,21 +388,31 @@ func (s *serverUtils) backupSnapshot(snapOp snapOperation) error {
 	addr := syscall.SockaddrInet4{Port: RecieverPort}
 	copy(addr.Addr[:], net.ParseIP("0.0.0.0").To4())
 
-	syscall.Bind(fd, &addr)
-	syscall.Listen(fd, MaxClient)
-
-	epfd, e := syscall.EpollCreate1(0)
-	if e != nil {
-		s.Log.Errorf("Failed to create epoll: %s", e)
-		return e
+	if err = syscall.Bind(fd, &addr); err != nil {
+		s.Log.Errorf("Failed to bind server to port {%v} : {%v}", RecieverPort, err.Error())
+		return err
 	}
-	defer syscall.Close(epfd)
+
+	if err = syscall.Listen(fd, MaxClient); err != nil {
+		s.Log.Errorf("Failed to initiate listen on fd {%v} : {%v}", fd, err.Error())
+		return err
+	}
+
+	epfd, err := syscall.EpollCreate1(0)
+	if err != nil {
+		s.Log.Errorf("Failed to create epoll: %s", err)
+		return err
+	}
+
+	defer func() {
+		_ = syscall.Close(epfd)
+	}()
 
 	event.Events = syscall.EPOLLIN
 	event.Fd = int32(fd)
-	if e = syscall.EpollCtl(epfd, syscall.EPOLL_CTL_ADD, fd, &event); e != nil {
-		s.Log.Errorf("Failed to add server fd to epoll: %s", e)
-		return e
+	if err = syscall.EpollCtl(epfd, syscall.EPOLL_CTL_ADD, fd, &event); err != nil {
+		s.Log.Errorf("Failed to add server fd to epoll: %s", err)
+		return err
 	}
 
 	snapStats.snapType = snapOp
@@ -383,10 +420,10 @@ func (s *serverUtils) backupSnapshot(snapOp snapOperation) error {
 	snapStats.status = SnapInit
 
 	for {
-		nevents, e := syscall.EpollWait(epfd, events[:], EPOLLTIMEOUT)
-		if e != nil {
-			s.Log.Errorf("Epoll wait failed: %s", e)
-			return e
+		nevents, err := syscall.EpollWait(epfd, events[:], EPOLLTIMEOUT)
+		if err != nil {
+			s.Log.Errorf("Epoll wait failed: %s", err)
+			return err
 		}
 
 		if nevents == 0 && s.cl.exitServer {
@@ -422,7 +459,7 @@ func (s *serverUtils) backupSnapshot(snapOp snapOperation) error {
 	}
 
 exit:
-	syscall.Close(epfd)
-	syscall.Close(fd)
+	_ = syscall.Close(epfd)
+	_ = syscall.Close(fd)
 	return nil
 }

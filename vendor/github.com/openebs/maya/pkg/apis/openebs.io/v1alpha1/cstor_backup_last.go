@@ -25,7 +25,7 @@ import (
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +resource:path=backupcstorlast
 
-// BackupCStorLast describes a cstor volume resource created as custom resource
+// BackupCStorLast describes a cstor last-backup resource created as custom resource
 type BackupCStorLast struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
