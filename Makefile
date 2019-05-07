@@ -89,11 +89,12 @@ vet:
 
 # Target to run gometalinter in Travis (deadcode, golint, errcheck, unconvert, goconst)
 golint-travis:
-	@gometalinter --install
-	-gometalinter --config=metalinter.config ./...
+	@gometalinter.v1 --install
+	-gometalinter.v1 --config=metalinter.config ./...
 
 golint:
-	@gometalinter --vendor --disable-all -E errcheck -E misspell ./...
+	@gometalinter.v1 --install
+	@gometalinter.v1 --vendor --disable-all -E errcheck -E misspell ./...
 
 check: golint format vet
 
