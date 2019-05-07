@@ -24,6 +24,7 @@ notifications:
   email:
     recipients:
     - kiran.mova@cloudbyte.com
+    - mayank.patel@mayadata.io
 branches:
   except:
     - /^*-v[0-9]/
