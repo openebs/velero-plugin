@@ -25,7 +25,7 @@ import (
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +resource:path=backupcstor
 
-// BackupCStor describes a cstor volume resource created as custom resource
+// BackupCStor describes a cstor backup resource created as a custom resource
 type BackupCStor struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -35,15 +35,23 @@ type BackupCStor struct {
 
 // BackupCStorSpec is the spec for a BackupCstor resource
 type BackupCStorSpec struct {
-	//	BackupID     string `json:"backupId"`
-	BackupName   string `json:"backupName"`
-	VolumeName   string `json:"volumeName"`
-	SnapName     string `json:"snapName"`
+	// BackupName is a name of the backup or scheduled backup
+	BackupName string `json:"backupName"`
+
+	// VolumeName is a name of the volume for which this backup is destined
+	VolumeName string `json:"volumeName"`
+
+	// SnapName is a name of the current backup snapshot
+	SnapName string `json:"snapName"`
+
+	// PrevSnapName is the last-backup's snapshot name
 	PrevSnapName string `json:"prevSnapName"`
-	BackupDest   string `json:"backupDest"`
+
+	// BackupDest is the remote address for backup transfer
+	BackupDest string `json:"backupDest"`
 }
 
-// BackupCStorStatus is to hold result of action.
+// BackupCStorStatus is to hold status of backup
 type BackupCStorStatus string
 
 // Status written onto BackupCstor objects.
@@ -53,14 +61,19 @@ const (
 
 	// BKPCStorStatusDone , backup is completed.
 	BKPCStorStatusDone BackupCStorStatus = "Done"
+
 	// BKPCStorStatusFailed , backup is failed.
 	BKPCStorStatusFailed BackupCStorStatus = "Failed"
+
 	// BKPCStorStatusInit , backup is initialized.
 	BKPCStorStatusInit BackupCStorStatus = "Init"
+
 	// BKPCStorStatusPending , backup is pending.
 	BKPCStorStatusPending BackupCStorStatus = "Pending"
+
 	// BKPCStorStatusInProgress , backup is in progress.
-	BKPCStorStatusInProgress BackupCStorStatus = "Pending"
+	BKPCStorStatusInProgress BackupCStorStatus = "InProgress"
+
 	// BKPCStorStatusInvalid , backup operation is invalid.
 	BKPCStorStatusInvalid BackupCStorStatus = "Invalid"
 )

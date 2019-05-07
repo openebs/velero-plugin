@@ -1,0 +1,29 @@
+sudo: required
+dist: trusty
+services:
+  - docker
+language: go
+go:
+  - 1.9.x
+
+addons:
+  apt:
+    update: true
+
+install:
+  - make bootstrap
+  - make format
+script:
+  - export TAG=${TRAVIS_BRANCH}
+  - make ci-check make all-ci container
+after_success:
+  - docker login -u "${DOCKER_USER}" -p "${DOCKER_PASSWORD}"
+  - make deploy-image
+
+notifications:
+  email:
+    recipients:
+    - kiran.mova@cloudbyte.com
+branches:
+  except:
+    - /^*-v[0-9]/

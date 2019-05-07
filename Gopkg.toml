@@ -24,14 +24,9 @@
 #   go-tests = true
 #   unused-packages = true
 
-
 [[constraint]]
   name = "github.com/heptio/ark"
   version = "0.10.0"
-
-[[constraint]]
-  name = "github.com/openebs/maya"
-  version = "0.8.0"
 
 [[constraint]]
   name = "github.com/sirupsen/logrus"
@@ -67,8 +62,3 @@
   name = "golang.org/x/oauth2"
   revision = "master"
 
-
-
-[[constraint]]
-  name = "github.com/payes/maya"
-  branch = "master"
