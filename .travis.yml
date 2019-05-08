@@ -14,14 +14,11 @@ install:
   - make bootstrap
   - make format
 script:
-  - export TAG=${TRAVIS_BRANCH}
   - make check
   - make all-ci
   - make container
 after_success:
-  - docker login -u "${DOCKER_USER}" -p "${DOCKER_PASSWORD}"
   - make deploy-image
-
 notifications:
   email:
     recipients:
