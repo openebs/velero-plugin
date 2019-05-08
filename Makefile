@@ -30,7 +30,13 @@ GOFILES_NOVENDOR = $(shell find . -type f -name '*.go' -not -path "./vendor/*")
 
 IMAGE ?= openebs/ark-plugin
 
-TAG ?= mo
+ifeq (${IMAGE_TAG}, )
+	IMAGE_TAG = ci
+	export IMAGE_TAG
+endif
+
+# Specify the date of build
+BUILD_DATE = $(shell date +'%Y%m%d%H%M%S')
 
 ARCH ?= amd64
 
@@ -62,7 +68,7 @@ _output/$(BIN): $(BIN)/*.go
 
 container: all
 	cp Dockerfile _output/Dockerfile
-	docker build -t $(IMAGE):$(TAG) -f _output/Dockerfile _output
+	docker build -t $(IMAGE):$(IMAGE_TAG) --build-arg BUILD_DATE=${BUILD_DATE} -f _output/Dockerfile _output
 
 all-ci: $(addprefix ci-, $(BIN))
 
@@ -89,18 +95,17 @@ vet:
 
 # Target to run gometalinter in Travis (deadcode, golint, errcheck, unconvert, goconst)
 golint-travis:
-	@gometalinter --install
-	-gometalinter --config=metalinter.config ./...
+	@gometalinter.v1 --install
+	-gometalinter.v1 --config=metalinter.config ./...
 
 golint:
-	@gometalinter --vendor --disable-all -E errcheck -E misspell ./...
+	@gometalinter.v1 --install
+	@gometalinter.v1 --vendor --disable-all -E errcheck -E misspell ./...
 
-check: golint format vet
-
-ci-check: golint-travis format vet
+check: golint-travis format vet
 
 deploy-image:
-	docker push $(IMAGE):$(TAG)
+	@DIMAGE=${IMAGE} ./push
 
 clean:
 	rm -rf .go _output

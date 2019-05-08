@@ -4,7 +4,7 @@ services:
   - docker
 language: go
 go:
-  - 1.9.x
+  - 1.11.2
 
 addons:
   apt:
@@ -14,16 +14,16 @@ install:
   - make bootstrap
   - make format
 script:
-  - export TAG=${TRAVIS_BRANCH}
-  - make ci-check make all-ci container
+  - make check
+  - make all-ci
+  - make container
 after_success:
-  - docker login -u "${DOCKER_USER}" -p "${DOCKER_PASSWORD}"
   - make deploy-image
-
 notifications:
   email:
     recipients:
     - kiran.mova@cloudbyte.com
+    - mayank.patel@mayadata.io
 branches:
   except:
     - /^*-v[0-9]/
