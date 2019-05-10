@@ -2,6 +2,7 @@ package main
 
 import (
 	arkplugin "github.com/heptio/ark/pkg/plugin"
+	snap "github.com/openebs/ark-plugin/pkg/snapshot"
 	"github.com/sirupsen/logrus"
 )
 
@@ -12,5 +13,5 @@ func main() {
 }
 
 func openebsSnapPlugin(logger logrus.FieldLogger) (interface{}, error) {
-	return &BlockStore{Log: logger}, nil
+	return &snap.BlockStore{Log: logger}, nil
 }

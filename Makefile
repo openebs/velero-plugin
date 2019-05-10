@@ -25,9 +25,6 @@ BUILD_IMAGE ?= gcr.io/heptio-images/golang:1.9-alpine3.6
 PACKAGES = $(shell go list ./... | grep -v 'vendor')
 
 
-# list only our .go files i.e. exlcudes any .go files from the vendor directory
-GOFILES_NOVENDOR = $(shell find . -type f -name '*.go' -not -path "./vendor/*")
-
 IMAGE ?= openebs/ark-plugin
 
 ifeq (${IMAGE_TAG}, )
@@ -91,7 +88,11 @@ bootstrap:
 	done
 
 vet:
-	go vet $(GOFILES_NOVENDOR)
+	go vet \
+		./ark-blockstore-cstor	\
+		./pkg/clouduploader	\
+		./pkg/cstor	\
+		./pkg/snapshot
 
 # Target to run gometalinter in Travis (deadcode, golint, errcheck, unconvert, goconst)
 golint-travis:
