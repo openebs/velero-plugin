@@ -14,10 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package snapshot
 
 import (
 	"github.com/heptio/ark/pkg/cloudprovider"
+	"github.com/openebs/ark-plugin/pkg/cstor"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -32,10 +33,10 @@ var _ cloudprovider.BlockStore = (*BlockStore)(nil)
 
 // Init the plugin
 func (p *BlockStore) Init(config map[string]string) error {
-	p.Log.Infof("Initializing ark plugin for cstor %v", config)
+	p.Log.Infof("Initializing ark plugin for CStor %v", config)
 
-	/* As of now, only cStore volumes are supported */
-	p.plugin = &cstorSnapPlugin{Log: p.Log}
+	// TODO check for type of volume
+	p.plugin = &cstor.Plugin{Log: p.Log}
 	return p.plugin.Init(config)
 }
 
