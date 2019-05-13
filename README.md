@@ -4,17 +4,24 @@
 
 Heptio Ark is a utility to back up and restore your Kubernetes resource and persistent volumes.
 
-To do backup/restore of OpenEBS CStor volumes through ark utility, you need to install and configure
+To do backup/restore of OpenEBS CStor volumes through Ark utility, you need to install and configure
 OpenEBS ark-plugin.
+
+## Prerequisite for ark-plugin
+Specific version of Heptio Ark needs to be installed as per the [compatibility matrix](#Compatibility-matrix) with OpenEBS versions.
+
+For installation steps of Heptio Ark, visit https://heptio.github.io/velero.
+
+For installation steps of OpenEBS, visit https://github.com/openebs/openebs/releases.
 
 ## Installation of ark-plugin
 Run the following command to install OpenEBS ark-plugin
 
-`ark plugin add openebs/ark-plugin:0.9.0`
+`ark plugin add openebs/ark-plugin:ci`
 
-This command will add an init container to ark deployment to install the OpenEBS ark-plugin.
+This command will add an init container to Ark deployment to install the OpenEBS ark-plugin.
 
-## Taking backup of CStor volume data through the ark
+## Taking backup of CStor volume data through the Ark
 To take a backup of CStor volume through ark, configure `VolumeSnapshotLocation` with provider `cstor-blockstore`. Sample yaml file for volumesnapshotlocation can be found at `example/06-ark-volumesnapshotlocation.yaml`.
 
 ```
@@ -22,7 +29,7 @@ spec:
   provider: cstor-blockstore
   config:
     bucket: <YOUR_BUCKET>
-    prefix: <PREFIX_FOR_BACKUP_NAME >
+    prefix: <PREFIX_FOR_BACKUP_NAME>
     provider: <GCP_OR_AWS>
     region: <AWS_REGION>
 ```
@@ -35,11 +42,13 @@ Once the volumesnapshot location is configured, you can create the backup/restor
 
 ### Creating a backup
 To back up data of all your applications in the default namespace, run the following command:
+
 `ark backup create defaultbackup --include-namespaces=default --snapshot-volumes --volume-snapshot-locations=<SNAPSHOT_LOCATION>`
 
 `SNAPSHOT_LOCATION` should be the same as you configured by using `example/06-ark-volumesnapshotlocation.yaml`.
 
 You can check the status of backup using the following command:
+
 `ark backup get `
 
 Above command will list out the all backups you created. Sample output of the above command is mentioned below :
@@ -52,12 +61,15 @@ Once the backup is completed you should see the backup marked as `Completed`.
 
 ### Creating a restore from backup
 To restore data from backup, run the following command:
+
 `ark restore create --from-backup backup_name --restore-volumes=true`
+
 With above command, plugin will create a CStor volume and the data from backup will be restored on this newly created volume.
 
 Note: You need to mention `--restore-volumes=true` while doing a restore.
 
 You can check the status of restore using the following command:
+
 `ark restore get`
 
 Above command will list out the all restores you created. Sample output of the above command is mentioned below :
@@ -71,11 +83,13 @@ Once the restore is completed you should see the restore marked as `Completed`.
 ### Creating a scheduled backup (or incremental backup for CStor volume)
 OpenEBS ark-plugin provides incremental backup support for CStor persistent volumes.
 To create an incremental backup(or scheduled backup), run the following command:
+
 `ark create schedule newschedule  --schedule="*/5 * * * *" --snapshot-volumes --include-namespaces=default --volume-snapshot-locations=<SNAPSHOT_LOCATION>`
 
 `SNAPSHOT_LOCATION` should be the same as you configured by using `example/06-ark-volumesnapshotlocation.yaml`.
 
 You can check the status of scheduled using the following command:
+
 `ark schedule get`
 
 It will list all the schedule you created. Sample output of the above command is as below:
