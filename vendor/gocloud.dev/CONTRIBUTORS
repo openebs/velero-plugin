@@ -1,5 +1,5 @@
 # This is the official list of people who can contribute
-# (and typically have contributed) code to the Go Cloud repository.
+# (and typically have contributed) code to the Go CDK repository.
 # The AUTHORS file lists the copyright holders; this file
 # lists people.  For example, Google employees are listed here
 # but not in AUTHORS, because Google holds the copyright.
@@ -30,6 +30,7 @@
 # Please keep the list sorted.
 
 Ben Hinchley <benjaminhinchley@gmail.com>
+Boris Popovschi <zyqsempai@mail.ru>
 Chris Lewis <cflewis@google.com> <cflewis@golang.org> <c@chris.to>
 Eno Compton <enocom@google.com>
 Gerasimos (Makis) Maropoulos <kataras2006@hotmail.com> <omicronmakis@gmail.com>
@@ -42,5 +43,6 @@ Sendil Kumar N <sendilkumarn@live.com> <sendil.kn@gmail.com>
 Steve Jiang <steve.jiang@gmail.com>
 Tuo Shan <shantuo@google.com> <sturbo89@gmail.com>
 Tyler Bui-Palsulich <26876514+tbpg@users.noreply.github.com>
+Vishal Saroopchand <Vishal.Saroopchand@microsoft.com> <vsaroopchand@hotmail.com>
 Vivek Sekhar <vsekhar@google.com>
 Zachary Romero <zacromero3@gmail.com>
