@@ -17,8 +17,8 @@ limitations under the License.
 package snapshot
 
 import (
-	"github.com/heptio/ark/pkg/cloudprovider"
-	"github.com/openebs/ark-plugin/pkg/cstor"
+	"github.com/heptio/velero/pkg/cloudprovider"
+	"github.com/openebs/velero-plugin/pkg/cstor"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -33,7 +33,7 @@ var _ cloudprovider.BlockStore = (*BlockStore)(nil)
 
 // Init the plugin
 func (p *BlockStore) Init(config map[string]string) error {
-	p.Log.Infof("Initializing ark plugin for CStor %v", config)
+	p.Log.Infof("Initializing velero plugin for CStor %v", config)
 
 	// TODO check for type of volume
 	p.plugin = &cstor.Plugin{Log: p.Log}

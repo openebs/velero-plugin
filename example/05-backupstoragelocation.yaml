@@ -13,15 +13,12 @@
 # limitations under the License.
 
 ---
-apiVersion: ark.heptio.com/v1
-kind: VolumeSnapshotLocation
+apiVersion: velero.io/v1
+kind: BackupStorageLocation
 metadata:
-  name: <LOCATION_NAME>
-  namespace: heptio-ark
+  name: default
+  namespace: velero
 spec:
-  provider: cstor-blockstore
-  config:
+  provider: gcp
+  objectStorage:
     bucket: <YOUR_BUCKET>
-    prefix: <PREFIX_FOR_BACKUP_NAME >
-    provider: <GCP_OR_AWS>
-    region: <AWS_REGION>
