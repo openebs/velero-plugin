@@ -122,5 +122,5 @@ velero restore create --from-backup sched-20190513104034 --restore-volumes=true
 
 |     Image           |    Codebase     |  Heptio Velero v0.10.0  | Heptio Velero v0.11.0 |
 |   ---------------   |  -------------  |   ----------------      |  --------------- |
-| velero-plugin:0.9.0    |     0.9.0       |         ✓            |                    |
+| ark-plugin:0.9.0    |     0.9.0       |         ✓            |                    |
 | velero-plugin:ci       |     master      |         ✓            |         ✓           |
