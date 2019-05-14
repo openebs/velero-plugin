@@ -13,19 +13,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-BIN = $(wildcard ark-*)
+BIN = $(wildcard velero-*)
 
 # This repo's root import path (under GOPATH).
 # TODO change
-REPO := github.com/openebs/ark-plugin
+REPO := github.com/openebs/velero-plugin
 
 BUILD_IMAGE ?= gcr.io/heptio-images/golang:1.9-alpine3.6
 
-# list only ark-plugin source code directories
+# list only velero-plugin source code directories
 PACKAGES = $(shell go list ./... | grep -v 'vendor')
 
 
-IMAGE ?= openebs/ark-plugin
+IMAGE ?= openebs/velero-plugin
 
 ifeq (${IMAGE_TAG}, )
 	IMAGE_TAG = ci
@@ -89,7 +89,7 @@ bootstrap:
 
 vet:
 	go vet \
-		./ark-blockstore-cstor	\
+		./velero-blockstore-cstor	\
 		./pkg/clouduploader	\
 		./pkg/cstor	\
 		./pkg/snapshot

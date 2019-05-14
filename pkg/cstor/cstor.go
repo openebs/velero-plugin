@@ -26,8 +26,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/heptio/ark/pkg/util/collections"
-	cloud "github.com/openebs/ark-plugin/pkg/clouduploader"
+	"github.com/heptio/velero/pkg/util/collections"
+	cloud "github.com/openebs/velero-plugin/pkg/clouduploader"
 	"github.com/pkg/errors"
 	/* Due to dependency conflict, please ensure openebs
 	 * dependency manually instead of using dep
@@ -60,7 +60,7 @@ type Plugin struct {
 	// K8sClient is used for kubernetes CR operation
 	K8sClient corev1.CoreV1Interface
 
-	// config to store parameters from ark server
+	// config to store parameters from velero server
 	config map[string]string
 
 	// cl stores cloud connection information
@@ -117,7 +117,7 @@ func (p *Plugin) getServerAddress() string {
 	netInterfaceAddresses, err := net.InterfaceAddrs()
 
 	if err != nil {
-		p.Log.Errorf("Failed to get interface Address for ark server : %s", err.Error())
+		p.Log.Errorf("Failed to get interface Address for velero server : %s", err.Error())
 		return ""
 	}
 
@@ -125,7 +125,7 @@ func (p *Plugin) getServerAddress() string {
 		networkIP, ok := netInterfaceAddress.(*net.IPNet)
 		if ok && !networkIP.IP.IsLoopback() && networkIP.IP.To4() != nil {
 			ip := networkIP.IP.String()
-			p.Log.Infof("Ip address of ark : %s", ip)
+			p.Log.Infof("Ip address of velero-plugin server: %s", ip)
 			return ip + ":" + strconv.Itoa(cloud.RecieverPort)
 		}
 	}
@@ -168,7 +168,7 @@ func (p *Plugin) Init(config map[string]string) error {
 
 	p.cstorServerAddr = p.getServerAddress()
 	if p.cstorServerAddr == "" {
-		return errors.New("Error fetch cstorArkServer address")
+		return errors.New("Error fetch cstorVeleroServer address")
 	}
 	p.config = config
 	if p.volumes == nil {
@@ -294,7 +294,7 @@ func (p *Plugin) CreateSnapshot(volumeID, volumeAZ string, tags map[string]strin
 	var vol *Volume
 
 	p.cl.ExitServer = false
-	bkpname, ret := tags["ark.heptio.com/backup"]
+	bkpname, ret := tags["velero.io/backup"]
 	if !ret {
 		return "", errors.New("Failed to get backup name")
 	}
@@ -365,13 +365,13 @@ func (p *Plugin) CreateSnapshot(volumeID, volumeAZ string, tags map[string]strin
 	}
 
 	if vol.backupStatus == v1alpha1.BKPCStorStatusDone {
-		return volumeID + "-ark-bkp-" + bkpname, nil
+		return volumeID + "-velero-bkp-" + bkpname, nil
 	}
 	return "", errors.Errorf("Failed to upload snapshot, status:{%v}", vol.backupStatus)
 }
 
 func (p *Plugin) getSnapInfo(snapshotID string) (*Snapshot, error) {
-	s := strings.Split(snapshotID, "-ark-bkp-")
+	s := strings.Split(snapshotID, "-velero-bkp-")
 	volumeID := s[0]
 	bkpName := s[1]
 
@@ -399,7 +399,7 @@ func (p *Plugin) CreateVolumeFromSnapshot(snapshotID, volumeType, volumeAZ strin
 		return "", errors.Errorf("Invalid volume type{%s}", volumeType)
 	}
 
-	s := strings.Split(snapshotID, "-ark-bkp-")
+	s := strings.Split(snapshotID, "-velero-bkp-")
 	volumeID := s[0]
 	snapName := s[1]
 
