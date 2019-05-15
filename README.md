@@ -122,5 +122,7 @@ ark restore create --from-backup sched-20190513104034 --restore-volumes=true
 
 |     Image           |    Codebase     |  Heptio Ark v0.10.0  |
 |   ---------------   |  -------------  |   ----------------   |
-| ark-plugin:0.9.0    |     0.9.0       |         ✓            |
+| ark-plugin:0.9.0-RC2    |     v0.9.x       |         ✓            |
 | ark-plugin:ci       |     master      |         ✓            |
+
+Plugin images are available at quay.io and hub.docker.com.
