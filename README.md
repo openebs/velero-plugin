@@ -122,5 +122,7 @@ velero restore create --from-backup sched-20190513104034 --restore-volumes=true
 
 |     Image           |    Codebase     |  Heptio Velero v0.10.0  | Heptio Velero v0.11.0 |
 |   ---------------   |  -------------  |   ----------------      |  --------------- |
-| velero-plugin:0.9.0    |     0.9.0       |         ✓            |                    |
-| velero-plugin:ci       |     master      |         ✓            |         ✓           |
+| ark-plugin:0.9.0-RC2    |     v0.9.x       |         ✓            |                    |
+| velero-plugin:ci       |     master    |                     |         ✓           |
+
+Plugin images are available at quay.io and hub.docker.com.
