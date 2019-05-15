@@ -27,7 +27,7 @@ import (
 	"time"
 
 	"github.com/heptio/ark/pkg/util/collections"
-	cloud "github.com/openebs/ark-plugin/pkg/clouduploader"
+	cloud "github.com/openebs/velero-plugin/pkg/clouduploader"
 	"github.com/pkg/errors"
 	/* Due to dependency conflict, please ensure openebs
 	 * dependency manually instead of using dep
