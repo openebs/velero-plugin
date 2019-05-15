@@ -107,7 +107,7 @@ type Volume struct {
 	backupName string
 
 	//backupStatus is backup progress status for given volume
-	backupStatus v1alpha1.BackupCStorStatus
+	backupStatus v1alpha1.CStorBackupStatus
 
 	//restoreStatus is restore progress status for given volume
 	restoreStatus v1alpha1.CStorRestoreStatus
@@ -324,14 +324,14 @@ func (p *Plugin) CreateSnapshot(volumeID, volumeAZ string, tags map[string]strin
 		return "", errors.New("No bkpname")
 	}
 
-	bkpSpec := &v1alpha1.BackupCStorSpec{
+	bkpSpec := &v1alpha1.CStorBackupSpec{
 		BackupName: bname,
 		VolumeName: volumeID,
 		SnapName:   bkpname,
 		BackupDest: p.cstorServerAddr,
 	}
 
-	bkp := &v1alpha1.BackupCStor{
+	bkp := &v1alpha1.CStorBackup{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: vol.namespace,
 		},
@@ -630,7 +630,7 @@ func (p *Plugin) getVolumeFromPVC(pvc v1.PersistentVolumeClaim) (*Volume, error)
 
 // checkBackupStatus queries MayaAPI server for given backup status
 // and wait until backup completes
-func (p *Plugin) checkBackupStatus(bkp *v1alpha1.BackupCStor) {
+func (p *Plugin) checkBackupStatus(bkp *v1alpha1.CStorBackup) {
 	var bkpdone bool
 	url := p.mayaAddr + backupEndpoint
 	bkpvolume, exists := p.volumes[bkp.Spec.VolumeName]
@@ -648,7 +648,7 @@ func (p *Plugin) checkBackupStatus(bkp *v1alpha1.BackupCStor) {
 
 	for !bkpdone {
 		time.Sleep(backupStatusInterval * time.Second)
-		var bs v1alpha1.BackupCStor
+		var bs v1alpha1.CStorBackup
 
 		resp, err := p.httpRestCall(url, "GET", bkpData)
 		if err != nil {
