@@ -1,28 +1,28 @@
 ## Overview
-[![Build Status](https://travis-ci.org/openebs/ark-plugin.svg?branch=master)](https://travis-ci.org/openebs/ark-plugin)
-[![Go Report](https://goreportcard.com/badge/github.com/openebs/ark-plugin)](https://goreportcard.com/report/github.com/openebs/ark-plugin)
+[![Build Status](https://travis-ci.org/openebs/velero-plugin.svg?branch=master)](https://travis-ci.org/openebs/velero-plugin)
+[![Go Report](https://goreportcard.com/badge/github.com/openebs/velero-plugin)](https://goreportcard.com/report/github.com/openebs/velero-plugin)
 
-Heptio Ark is a utility to back up and restore your Kubernetes resource and persistent volumes.
+Velero is a utility to back up and restore your Kubernetes resource and persistent volumes.
 
-To do backup/restore of OpenEBS CStor volumes through Ark utility, you need to install and configure
-OpenEBS ark-plugin.
+To do backup/restore of OpenEBS CStor volumes through Velero utility, you need to install and configure
+OpenEBS velero-plugin.
 
-## Prerequisite for ark-plugin
-Specific version of Heptio Ark needs to be installed as per the [compatibility matrix](#Compatibility-matrix) with OpenEBS versions.
+## Prerequisite for velero-plugin
+Specific version of Velero needs to be installed as per the [compatibility matrix](#Compatibility-matrix) with OpenEBS versions.
 
-For installation steps of Heptio Ark, visit https://heptio.github.io/velero.
+For installation steps of Velero, visit https://heptio.github.io/velero.
 
 For installation steps of OpenEBS, visit https://github.com/openebs/openebs/releases.
 
-## Installation of ark-plugin
-Run the following command to install OpenEBS ark-plugin
+## Installation of velero-plugin
+Run the following command to install OpenEBS velero-plugin
 
-`ark plugin add openebs/ark-plugin:ci`
+`velero plugin add openebs/velero-plugin:ci`
 
-This command will add an init container to Ark deployment to install the OpenEBS ark-plugin.
+This command will add an init container to Velero deployment to install the OpenEBS velero-plugin.
 
-## Taking backup of CStor volume data through the Ark
-To take a backup of CStor volume through ark, configure `VolumeSnapshotLocation` with provider `cstor-blockstore`. Sample yaml file for volumesnapshotlocation can be found at `example/06-ark-volumesnapshotlocation.yaml`.
+## Taking backup of CStor volume data through the Velero
+To take a backup of CStor volume through Velero, configure `VolumeSnapshotLocation` with provider `cstor-blockstore`. Sample yaml file for volumesnapshotlocation can be found at `example/06-volumesnapshotlocation.yaml`.
 
 ```
 spec:
@@ -43,13 +43,13 @@ Once the volumesnapshot location is configured, you can create the backup/restor
 ### Creating a backup
 To back up data of all your applications in the default namespace, run the following command:
 
-`ark backup create defaultbackup --include-namespaces=default --snapshot-volumes --volume-snapshot-locations=<SNAPSHOT_LOCATION>`
+`velero backup create defaultbackup --include-namespaces=default --snapshot-volumes --volume-snapshot-locations=<SNAPSHOT_LOCATION>`
 
-`SNAPSHOT_LOCATION` should be the same as you configured by using `example/06-ark-volumesnapshotlocation.yaml`.
+`SNAPSHOT_LOCATION` should be the same as you configured by using `example/06-volumesnapshotlocation.yaml`.
 
 You can check the status of backup using the following command:
 
-`ark backup get `
+`velero backup get `
 
 Above command will list out the all backups you created. Sample output of the above command is mentioned below :
 ```
@@ -62,7 +62,7 @@ Once the backup is completed you should see the backup marked as `Completed`.
 ### Creating a restore from backup
 To restore data from backup, run the following command:
 
-`ark restore create --from-backup backup_name --restore-volumes=true`
+`velero restore create --from-backup backup_name --restore-volumes=true`
 
 With above command, plugin will create a CStor volume and the data from backup will be restored on this newly created volume.
 
@@ -70,7 +70,7 @@ Note: You need to mention `--restore-volumes=true` while doing a restore.
 
 You can check the status of restore using the following command:
 
-`ark restore get`
+`velero restore get`
 
 Above command will list out the all restores you created. Sample output of the above command is mentioned below :
 ```
@@ -81,16 +81,16 @@ Once the restore is completed you should see the restore marked as `Completed`.
 
 
 ### Creating a scheduled backup (or incremental backup for CStor volume)
-OpenEBS ark-plugin provides incremental backup support for CStor persistent volumes.
+OpenEBS velero-plugin provides incremental backup support for CStor persistent volumes.
 To create an incremental backup(or scheduled backup), run the following command:
 
-`ark create schedule newschedule  --schedule="*/5 * * * *" --snapshot-volumes --include-namespaces=default --volume-snapshot-locations=<SNAPSHOT_LOCATION>`
+`velero create schedule newschedule  --schedule="*/5 * * * *" --snapshot-volumes --include-namespaces=default --volume-snapshot-locations=<SNAPSHOT_LOCATION>`
 
-`SNAPSHOT_LOCATION` should be the same as you configured by using `example/06-ark-volumesnapshotlocation.yaml`.
+`SNAPSHOT_LOCATION` should be the same as you configured by using `example/06-volumesnapshotlocation.yaml`.
 
 You can check the status of scheduled using the following command:
 
-`ark schedule get`
+`velero schedule get`
 
 It will list all the schedule you created. Sample output of the above command is as below:
 ```
@@ -113,16 +113,15 @@ sched-20190513103034   Completed   2019-05-13 16:00:34 +0530 IST   29d       gcp
 
 Restore of data need to be done in following way:
 ```
-ark restore create --from-backup sched-20190513103034 --restore-volumes=true
-ark restore create --from-backup sched-20190513103534 --restore-volumes=true
-ark restore create --from-backup sched-20190513104034 --restore-volumes=true
+velero restore create --from-backup sched-20190513103034 --restore-volumes=true
+velero restore create --from-backup sched-20190513103534 --restore-volumes=true
+velero restore create --from-backup sched-20190513104034 --restore-volumes=true
 ```
 
 ## Compatibility matrix
-
-|     Image           |    Codebase     |  Heptio Ark v0.10.0  |
-|   ---------------   |  -------------  |   ----------------   |
-| ark-plugin:0.9.0-RC2    |     v0.9.x       |         ✓            |
-| ark-plugin:ci       |     master      |         ✓            |
+|     Image           |    Codebase     |  Velero v0.10.0  | Velero v0.11.0 |
+|   ---------------   |  -------------  |   ----------------      |  --------------- |
+| velero-plugin:0.9.0-RC2    |     v0.9.x       |         ✓            |                    |
+| velero-plugin:0.9.0-RC3       |     v0.9.x      |                     |         ✓           |
 
 Plugin images are available at quay.io and hub.docker.com.
