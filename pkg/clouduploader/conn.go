@@ -114,7 +114,7 @@ func setupGCP(ctx context.Context, bucket string) (*blob.Bucket, error) {
 	if err != nil {
 		return nil, err
 	}
-	return gcsblob.OpenBucket(ctx, bucket, d, nil)
+	return gcsblob.OpenBucket(ctx, d, bucket, nil)
 }
 
 // setupAWS creates a connection to AWS's blob storage
@@ -139,7 +139,7 @@ func setupAWS(ctx context.Context, bucketName, region string) (*blob.Bucket, err
 	}
 
 	s := session.Must(session.NewSession(d))
-	return s3blob.OpenBucket(ctx, bucketName, s, nil)
+	return s3blob.OpenBucket(ctx, s, bucketName, nil)
 }
 
 // Init initialize connection to cloud blob storage
