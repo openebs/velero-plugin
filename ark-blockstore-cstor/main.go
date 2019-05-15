@@ -2,7 +2,7 @@ package main
 
 import (
 	arkplugin "github.com/heptio/ark/pkg/plugin"
-	snap "github.com/openebs/ark-plugin/pkg/snapshot"
+	snap "github.com/openebs/velero-plugin/pkg/snapshot"
 	"github.com/sirupsen/logrus"
 )
 

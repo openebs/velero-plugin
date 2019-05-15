@@ -18,7 +18,7 @@ package snapshot
 
 import (
 	"github.com/heptio/ark/pkg/cloudprovider"
-	"github.com/openebs/ark-plugin/pkg/cstor"
+	"github.com/openebs/velero-plugin/pkg/cstor"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/runtime"
 )
