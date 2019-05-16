@@ -26,7 +26,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/heptio/velero/pkg/util/collections"
 	cloud "github.com/openebs/velero-plugin/pkg/clouduploader"
 	"github.com/pkg/errors"
 	/* Due to dependency conflict, please ensure openebs
@@ -36,6 +35,7 @@ import (
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -183,35 +183,27 @@ func (p *Plugin) Init(config map[string]string) error {
 }
 
 // GetVolumeID return volume name for given PV
-func (p *Plugin) GetVolumeID(pv runtime.Unstructured) (string, error) {
-	if !collections.Exists(pv.UnstructuredContent(), "metadata") {
-		return "", nil
+func (p *Plugin) GetVolumeID(unstructuredPV runtime.Unstructured) (string, error) {
+	pv := new(v1.PersistentVolume)
+
+	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(unstructuredPV.UnstructuredContent(), pv); err != nil {
+		return "", errors.WithStack(err)
 	}
 
-	// Seed the volume info so that GetVolumeInfo doesn't fail later.
-	volumeID, err := collections.GetString(pv.UnstructuredContent(), "metadata.name")
-	if err != nil {
-		p.Log.Errorf("Failed to fetch volume name from PV : %s", err.Error())
-		return "", errors.New("Failed to fetch volume name")
+	if pv.Name == "" || pv.Spec.StorageClassName == "" || (pv.Spec.ClaimRef != nil && pv.Spec.ClaimRef.Namespace == "") {
+		p.Log.Errorf("Insufficient info for PV : %v", pv)
+		return "", errors.New("Insufficient info for PV")
 	}
 
-	if _, exists := p.volumes[volumeID]; !exists {
-		sc, sret := collections.GetString(pv.UnstructuredContent(), "spec.storageClassName")
-		ns, nret := collections.GetString(pv.UnstructuredContent(), "spec.claimRef.namespace")
-
-		if sret != nil || nret != nil {
-			p.Log.Errorf("Failed to build volume info sc:{%s} ns:{%s}", sc, ns)
-			return "", errors.New("Failed to build volume info")
-		}
-
-		p.volumes[volumeID] = &Volume{
-			volname:   volumeID,
-			casType:   sc,
-			namespace: ns,
+	if _, exists := p.volumes[pv.Name]; !exists {
+		p.volumes[pv.Name] = &Volume{
+			volname:   pv.Name,
+			casType:   pv.Spec.StorageClassName,
+			namespace: pv.Spec.ClaimRef.Namespace,
 		}
 	}
 
-	return collections.GetString(pv.UnstructuredContent(), "metadata.name")
+	return pv.Name, nil
 }
 
 // DeleteSnapshot delete CStor volume snapshot
@@ -564,14 +556,20 @@ func (p *Plugin) backupPVC(volumeID string) error {
 }
 
 // SetVolumeID set volumeID for given PV
-func (p *Plugin) SetVolumeID(pv runtime.Unstructured, volumeID string) (runtime.Unstructured, error) {
-	metadataMap, err := collections.GetMap(pv.UnstructuredContent(), "spec.iscsi")
-	if err != nil {
-		return nil, err
+func (p *Plugin) SetVolumeID(unstructuredPV runtime.Unstructured, volumeID string) (runtime.Unstructured, error) {
+	pv := new(v1.PersistentVolume)
+
+	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(unstructuredPV.UnstructuredContent(), pv); err != nil {
+		return nil, errors.WithStack(err)
 	}
 
-	metadataMap["volumeID"] = volumeID
-	return pv, nil
+	// We will not update HostPath since CStor volume doesn't have one
+	res, err := runtime.DefaultUnstructuredConverter.ToUnstructured(pv)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return &unstructured.Unstructured{Object: res}, nil
 }
 
 // httpRestCall execute REST API

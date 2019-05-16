@@ -2,15 +2,15 @@
 [![Build Status](https://travis-ci.org/openebs/velero-plugin.svg?branch=master)](https://travis-ci.org/openebs/velero-plugin)
 [![Go Report](https://goreportcard.com/badge/github.com/openebs/velero-plugin)](https://goreportcard.com/report/github.com/openebs/velero-plugin)
 
-Heptio Velero is a utility to back up and restore your Kubernetes resource and persistent volumes.
+Velero is a utility to back up and restore your Kubernetes resource and persistent volumes.
 
 To do backup/restore of OpenEBS CStor volumes through Velero utility, you need to install and configure
 OpenEBS velero-plugin.
 
 ## Prerequisite for velero-plugin
-Specific version of Heptio Velero needs to be installed as per the [compatibility matrix](#Compatibility-matrix) with OpenEBS versions.
+Specific version of Velero needs to be installed as per the [compatibility matrix](#Compatibility-matrix) with OpenEBS versions.
 
-For installation steps of Heptio Velero, visit https://heptio.github.io/velero.
+For installation steps of Velero, visit https://heptio.github.io/velero.
 
 For installation steps of OpenEBS, visit https://github.com/openebs/openebs/releases.
 
@@ -120,7 +120,7 @@ velero restore create --from-backup sched-20190513104034 --restore-volumes=true
 
 ## Compatibility matrix
 
-|     Image           |    Codebase     |  Heptio Velero v0.10.0  | Heptio Velero v0.11.0 |
+|     Image           |    Codebase     |  Velero v0.10.0  | Velero v0.11.0 |
 |   ---------------   |  -------------  |   ----------------      |  --------------- |
 | ark-plugin:0.9.0-RC2    |     v0.9.x       |         ✓            |                    |
 | velero-plugin:ci       |     master    |                     |         ✓           |
