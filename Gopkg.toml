@@ -26,7 +26,7 @@
 
 [[constraint]]
   name = "github.com/heptio/velero"
-  version = "v0.11.0"
+  version = "v1.0.0-rc.1"
 
 [[constraint]]
   name = "github.com/aws/aws-sdk-go"
@@ -36,50 +36,23 @@
   name = "github.com/sirupsen/logrus"
   version = "1.4.1"
 
-[[override]]
-  name = "github.com/Azure/go-autorest"
-  revision = "1ff28809256a84bb6966640ff3d0371af82ccba4"
-
 [[constraint]]
   name = "gocloud.dev"
   version = "0.13.0"
 
 [[constraint]]
   name = "k8s.io/api"
-  version = "kubernetes-1.11.0"
+  version = "kubernetes-1.12.0"
 
 [[constraint]]
   name = "k8s.io/apimachinery"
-  version = "kubernetes-1.11.0"
+  version = "kubernetes-1.12.0"
 #  revision = "6dd46049f39503a1fc8d65de4bd566829e95faff"
 
 [[constraint]]
   name = "k8s.io/client-go"
-  version = "8.0.0"
+  version = "9.0.0"
 
 [prune]
   go-tests = true
   unused-packages = true
-
-[[override]]
-  name = "github.com/hashicorp/go-plugin"
-  revision = "e2fbc6864d18d3c37b6cde4297ec9fca266d28f1"
-
-[[override]]
-  name = "github.com/hashicorp/go-hclog"
-  revision = "ca137eb4b4389c9bc6f1a6d887f056bf16c00510"
-
-#[[projects]]
-#  branch = "master"
-#  name = "github.com/hashicorp/golang-lru"
-#  packages = [
-#    ".",
-#    "simplelru"
-#  ]
-#  revision = "0a025b7e63adc15a622f29b0b2c4c3848243bbf6"
-
-#[[projects]]
-#  branch = "master"
-#  name = "github.com/hashicorp/yamux"
-#  packages = ["."]
-#  revision = "f5742cb6b85602e7fa834e9d5d91a7d7fa850824"
