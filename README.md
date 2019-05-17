@@ -120,9 +120,10 @@ velero restore create --from-backup sched-20190513104034 --restore-volumes=true
 
 ## Compatibility matrix
 
-|     Image           |    Codebase     |  Velero v0.10.0  | Velero v0.11.0 |
-|   ---------------   |  -------------  |   ----------------      |  --------------- |
-| ark-plugin:0.9.0-RC2    |     v0.9.x       |         ✓            |                    |
-| velero-plugin:ci       |     master    |                     |         ✓           |
+|     Image                |    Codebase     |  Velero v0.10.0  | Velero v0.11.0 | Velero v1.0.0-rc.1 |
+|   -------------------    |  ---------------|   ---------      |  --------------- |  -----------------  |
+| velero-plugin:0.9.0-RC2    |     v0.9.x    |         ✓        |                  |                     |
+| velero-plugin:0.9.0-RC3    |     v0.9.x    |                  |         ✓        |                     |
+| velero-plugin:ci           |     master    |                  |                  |         ✓           |
 
 Plugin images are available at quay.io and hub.docker.com.
