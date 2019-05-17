@@ -1,5 +1,5 @@
 /*
-Copyright 2017 the Heptio Ark contributors.
+Copyright 2017, 2019 the Velero contributors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -89,8 +89,6 @@ type BackupResourceHookSpec struct {
 	ExcludedResources []string `json:"excludedResources"`
 	// LabelSelector, if specified, filters the resources to which this hook spec applies.
 	LabelSelector *metav1.LabelSelector `json:"labelSelector,omitempty"`
-	// Hooks is a list of BackupResourceHooks to execute. DEPRECATED. Replaced by PreHooks.
-	Hooks []BackupResourceHook `json:"hooks"`
 	// PreHooks is a list of BackupResourceHooks to execute prior to storing the item in the backup.
 	// These are executed before any "additional items" from item actions are processed.
 	PreHooks []BackupResourceHook `json:"pre,omitempty"`
@@ -151,6 +149,10 @@ const (
 	// errors.
 	BackupPhaseCompleted BackupPhase = "Completed"
 
+	// BackupPhasePartiallyFailed means the backup has run to completion
+	// but encountered 1+ errors backing up individual items.
+	BackupPhasePartiallyFailed BackupPhase = "PartiallyFailed"
+
 	// BackupPhaseFailed means the backup ran but encountered an error that
 	// prevented it from completing successfully.
 	BackupPhaseFailed BackupPhase = "Failed"
@@ -169,16 +171,6 @@ type BackupStatus struct {
 
 	// Phase is the current state of the Backup.
 	Phase BackupPhase `json:"phase"`
-
-	// VolumeBackups is a map of PersistentVolume names to
-	// information about the backed-up volume in the cloud
-	// provider API.
-	//
-	// Deprecated: this field is considered read-only as of v0.10
-	// and will be removed in a subsequent release. The information
-	// previously contained here is now stored in a file in backup
-	// storage.
-	VolumeBackups map[string]*VolumeBackupInfo `json:"volumeBackups,omitempty"`
 
 	// ValidationErrors is a slice of all validation errors (if
 	// applicable).
@@ -203,27 +195,16 @@ type BackupStatus struct {
 	// VolumeSnapshotsCompleted is the total number of successfully
 	// completed volume snapshots for this backup.
 	VolumeSnapshotsCompleted int `json:"volumeSnapshotsCompleted"`
-}
 
-// VolumeBackupInfo captures the required information about
-// a PersistentVolume at backup time to be able to restore
-// it later.
-type VolumeBackupInfo struct {
-	// SnapshotID is the ID of the snapshot taken in the cloud
-	// provider API of this volume.
-	SnapshotID string `json:"snapshotID"`
+	// Warnings is a count of all warning messages that were generated during
+	// execution of the backup. The actual warnings are in the backup's log
+	// file in object storage.
+	Warnings int `json:"warnings"`
 
-	// Type is the type of the disk/volume in the cloud provider
-	// API.
-	Type string `json:"type"`
-
-	// AvailabilityZone is the where the volume is provisioned
-	// in the cloud provider.
-	AvailabilityZone string `json:"availabilityZone,omitempty"`
-
-	// Iops is the optional value of provisioned IOPS for the
-	// disk/volume in the cloud provider API.
-	Iops *int64 `json:"iops,omitempty"`
+	// Errors is a count of all error messages that were generated during
+	// execution of the backup.  The actual errors are in the backup's log
+	// file in object storage.
+	Errors int `json:"errors"`
 }
 
 // +genclient

@@ -1,5 +1,5 @@
 /*
-Copyright 2017 the Heptio Ark contributors.
+Copyright 2017, 2019 the Velero contributors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,14 +18,14 @@ package v1
 
 import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-// RestoreSpec defines the specification for an Ark restore.
+// RestoreSpec defines the specification for a Velero restore.
 type RestoreSpec struct {
-	// BackupName is the unique name of the Ark backup to restore
+	// BackupName is the unique name of the Velero backup to restore
 	// from.
 	BackupName string `json:"backupName"`
 
-	// ScheduleName is the unique name of the Ark schedule to restore
-	// from. If specified, and BackupName is empty, Ark will restore
+	// ScheduleName is the unique name of the Velero schedule to restore
+	// from. If specified, and BackupName is empty, Velero will restore
 	// from the most recent successful backup created from this schedule.
 	ScheduleName string `json:"scheduleName,omitempty"`
 
@@ -67,7 +67,7 @@ type RestoreSpec struct {
 }
 
 // RestorePhase is a string representation of the lifecycle phase
-// of an Ark restore
+// of a Velero restore
 type RestorePhase string
 
 const (
@@ -82,16 +82,20 @@ const (
 	// RestorePhaseInProgress means the restore is currently executing.
 	RestorePhaseInProgress RestorePhase = "InProgress"
 
-	// RestorePhaseCompleted means the restore has finished executing.
-	// Any relevant warnings or errors will be captured in the Status.
+	// RestorePhaseCompleted means the restore has run successfully
+	// without errors.
 	RestorePhaseCompleted RestorePhase = "Completed"
+
+	// RestorePhasePartiallyFailed means the restore has run to completion
+	// but encountered 1+ errors restoring individual items.
+	RestorePhasePartiallyFailed RestorePhase = "PartiallyFailed"
 
 	// RestorePhaseFailed means the restore was unable to execute.
 	// The failing error is recorded in status.FailureReason.
 	RestorePhaseFailed RestorePhase = "Failed"
 )
 
-// RestoreStatus captures the current status of an Ark restore
+// RestoreStatus captures the current status of a Velero restore
 type RestoreStatus struct {
 	// Phase is the current state of the Restore
 	Phase RestorePhase `json:"phase"`
@@ -112,35 +116,11 @@ type RestoreStatus struct {
 	FailureReason string `json:"failureReason"`
 }
 
-// RestoreResult is a collection of messages that were generated
-// during execution of a restore. This will typically store either
-// warning or error messages.
-type RestoreResult struct {
-	// Ark is a slice of messages related to the operation of Ark
-	// itself (for example, messages related to connecting to the
-	// cloud, reading a backup file, etc.)
-	// TODO(1.0) Remove this field. Currently maintained for backwards compatibility.
-	Ark []string `json:"ark,omitempty"`
-
-	// Velero is a slice of messages related to the operation of Velero
-	// itself (for example, messages related to connecting to the
-	// cloud, reading a backup file, etc.)
-	Velero []string `json:"velero,omitempty"`
-
-	// Cluster is a slice of messages related to restoring cluster-
-	// scoped resources.
-	Cluster []string `json:"cluster,omitempty"`
-
-	// Namespaces is a map of namespace name to slice of messages
-	// related to restoring namespace-scoped resources.
-	Namespaces map[string][]string `json:"namespaces,omitempty"`
-}
-
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// Restore is an Ark resource that represents the application of
-// resources from an Ark backup to a target Kubernetes cluster.
+// Restore is a Velero resource that represents the application of
+// resources from a Velero backup to a target Kubernetes cluster.
 type Restore struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata"`

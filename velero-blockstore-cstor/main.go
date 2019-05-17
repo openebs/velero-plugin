@@ -1,14 +1,14 @@
 package main
 
 import (
-	veleroplugin "github.com/heptio/velero/pkg/plugin"
+	veleroplugin "github.com/heptio/velero/pkg/plugin/framework"
 	snap "github.com/openebs/velero-plugin/pkg/snapshot"
 	"github.com/sirupsen/logrus"
 )
 
 func main() {
-	veleroplugin.NewServer(veleroplugin.NewLogger()).
-		RegisterBlockStore("cstor-blockstore", openebsSnapPlugin).
+	veleroplugin.NewServer().
+		RegisterVolumeSnapshotter("mayadata.io/cstor-blockstore", openebsSnapPlugin).
 		Serve()
 }
 

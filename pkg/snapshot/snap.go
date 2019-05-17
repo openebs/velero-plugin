@@ -17,7 +17,7 @@ limitations under the License.
 package snapshot
 
 import (
-	"github.com/heptio/velero/pkg/cloudprovider"
+	"github.com/heptio/velero/pkg/plugin/velero"
 	"github.com/openebs/velero-plugin/pkg/cstor"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -26,10 +26,10 @@ import (
 // BlockStore : Plugin for containing state for the blockstore plugin
 type BlockStore struct {
 	Log    logrus.FieldLogger
-	plugin cloudprovider.BlockStore
+	plugin velero.VolumeSnapshotter
 }
 
-var _ cloudprovider.BlockStore = (*BlockStore)(nil)
+var _ velero.VolumeSnapshotter = (*BlockStore)(nil)
 
 // Init the plugin
 func (p *BlockStore) Init(config map[string]string) error {
@@ -66,11 +66,11 @@ func (p *BlockStore) DeleteSnapshot(snapshotID string) error {
 }
 
 // GetVolumeID Get the volume ID from the spec
-func (p *BlockStore) GetVolumeID(pv runtime.Unstructured) (string, error) {
-	return p.plugin.GetVolumeID(pv)
+func (p *BlockStore) GetVolumeID(unstructuredPV runtime.Unstructured) (string, error) {
+	return p.plugin.GetVolumeID(unstructuredPV)
 }
 
 // SetVolumeID Set the volume ID in the spec
-func (p *BlockStore) SetVolumeID(pv runtime.Unstructured, volumeID string) (runtime.Unstructured, error) {
-	return p.plugin.SetVolumeID(pv, volumeID)
+func (p *BlockStore) SetVolumeID(unstructuredPV runtime.Unstructured, volumeID string) (runtime.Unstructured, error) {
+	return p.plugin.SetVolumeID(unstructuredPV, volumeID)
 }
