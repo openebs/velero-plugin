@@ -1,4 +1,4 @@
-// Copyright 2018 The Go Cloud Authors
+// Copyright 2018 The Go Cloud Development Kit Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,6 +20,8 @@ import (
 	"context"
 	"io"
 	"time"
+
+	"gocloud.dev/gcerrors"
 )
 
 // ReaderOptions controls Reader behaviors.
@@ -31,7 +33,8 @@ type Reader interface {
 	io.ReadCloser
 
 	// Attributes returns a subset of attributes about the blob.
-	Attributes() ReaderAttributes
+	// The portable type will not modify the returned ReaderAttributes.
+	Attributes() *ReaderAttributes
 
 	// As allows providers to expose provider-specific types;
 	// see Bucket.As for more details.
@@ -49,8 +52,26 @@ type WriterOptions struct {
 	// write in a single request, if supported. Larger objects will be split into
 	// multiple requests.
 	BufferSize int
-	// ContentMD5 may be used as a message integrity check (MIC).
-	// https://tools.ietf.org/html/rfc1864
+	// CacheControl specifies caching attributes that providers may use
+	// when serving the blob.
+	// https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cache-Control
+	CacheControl string
+	// ContentDisposition specifies whether the blob content is expected to be
+	// displayed inline or as an attachment.
+	// https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Disposition
+	ContentDisposition string
+	// ContentEncoding specifies the encoding used for the blob's content, if any.
+	// https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Encoding
+	ContentEncoding string
+	// ContentLanguage specifies the language used in the blob's content, if any.
+	// https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Language
+	ContentLanguage string
+	// ContentMD5 is used as a message integrity check.
+	// The portable type checks that the MD5 hash of the bytes written matches
+	// ContentMD5.
+	// If len(ContentMD5) > 0, driver implementations may pass it to their
+	// underlying network service to guarantee the integrity of the bytes in
+	// transit.
 	ContentMD5 []byte
 	// Metadata holds key/value strings to be associated with the blob.
 	// Keys are guaranteed to be non-empty and lowercased.
@@ -63,10 +84,19 @@ type WriterOptions struct {
 	BeforeWrite func(asFunc func(interface{}) bool) error
 }
 
+// CopyOptions controls options for Copy.
+type CopyOptions struct {
+	// BeforeCopy is a callback that must be called before initiating the Copy.
+	// asFunc allows providers to expose provider-specific types;
+	// see Bucket.As for more details.
+	BeforeCopy func(asFunc func(interface{}) bool) error
+}
+
 // ReaderAttributes contains a subset of attributes about a blob that are
 // accessible from Reader.
 type ReaderAttributes struct {
 	// ContentType is the MIME type of the blob object. It must not be empty.
+	// https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Type
 	ContentType string
 	// ModTime is the time the blob object was last modified.
 	ModTime time.Time
@@ -76,10 +106,25 @@ type ReaderAttributes struct {
 
 // Attributes contains attributes about a blob.
 type Attributes struct {
+	// CacheControl specifies caching attributes that providers may use
+	// when serving the blob.
+	// https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cache-Control
+	CacheControl string
+	// ContentDisposition specifies whether the blob content is expected to be
+	// displayed inline or as an attachment.
+	// https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Disposition
+	ContentDisposition string
+	// ContentEncoding specifies the encoding used for the blob's content, if any.
+	// https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Encoding
+	ContentEncoding string
+	// ContentLanguage specifies the language used in the blob's content, if any.
+	// https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Language
+	ContentLanguage string
 	// ContentType is the MIME type of the blob object. It must not be empty.
+	// https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Type
 	ContentType string
 	// Metadata holds key/value pairs associated with the blob.
-	// Keys will be lowercased by the concrete type before being returned
+	// Keys will be lowercased by the portable type before being returned
 	// to the user. If there are duplicate case-insensitive keys (e.g.,
 	// "foo" and "FOO"), only one value will be kept, and it is undefined
 	// which one.
@@ -88,6 +133,8 @@ type Attributes struct {
 	ModTime time.Time
 	// Size is the size of the object in bytes.
 	Size int64
+	// MD5 is an MD5 hash of the blob contents or nil if not available.
+	MD5 []byte
 	// AsFunc allows providers to expose provider-specific types;
 	// see Bucket.As for more details.
 	// If not set, no provider-specific types are supported.
@@ -95,7 +142,6 @@ type Attributes struct {
 }
 
 // ListOptions sets options for listing objects in the bucket.
-// TODO(Issue #541): Add Delimiter.
 type ListOptions struct {
 	// Prefix indicates that only results with the given prefix should be
 	// returned.
@@ -114,7 +160,7 @@ type ListOptions struct {
 	Delimiter string
 	// PageSize sets the maximum number of objects to be returned.
 	// 0 means no maximum; driver implementations should choose a reasonable
-	// max.
+	// max. It is guaranteed to be >= 0.
 	PageSize int
 	// PageToken may be filled in with the NextPageToken from a previous
 	// ListPaged call.
@@ -134,6 +180,8 @@ type ListObject struct {
 	ModTime time.Time
 	// Size is the size of the object in bytes.
 	Size int64
+	// MD5 is an MD5 hash of the blob contents or nil if not available.
+	MD5 []byte
 	// IsDir indicates that this result represents a "directory" in the
 	// hierarchical namespace, ending in ListOptions.Delimiter. Key can be
 	// passed as ListOptions.Prefix to list items in the "directory".
@@ -147,7 +195,7 @@ type ListObject struct {
 
 // ListPage represents a page of results return from ListPaged.
 type ListPage struct {
-	// Objects is the slice of objects found. If ListOptions.PageSize != 0,
+	// Objects is the slice of objects found. If ListOptions.PageSize > 0,
 	// it should have at most ListOptions.PageSize entries.
 	//
 	// Objects should be returned in lexicographical order of UTF-8 encoded keys,
@@ -165,48 +213,24 @@ type ListPage struct {
 // Bucket provides read, write and delete operations on objects within it on the
 // blob service.
 type Bucket interface {
-	// IsNotExist should return true if err, an error returned from one
-	// of the other methods in this interface, represents a "key does not exist"
-	// error.
-	IsNotExist(err error) bool
+	// ErrorCode should return a code that describes the error, which was returned by
+	// one of the other methods in this interface.
+	ErrorCode(error) gcerrors.ErrorCode
 
-	// IsNotImplemented should return true if err, an error returned from one
-	// of the other methods in this interface, indicates that the method is not
-	// implemented for this provider.
-	IsNotImplemented(err error) bool
-
-	// As allows providers to expose provider-specific types.
-	//
-	// i will be a pointer to the type the user wants filled in.
-	// As should either fill it in and return true, or return false.
-	//
-	// Mutable objects should be exposed as a pointer to the object;
-	// i will therefore be a **.
-	//
-	// A provider should document the type(s) it support in package
-	// comments, and add conformance tests verifying them.
-	//
-	// A sample implementation might look like this, for supporting foo.MyType:
-	//   mt, ok := i.(*foo.MyType)
-	//   if !ok {
-	//     return false
-	//   }
-	//   *i = foo.MyType{}  // or, more likely, the existing value
-	//   return true
-	//
-	// See
-	// https://github.com/google/go-cloud/blob/master/internal/docs/design.md#as
-	// for more background.
+	// As converts i to provider-specific types.
+	// See https://godoc.org/gocloud.dev#hdr-As for background information.
 	As(i interface{}) bool
 
 	// ErrorAs allows providers to expose provider-specific types for returned
-	// errors; see Bucket.As for more details.
+	// errors.
+	// See https://godoc.org/gocloud.dev#hdr-As for background information.
 	ErrorAs(error, interface{}) bool
 
 	// Attributes returns attributes for the blob. If the specified object does
-	// not exist, Attributes must return an error for which IsNotExist returns
-	// true.
-	Attributes(ctx context.Context, key string) (Attributes, error)
+	// not exist, Attributes must return an error for which ErrorCode returns
+	// gcerrors.NotFound.
+	// The portable type will not modify the returned Attributes.
+	Attributes(ctx context.Context, key string) (*Attributes, error)
 
 	// ListPaged lists objects in the bucket, in lexicographical order by
 	// UTF-8-encoded key, returning pages of objects at a time.
@@ -220,8 +244,8 @@ type Bucket interface {
 	// NewRangeReader returns a Reader that reads part of an object, reading at
 	// most length bytes starting at the given offset. If length is negative, it
 	// will read until the end of the object. If the specified object does not
-	// exist, NewRangeReader must return an error for which IsNotExist returns
-	// true.
+	// exist, NewRangeReader must return an error for which ErrorCode returns
+	// gcerrors.NotFound.
 	// opts is guaranteed to be non-nil.
 	NewRangeReader(ctx context.Context, key string, offset, length int64, opts *ReaderOptions) (Reader, error)
 
@@ -239,18 +263,34 @@ type Bucket interface {
 	//
 	// Implementations should abort an ongoing write if ctx is later canceled,
 	// and do any necessary cleanup in Close. Close should then return ctx.Err().
-	NewTypedWriter(ctx context.Context, key string, contentType string, opts *WriterOptions) (Writer, error)
+	NewTypedWriter(ctx context.Context, key, contentType string, opts *WriterOptions) (Writer, error)
+
+	// Copy copies the object associated with srcKey to dstKey.
+	//
+	// If the source object does not exist, Copy must return an error for which
+	// ErrorCode returns gcerrors.NotFound.
+	//
+	// If the destination object already exists, it should be overwritten.
+	//
+	// opts is guaranteed to be non-nil.
+	Copy(ctx context.Context, dstKey, srcKey string, opts *CopyOptions) error
 
 	// Delete deletes the object associated with key. If the specified object does
-	// not exist, NewRangeReader must return an error for which IsNotExist returns
-	// true.
+	// not exist, Delete must return an error for which ErrorCode returns
+	// gcerrors.NotFound.
 	Delete(ctx context.Context, key string) error
 
 	// SignedURL returns a URL that can be used to GET the blob for the duration
 	// specified in opts.Expiry. opts is guaranteed to be non-nil.
-	// If not supported, return an error for which IsNotImplemented returns
-	// true.
+	// If not supported, return an error for which ErrorCode returns
+	// gcerrors.Unimplemented.
 	SignedURL(ctx context.Context, key string, opts *SignedURLOptions) (string, error)
+
+	// Close cleans up any resources used by the Bucket. Once Close is called,
+	// there will be no method calls to the Bucket other than As, ErrorAs, and
+	// ErrorCode. There may be open readers or writers that will receive calls.
+	// It is up to the driver as to how these will be handled.
+	Close() error
 }
 
 // SignedURLOptions sets options for SignedURL.

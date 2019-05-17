@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-BIN = $(wildcard ark-*)
+BIN = $(wildcard velero-*)
 
 # This repo's root import path (under GOPATH).
 # TODO change
@@ -89,7 +89,7 @@ bootstrap:
 
 vet:
 	go vet \
-		./ark-blockstore-cstor	\
+		./velero-blockstore-cstor	\
 		./pkg/clouduploader	\
 		./pkg/cstor	\
 		./pkg/snapshot
