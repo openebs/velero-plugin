@@ -19,7 +19,7 @@ metadata:
   name: <LOCATION_NAME>
   namespace: velero
 spec:
-  provider: cstor-blockstore
+  provider: mayadata.io/cstor-blockstore
   config:
     bucket: <YOUR_BUCKET>
     prefix: <PREFIX_FOR_BACKUP_NAME >

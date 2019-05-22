@@ -22,11 +22,11 @@ Run the following command to install OpenEBS velero-plugin
 This command will add an init container to Velero deployment to install the OpenEBS velero-plugin.
 
 ## Taking backup of CStor volume data through the Velero
-To take a backup of CStor volume through Velero, configure `VolumeSnapshotLocation` with provider `cstor-blockstore`. Sample yaml file for volumesnapshotlocation can be found at `example/06-volumesnapshotlocation.yaml`.
+To take a backup of CStor volume through Velero, configure `VolumeSnapshotLocation` with provider `mayadata.io/cstor-blockstore`. Sample yaml file for volumesnapshotlocation can be found at `example/06-volumesnapshotlocation.yaml`.
 
 ```
 spec:
-  provider: cstor-blockstore
+  provider: mayadata.io/cstor-blockstore
   config:
     bucket: <YOUR_BUCKET>
     prefix: <PREFIX_FOR_BACKUP_NAME>
@@ -34,7 +34,8 @@ spec:
     region: <AWS_REGION>
 ```
 
-You can configure a backup storage location(`BackupStorageLocation`) in similar way. Currently, AWS and GCP are supported.
+You can configure a backup storage location(`BackupStorageLocation`) in similar way.
+Currently supported volumesnapshotlocations for velero-plugin are AWS, GCP and MinIO.
 
 
 ## Managing Backups
@@ -79,6 +80,12 @@ defaultbackup-20190513113453   defaultbackup   Completed   0          0         
 ```
 Once the restore is completed you should see the restore marked as `Completed`.
 
+*Note: After restore is completed, you need to set targetip for the volume in pool pod.*
+*Steps to update `targetip` is as follow:*
+```
+1. kubectl exec -it <POOL_POD> -c cstor-pool -n openebs -- bash
+2. zfs set io.openebs:targetip=<PVC SERVICE IP> <POOL_NAME/VOLUME_NAME>
+```
 
 ### Creating a scheduled backup (or incremental backup for CStor volume)
 OpenEBS velero-plugin provides incremental backup support for CStor persistent volumes.
@@ -120,7 +127,7 @@ velero restore create --from-backup sched-20190513104034 --restore-volumes=true
 
 ## Compatibility matrix
 
-|     Image                |    Codebase     |  Velero v0.10.0  | Velero v0.11.0 | Velero v1.0.0-rc.1 |
+|     Image                |    Codebase     |  Velero v0.10.0  | Velero v0.11.0 | Velero v1.0.0 |
 |   -------------------    |  ---------------|   ---------      |  --------------- |  -----------------  |
 | velero-plugin:0.9.0-RC2    |     v0.9.x    |         ✓        |                  |                     |
 | velero-plugin:0.9.0-RC3    |     v0.9.x    |                  |         ✓        |                     |
