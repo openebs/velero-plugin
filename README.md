@@ -22,11 +22,11 @@ Run the following command to install OpenEBS velero-plugin
 This command will add an init container to Velero deployment to install the OpenEBS velero-plugin.
 
 ## Taking backup of CStor volume data through the Velero
-To take a backup of CStor volume through Velero, configure `VolumeSnapshotLocation` with provider `mayadata.io/cstor-blockstore`. Sample yaml file for volumesnapshotlocation can be found at `example/06-volumesnapshotlocation.yaml`.
+To take a backup of CStor volume through Velero, configure `VolumeSnapshotLocation` with provider `openebs.io/cstor-blockstore`. Sample yaml file for volumesnapshotlocation can be found at `example/06-volumesnapshotlocation.yaml`.
 
 ```
 spec:
-  provider: mayadata.io/cstor-blockstore
+  provider: openebs.io/cstor-blockstore
   config:
     bucket: <YOUR_BUCKET>
     prefix: <PREFIX_FOR_BACKUP_NAME>
