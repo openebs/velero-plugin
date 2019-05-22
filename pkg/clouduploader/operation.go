@@ -25,7 +25,7 @@ const (
 // It will create a TCP server through which client can
 // connect and upload data to cloud blob storage file
 func (c *Conn) Upload(file string) bool {
-	c.Log.Infof("Uploading snapshot to  '%s' with provider{%s} to bucket{%s}:region{%s}", file, c.provider, c.bucketname, c.region)
+	c.Log.Infof("Uploading snapshot to  '%s' with provider{%s} to bucket{%s}", file, c.provider, c.bucketname)
 	c.file = file
 	s := &Server{
 		Log: c.Log,
@@ -46,7 +46,7 @@ func (c *Conn) Upload(file string) bool {
 
 // Delete will delete file from cloud blob storage
 func (c *Conn) Delete(file string) bool {
-	c.Log.Infof("Removing snapshot:'%s' from bucket{%s} provider{%s}:region{%s}", file, c.bucket, c.provider, c.region)
+	c.Log.Infof("Removing snapshot:'%s' from bucket{%s} provider{%s}", file, c.bucket, c.provider)
 
 	if c.bucket.Delete(c.ctx, file) != nil {
 		c.Log.Errorf("Failed to remove snapshot{%s} from cloud", file)
@@ -75,7 +75,7 @@ func (c *Conn) Download(file string) bool {
 
 // Write will write data to cloud blob storage file
 func (c *Conn) Write(data []byte, file string) bool {
-	c.Log.Infof("Writing to {%s} with provider{%v} to bucket{%v}:region{%v}", file, c.provider, c.bucketname, c.region)
+	c.Log.Infof("Writing to {%s} with provider{%v} to bucket{%v}", file, c.provider, c.bucketname)
 
 	w, err := c.bucket.NewWriter(c.ctx, file, nil)
 	if err != nil {
@@ -102,7 +102,7 @@ func (c *Conn) Write(data []byte, file string) bool {
 
 // Read will return content of file from cloud blob storage
 func (c *Conn) Read(file string) ([]byte, bool) {
-	c.Log.Infof("Reading from {%s} with provider{%s} to bucket{%s}:region{%s}", file, c.provider, c.bucketname, c.region)
+	c.Log.Infof("Reading from {%s} with provider{%s} to bucket{%s}", file, c.provider, c.bucketname)
 
 	data, err := c.bucket.ReadAll(c.ctx, file)
 	if err != nil {

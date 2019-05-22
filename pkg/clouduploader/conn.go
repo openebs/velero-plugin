@@ -56,8 +56,14 @@ const (
 	// GCP gcp cloud provider
 	GCP = "gcp"
 
-	// DefaultAWSRegion default aws region
-	DefaultAWSRegion = "us-east-2"
+	// AWSUrl aws s3 url
+	AWSUrl = "s3Url"
+
+	// AWSForcePath aws URL base path instead of subdomains
+	AWSForcePath = "s3ForcePathStyle"
+
+	// AWSSsl if ssl needs to be enabled
+	AWSSsl = "DisableSSL"
 )
 
 // Conn defines resource used for cloud related operation
@@ -77,9 +83,6 @@ type Conn struct {
 	// bucketname is storage-bucket name
 	bucketname string
 
-	// region is cloud specific region
-	region string
-
 	// prefix is used for file name
 	prefix string
 
@@ -91,19 +94,19 @@ type Conn struct {
 }
 
 // setupBucket creates a connection to a particular cloud provider's blob storage.
-func setupBucket(ctx context.Context, provider, bucket, region string) (*blob.Bucket, error) {
+func (c *Conn) setupBucket(ctx context.Context, provider, bucket string, config map[string]string) (*blob.Bucket, error) {
 	switch provider {
 	case AWS:
-		return setupAWS(ctx, bucket, region)
+		return c.setupAWS(ctx, bucket, config)
 	case GCP:
-		return setupGCP(ctx, bucket)
+		return c.setupGCP(ctx, bucket, config)
 	default:
 		return nil, errors.New("Provider is not supported")
 	}
 }
 
 // setupGCP creates a connection to GCP's blob storage
-func setupGCP(ctx context.Context, bucket string) (*blob.Bucket, error) {
+func (c *Conn) setupGCP(ctx context.Context, bucket string, config map[string]string) (*blob.Bucket, error) {
 	/* TBD: use cred file using env variable */
 	creds, err := gcp.DefaultCredentials(ctx)
 	if err != nil {
@@ -118,14 +121,12 @@ func setupGCP(ctx context.Context, bucket string) (*blob.Bucket, error) {
 }
 
 // setupAWS creates a connection to AWS's blob storage
-func setupAWS(ctx context.Context, bucketName, region string) (*blob.Bucket, error) {
-	var awsRegion *string
+func (c *Conn) setupAWS(ctx context.Context, bucketName string, config map[string]string) (*blob.Bucket, error) {
 	var awscred string
 
-	if region == "" {
-		awsRegion = aws.String(DefaultAWSRegion)
-	} else {
-		awsRegion = aws.String(region)
+	region, err := config[REGION]
+	if !err {
+		return nil, errors.New("No region provided for AWS")
 	}
 
 	if awscred = os.Getenv(AWSCredentialsFile); len(awscred) == 0 {
@@ -133,12 +134,27 @@ func setupAWS(ctx context.Context, bucketName, region string) (*blob.Bucket, err
 	}
 
 	credentials := credentials.NewSharedCredentials(awscred, DefaultProfile)
-	d := &aws.Config{
-		Region:      awsRegion,
-		Credentials: credentials,
+	awsconfig := aws.NewConfig().
+		WithRegion(region).
+		WithCredentials(credentials)
+
+	if url, ok := config[AWSUrl]; ok {
+		awsconfig = awsconfig.WithEndpoint(url)
 	}
 
-	s := session.Must(session.NewSession(d))
+	if pathstyle, ok := config[AWSForcePath]; ok {
+		if pathstyle == "true" {
+			awsconfig = awsconfig.WithS3ForcePathStyle(true)
+		}
+	}
+
+	if disablessl, ok := config[AWSSsl]; ok {
+		if disablessl == "true" {
+			awsconfig = awsconfig.WithDisableSSL(true)
+		}
+	}
+
+	s := session.Must(session.NewSession(awsconfig))
 	return s3blob.OpenBucket(ctx, s, bucketName, nil)
 }
 
@@ -162,14 +178,8 @@ func (c *Conn) Init(config map[string]string) error {
 	}
 	c.prefix = prefix
 
-	region, err := config[REGION]
-	if !err {
-		c.Log.Warnf("No region provided..")
-	}
-	c.region = region
-
 	c.ctx = context.Background()
-	b, berr := setupBucket(c.ctx, provider, bucketName, region)
+	b, berr := c.setupBucket(c.ctx, provider, bucketName, config)
 	if berr != nil {
 		return errors.Errorf("Failed to setup bucket : %s", berr.Error())
 	}

@@ -8,7 +8,7 @@ import (
 
 func main() {
 	veleroplugin.NewServer().
-		RegisterVolumeSnapshotter("mayadata.io/cstor-blockstore", openebsSnapPlugin).
+		RegisterVolumeSnapshotter("openebs.io/cstor-blockstore", openebsSnapPlugin).
 		Serve()
 }
 

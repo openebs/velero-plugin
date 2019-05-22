@@ -210,7 +210,7 @@
   revision = "2f1d1f20f75d5404f53b9edf6b53ed5505508675"
 
 [[projects]]
-  digest = "1:5b0234b834ef7f6cbba4fd99c5d7f83483a4d458aa86232f7c350125dc33df7b"
+  digest = "1:c895a3a027647f87e8b0adc710221c25ae0302529327b5aff356ee367c46486e"
   name = "github.com/heptio/velero"
   packages = [
     "pkg/apis/velero/v1",
@@ -221,8 +221,8 @@
     "pkg/util/logging",
   ]
   pruneopts = "UT"
-  revision = "d05f8e53d8ecbdb939d5d3a3d24da7868619ec3d"
-  version = "v1.0.0-rc.1"
+  revision = "72f5cadc3a865019ab9dc043d4952c9bfd5f2ecb"
+  version = "v1.0.0"
 
 [[projects]]
   digest = "1:870d441fe217b8e689d7949fef6e43efbc787e50f200cb1e70dbca9204a1d6be"
