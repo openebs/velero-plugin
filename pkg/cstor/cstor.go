@@ -446,7 +446,7 @@ func (p *Plugin) CreateVolumeFromSnapshot(snapshotID, volumeType, volumeAZ strin
 
 	if newVol.restoreStatus == v1alpha1.RSTCStorStatusDone {
 		p.Log.Infof("Restore completed")
-		return volumeID, nil
+		return newVol.volname, nil
 	}
 
 	return "", errors.New("Failed to restore snapshot")
@@ -563,7 +563,8 @@ func (p *Plugin) SetVolumeID(unstructuredPV runtime.Unstructured, volumeID strin
 		return nil, errors.WithStack(err)
 	}
 
-	// We will not update HostPath since CStor volume doesn't have one
+	pv.Name = volumeID
+
 	res, err := runtime.DefaultUnstructuredConverter.ToUnstructured(pv)
 	if err != nil {
 		return nil, errors.WithStack(err)
