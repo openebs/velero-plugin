@@ -34,6 +34,7 @@ import (
 	v1alpha1 "github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
+	k8serror "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -44,6 +45,7 @@ import (
 
 const (
 	mayaAPIServiceName    = "maya-apiserver-service"
+	mayaAPIServiceLabel   = "openebs.io/component-name=maya-apiserver-svc"
 	backupEndpoint        = "/latest/backups/"
 	restorePath           = "/latest/restore/"
 	operator              = "openebs"
@@ -134,6 +136,28 @@ func (p *Plugin) getServerAddress() string {
 
 // getMapiAddr return maya API server's ip address
 func (p *Plugin) getMapiAddr() string {
+	sclist, err := p.K8sClient.Services(operator).List(
+		metav1.ListOptions{
+			LabelSelector: mayaAPIServiceLabel,
+		},
+	)
+	if err != nil {
+		if k8serror.IsNotFound(err) {
+			goto usingname
+		}
+		p.Log.Errorf("Error getting maya-apiservice : %v", err.Error())
+		return ""
+	}
+
+	for _, s := range sclist.Items {
+		if len(s.Spec.ClusterIP) != 0 {
+			return "http://" + s.Spec.ClusterIP + ":" + strconv.FormatInt(int64(s.Spec.Ports[0].Port), 10)
+		}
+	}
+
+usingname:
+	// There are no any services having MayaApiService Label
+	// Let's try to find by name only..
 	sc, err := p.K8sClient.Services(operator).Get(mayaAPIServiceName, metav1.GetOptions{})
 	if err != nil {
 		p.Log.Errorf("Error getting IP Address for service{%s} : %v", mayaAPIServiceName, err.Error())
