@@ -29,7 +29,7 @@ spec:
   provider: openebs.io/cstor-blockstore
   config:
     bucket: <YOUR_BUCKET>
-    prefix: <PREFIX_FOR_BACKUP_NAME>
+    prefix: <PREFIX_FOR_BACKUP_PATH>
     provider: <GCP_OR_AWS>
     region: <AWS_REGION>
 ```

@@ -116,5 +116,5 @@ func (c *Conn) Read(file string) ([]byte, bool) {
 
 // GenerateRemoteFilename will create a file-name specific for given backup
 func (c *Conn) GenerateRemoteFilename(file, backup string) string {
-	return backupDir + "/" + backup + "/" + c.prefix + "-" + file + "-" + backup
+	return c.prefix + "/" + backupDir + "/" + backup + "/" + file + "-" + backup
 }
