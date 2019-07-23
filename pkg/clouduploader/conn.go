@@ -47,6 +47,9 @@ const (
 	// PREFIX prefix key
 	PREFIX = "prefix"
 
+	// BackupPathPrefix key for backupPathPrefix
+	BackupPathPrefix = "backupPathPrefix"
+
 	// REGION region key
 	REGION = "region"
 
@@ -85,6 +88,9 @@ type Conn struct {
 
 	// prefix is used for file name
 	prefix string
+
+	// backupPathPrefix is used for backup path
+	backupPathPrefix string
 
 	// file represent remote file name
 	file string
@@ -177,6 +183,12 @@ func (c *Conn) Init(config map[string]string) error {
 		prefix = ""
 	}
 	c.prefix = prefix
+
+	backupPathPrefix, err := config[BackupPathPrefix]
+	if !err {
+		backupPathPrefix = ""
+	}
+	c.backupPathPrefix = backupPathPrefix
 
 	c.ctx = context.Background()
 	b, berr := c.setupBucket(c.ctx, provider, bucketName, config)
