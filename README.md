@@ -30,6 +30,7 @@ spec:
   config:
     bucket: <YOUR_BUCKET>
     prefix: <PREFIX_FOR_BACKUP_NAME>
+    backupPathPrefix: <PREFIX_FOR_BACKUP_PATH>
     provider: <GCP_OR_AWS>
     region: <AWS_REGION>
 ```
