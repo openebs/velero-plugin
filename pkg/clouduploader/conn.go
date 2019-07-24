@@ -130,8 +130,8 @@ func (c *Conn) setupGCP(ctx context.Context, bucket string, config map[string]st
 func (c *Conn) setupAWS(ctx context.Context, bucketName string, config map[string]string) (*blob.Bucket, error) {
 	var awscred string
 
-	region, err := config[REGION]
-	if !err {
+	region, ok := config[REGION]
+	if !ok {
 		return nil, errors.New("No region provided for AWS")
 	}
 
@@ -166,34 +166,34 @@ func (c *Conn) setupAWS(ctx context.Context, bucketName string, config map[strin
 
 // Init initialize connection to cloud blob storage
 func (c *Conn) Init(config map[string]string) error {
-	provider, err := config[PROVIDER]
-	if !err {
+	provider, ok := config[PROVIDER]
+	if !ok {
 		return errors.New("Failed to get provider name")
 	}
 	c.provider = provider
 
-	bucketName, err := config[BUCKET]
-	if !err {
+	bucketName, ok := config[BUCKET]
+	if !ok {
 		return errors.New("Failed to get bucket name")
 	}
 	c.bucketname = bucketName
 
-	prefix, err := config[PREFIX]
-	if !err {
+	prefix, ok := config[PREFIX]
+	if !ok {
 		prefix = ""
 	}
 	c.prefix = prefix
 
-	backupPathPrefix, err := config[BackupPathPrefix]
-	if !err {
+	backupPathPrefix, ok := config[BackupPathPrefix]
+	if !ok {
 		backupPathPrefix = ""
 	}
 	c.backupPathPrefix = backupPathPrefix
 
 	c.ctx = context.Background()
-	b, berr := c.setupBucket(c.ctx, provider, bucketName, config)
-	if berr != nil {
-		return errors.Errorf("Failed to setup bucket : %s", berr.Error())
+	b, err := c.setupBucket(c.ctx, provider, bucketName, config)
+	if err != nil {
+		return errors.Errorf("Failed to setup bucket : %s", err.Error())
 	}
 	c.bucket = b
 	return nil
