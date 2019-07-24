@@ -49,9 +49,10 @@ const (
 	backupEndpoint        = "/latest/backups/"
 	restorePath           = "/latest/restore/"
 	operator              = "openebs"
-	casType               = "cstor"
+	casTypeCStor          = "cstor"
 	backupStatusInterval  = 5
 	restoreStatusInterval = 5
+	openebsVolumeLabel    = "openebs.io/cas-type"
 )
 
 // Plugin defines snapshot plugin for CStor volume
@@ -214,9 +215,21 @@ func (p *Plugin) GetVolumeID(unstructuredPV runtime.Unstructured) (string, error
 		return "", errors.WithStack(err)
 	}
 
-	if pv.Name == "" || pv.Spec.StorageClassName == "" || (pv.Spec.ClaimRef != nil && pv.Spec.ClaimRef.Namespace == "") {
+	if pv.Name == "" ||
+		pv.Spec.StorageClassName == "" ||
+		(pv.Spec.ClaimRef != nil && pv.Spec.ClaimRef.Namespace == "") ||
+		len(pv.Labels) == 0 {
 		p.Log.Errorf("Insufficient info for PV : %v", pv)
 		return "", errors.New("Insufficient info for PV")
+	}
+
+	volType, ok := pv.Labels[openebsVolumeLabel]
+	if !ok {
+		return "", nil
+	}
+
+	if volType != casTypeCStor {
+		return "", nil
 	}
 
 	if _, exists := p.volumes[pv.Name]; !exists {
@@ -264,7 +277,7 @@ func (p *Plugin) DeleteSnapshot(snapshotID string) error {
 	q := req.URL.Query()
 	q.Add("volume", snapInfo.volID)
 	q.Add("namespace", snapInfo.namespace)
-	q.Add("casType", casType)
+	q.Add("casType", casTypeCStor)
 
 	req.URL.RawQuery = q.Encode()
 
