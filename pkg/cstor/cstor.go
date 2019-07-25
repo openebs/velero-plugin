@@ -215,12 +215,13 @@ func (p *Plugin) GetVolumeID(unstructuredPV runtime.Unstructured) (string, error
 		return "", errors.WithStack(err)
 	}
 
+	// If PV doesn't have sufficent info to consider as CStor Volume
+	// then we will return empty volumeId and error as nil.
 	if pv.Name == "" ||
 		pv.Spec.StorageClassName == "" ||
 		(pv.Spec.ClaimRef != nil && pv.Spec.ClaimRef.Namespace == "") ||
 		len(pv.Labels) == 0 {
-		p.Log.Errorf("Insufficient info for PV : %v", pv)
-		return "", errors.New("Insufficient info for PV")
+		return "", nil
 	}
 
 	volType, ok := pv.Labels[openebsVolumeLabel]
