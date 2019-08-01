@@ -133,6 +133,7 @@ velero restore create --from-backup sched-20190513104034 --restore-volumes=true
 | velero-plugin:0.9.0-RC2    |     v0.9.x    |         ✓        |                  |                     | 0.9.0-RC2 |
 | velero-plugin:0.9.0    |     v0.9.x    |                  |         ✓        |                     | 0.9 |
 | velero-plugin:1.0.0-velero_1.0.0           |     1.0.0-velero_1.0.0    |                  |                  |         ✓           | 1.0.0 |
+| velero-plugin:1.1.0-velero_1.0.0           |     1.1.0-velero_1.0.0    |                  |                  |         ✓           | 1.1.0 |
 | velero-plugin:ci           |     master    |                  |                  |         ✓           | >0.9 |
 
 Plugin images are available at quay.io and hub.docker.com.
