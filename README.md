@@ -34,6 +34,16 @@ spec:
     provider: <GCP_OR_AWS>
     region: <AWS_REGION>
 ```
+*Note:*
+
+- _`prefix` is for backup file name._
+
+  _if `prefix` is set to `cstor` then snapshot will be stored as `bucket/backups/backup_name/cstor-PV_NAME-backup_name`._
+- _`backupPathPrefix` is for backup path._
+
+  _if `backupPathPrefix` is set to `newcluster` then snapshot will be stored at `bucket/newcluster/backups/backup_name/prefix-PV_NAME-backup_name`._
+
+  _To store backup metadata and snapshot at same location, `BackupStorageLocation.prefix` and `VolumeSnapshotLocation.BackupPathPrefix` should be same._
 
 You can configure a backup storage location(`BackupStorageLocation`) in similar way.
 Currently supported volumesnapshotlocations for velero-plugin are AWS, GCP and MinIO.
