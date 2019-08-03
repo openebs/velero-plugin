@@ -215,7 +215,7 @@ func (p *Plugin) GetVolumeID(unstructuredPV runtime.Unstructured) (string, error
 		return "", errors.WithStack(err)
 	}
 
-	// If PV doesn't have sufficent info to consider as CStor Volume
+	// If PV doesn't have sufficient info to consider as CStor Volume
 	// then we will return empty volumeId and error as nil.
 	if pv.Name == "" ||
 		pv.Spec.StorageClassName == "" ||
