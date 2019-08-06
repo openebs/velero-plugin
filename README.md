@@ -1,14 +1,38 @@
-## Overview
-[![Build Status](https://travis-ci.org/openebs/velero-plugin.svg?branch=master)](https://travis-ci.org/openebs/velero-plugin)
-[![Go Report](https://goreportcard.com/badge/github.com/openebs/velero-plugin)](https://goreportcard.com/report/github.com/openebs/velero-plugin)
+# Velero-plugin for OpenEBS CStor volume
 
 Velero is a utility to back up and restore your Kubernetes resource and persistent volumes.
 
 To do backup/restore of OpenEBS CStor volumes through Velero utility, you need to install and configure
 OpenEBS velero-plugin.
 
+[![Build Status](https://travis-ci.org/openebs/velero-plugin.svg?branch=master)](https://travis-ci.org/openebs/velero-plugin)
+[![Go Report](https://goreportcard.com/badge/github.com/openebs/velero-plugin)](https://goreportcard.com/report/github.com/openebs/velero-plugin)
+
+## Table of Contents
+- [Compatibility matrix](#compatibility-matrix)
+- [Prerequisite for velero-plugin](#prerequisite-for-velero-plugin)
+- [installation of velero-plugin](#installation-of-velero-plugin)
+- [Configuring snapshot location](#configuring-snapshot-location)
+- [Managing Backups](#managing-backups)
+  - [Creating a backup](#creating-a-backup)
+  - [Creating a restore from backup](#creating-a-restore-from-backup)
+  - [Creating a scheduled backup](#creating-a-scheduled-backup-or-incremental-backup-for-cstor-volume)
+  - [Restoring from a scheduled backup](#restoring-from-a-scheduled-backup)
+
+## Compatibility matrix
+
+|     Image                |    Codebase     |  Velero v0.10.0  | Velero v0.11.0 | Velero v1.0.0 | OpenEBS/Maya release |
+|   -------------------    |  ---------------|   ---------      |  --------------- |  -----------------  | -------- |
+| velero-plugin:0.9.0-RC2    |     v0.9.x    |         ✓        |                  |                     | 0.9.0-RC2 |
+| velero-plugin:0.9.0    |     v0.9.x    |                  |         ✓        |                     | 0.9 |
+| velero-plugin:1.0.0-velero_1.0.0           |     1.0.0-velero_1.0.0    |                  |                  |         ✓           | 1.0.0 |
+| velero-plugin:1.1.0-velero_1.0.0           |     1.1.0-velero_1.0.0    |                  |                  |         ✓           | 1.1.0 |
+| velero-plugin:ci           |     master    |                  |                  |         ✓           | >0.9 |
+
+Plugin images are available at quay.io and hub.docker.com.
+
 ## Prerequisite for velero-plugin
-Specific version of Velero needs to be installed as per the [compatibility matrix](#Compatibility-matrix) with OpenEBS versions.
+A Specific version of Velero needs to be installed as per the [compatibility matrix](#Compatibility-matrix) with OpenEBS versions.
 
 For installation steps of Velero, visit https://velero.io.
 
@@ -21,8 +45,8 @@ Run the following command to install OpenEBS velero-plugin
 
 This command will add an init container to Velero deployment to install the OpenEBS velero-plugin.
 
-## Taking backup of CStor volume data through the Velero
-To take a backup of CStor volume through Velero, configure `VolumeSnapshotLocation` with provider `openebs.io/cstor-blockstore`. Sample yaml file for volumesnapshotlocation can be found at `example/06-volumesnapshotlocation.yaml`.
+## Configuring snapshot location
+To take a backup of CStor volume through Velero, configure `VolumeSnapshotLocation` with provider `openebs.io/cstor-blockstore`. Sample YAML file for volumesnapshotlocation can be found at `example/06-volumesnapshotlocation.yaml`.
 
 ```
 spec:
@@ -36,7 +60,7 @@ spec:
 ```
 *Note:*
 
-- _`prefix` is for backup file name._
+- _`prefix` is for the backup file name._
 
   _if `prefix` is set to `cstor` then snapshot will be stored as `bucket/backups/backup_name/cstor-PV_NAME-backup_name`._
 - _`backupPathPrefix` is for backup path._
@@ -45,7 +69,7 @@ spec:
 
   _To store backup metadata and snapshot at same location, `BackupStorageLocation.prefix` and `VolumeSnapshotLocation.BackupPathPrefix` should be same._
 
-You can configure a backup storage location(`BackupStorageLocation`) in similar way.
+You can configure a backup storage location(`BackupStorageLocation`) similarly.
 Currently supported volumesnapshotlocations for velero-plugin are AWS, GCP and MinIO.
 
 
@@ -76,7 +100,7 @@ To restore data from backup, run the following command:
 
 `velero restore create --from-backup backup_name --restore-volumes=true`
 
-With above command, plugin will create a CStor volume and the data from backup will be restored on this newly created volume.
+With the above command, the plugin will create a CStor volume and the data from backup will be restored on this newly created volume.
 
 Note: You need to mention `--restore-volumes=true` while doing a restore.
 
@@ -118,8 +142,8 @@ newschedule     Enabled   2019-05-13 15:15:39 +0530 IST   */5 * * * *   720h0m0s
 
 During the first backup iteration of a schedule, full data of the volume will be backed up. For later backup iterations of a schedule, only modified or new data from the previous iteration will be backed up.
 
-### To restore from a schedule
-Since backups taken are incremental for a schedule, order of restoring data is important. You need to restore data in the order of the backups created.
+### Restoring from a scheduled backup
+Since backups taken are incremental for a schedule, the order of restoring data is important. You need to restore data in the order of the backups created.
 
 For example, below are the available backups for a schedule:
 ```
@@ -135,15 +159,3 @@ velero restore create --from-backup sched-20190513103034 --restore-volumes=true
 velero restore create --from-backup sched-20190513103534 --restore-volumes=true
 velero restore create --from-backup sched-20190513104034 --restore-volumes=true
 ```
-
-## Compatibility matrix
-
-|     Image                |    Codebase     |  Velero v0.10.0  | Velero v0.11.0 | Velero v1.0.0 | OpenEBS/Maya release |
-|   -------------------    |  ---------------|   ---------      |  --------------- |  -----------------  | -------- |
-| velero-plugin:0.9.0-RC2    |     v0.9.x    |         ✓        |                  |                     | 0.9.0-RC2 |
-| velero-plugin:0.9.0    |     v0.9.x    |                  |         ✓        |                     | 0.9 |
-| velero-plugin:1.0.0-velero_1.0.0           |     1.0.0-velero_1.0.0    |                  |                  |         ✓           | 1.0.0 |
-| velero-plugin:1.1.0-velero_1.0.0           |     1.1.0-velero_1.0.0    |                  |                  |         ✓           | 1.1.0 |
-| velero-plugin:ci           |     master    |                  |                  |         ✓           | >0.9 |
-
-Plugin images are available at quay.io and hub.docker.com.
