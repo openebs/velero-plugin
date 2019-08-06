@@ -11,7 +11,7 @@ OpenEBS velero-plugin.
 ## Table of Contents
 - [Compatibility matrix](#compatibility-matrix)
 - [Prerequisite for velero-plugin](#prerequisite-for-velero-plugin)
-- [installation of velero-plugin](#installation-of-velero-plugin)
+- [Installation of velero-plugin](#installation-of-velero-plugin)
 - [Configuring snapshot location](#configuring-snapshot-location)
 - [Managing Backups](#managing-backups)
   - [Creating a backup](#creating-a-backup)
@@ -20,14 +20,14 @@ OpenEBS velero-plugin.
   - [Restoring from a scheduled backup](#restoring-from-a-scheduled-backup)
 
 ## Compatibility matrix
+|	OpenEBS/Maya Release	|	Velero Version	|	Velero-plugin Version	|	Codebase	          |
+|	--------------------	|	---------------	|	--------------------	|	------------------- |
+|	0.9.0-RC2           	|	v0.10.0	        |	0.9.0-RC2           	|	v0.9.x	            |
+|	0.9                 	|	v0.11.0       	|	0.9.0               	|	v0.9.x	            |
+|	1.0.0               	|	v1.0.0        	|	1.0.0-velero_1.0.0	  |	1.0.0-velero_1.0.0	|
+|	1.1.0               	|	v1.0.0        	|	1.1.0-velero_1.0.0  	|	1.1.0-velero_1.0.0	|
+|	>= 0.9              	|	v1.0.0	        |	ci	                  |	master	            |
 
-|     Image                |    Codebase     |  Velero v0.10.0  | Velero v0.11.0 | Velero v1.0.0 | OpenEBS/Maya release |
-|   -------------------    |  ---------------|   ---------      |  --------------- |  -----------------  | -------- |
-| velero-plugin:0.9.0-RC2    |     v0.9.x    |         ✓        |                  |                     | 0.9.0-RC2 |
-| velero-plugin:0.9.0    |     v0.9.x    |                  |         ✓        |                     | 0.9 |
-| velero-plugin:1.0.0-velero_1.0.0           |     1.0.0-velero_1.0.0    |                  |                  |         ✓           | 1.0.0 |
-| velero-plugin:1.1.0-velero_1.0.0           |     1.1.0-velero_1.0.0    |                  |                  |         ✓           | 1.1.0 |
-| velero-plugin:ci           |     master    |                  |                  |         ✓           | >0.9 |
 
 Plugin images are available at quay.io and hub.docker.com.
 
@@ -39,7 +39,7 @@ For installation steps of Velero, visit https://velero.io.
 For installation steps of OpenEBS, visit https://github.com/openebs/openebs/releases.
 
 ## Installation of velero-plugin
-Run the following command to install OpenEBS velero-plugin
+Run the following command to install development image of OpenEBS velero-plugin
 
 `velero plugin add openebs/velero-plugin:ci`
 
