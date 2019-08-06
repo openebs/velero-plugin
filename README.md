@@ -29,7 +29,7 @@ OpenEBS velero-plugin.
 |	>= 0.9              	|	v1.0.0	        |	ci	                  |	master	            |
 
 
-Plugin images are available at quay.io and hub.docker.com.
+Plugin images are available at [quay.io](http://quay.io/openebs/velero-plugin) and [hub.docker.com](https://hub.docker.com/r/openebs/velero-plugin).
 
 ## Prerequisite for velero-plugin
 A Specific version of Velero needs to be installed as per the [compatibility matrix](#Compatibility-matrix) with OpenEBS versions.
