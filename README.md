@@ -22,12 +22,15 @@ OpenEBS velero-plugin.
 ## Compatibility matrix
 |	OpenEBS/Maya Release	|	Velero Version	|	Velero-plugin Version	|	Codebase	          |
 |	--------------------	|	---------------	|	--------------------	|	------------------- |
-|	0.9.0-RC2           	|	v0.10.0	        |	0.9.0-RC2           	|	v0.9.x	            |
 |	0.9                 	|	v0.11.0       	|	0.9.0               	|	v0.9.x	            |
 |	1.0.0               	|	v1.0.0        	|	1.0.0-velero_1.0.0	  |	1.0.0-velero_1.0.0	|
 |	1.1.0               	|	v1.0.0        	|	1.1.0-velero_1.0.0  	|	1.1.0-velero_1.0.0	|
-|	>= 0.9              	|	v1.0.0	        |	ci	                  |	master	            |
 
+*Note:*
+
+_OpenEBS version **< 0.9** is not supported for velero-plugin._
+
+_If you want to use plugin image from development branch(`master`), use **ci** tag._
 
 Plugin images are available at [quay.io](http://quay.io/openebs/velero-plugin) and [hub.docker.com](https://hub.docker.com/r/openebs/velero-plugin/tags).
 
