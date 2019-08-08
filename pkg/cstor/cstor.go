@@ -48,11 +48,16 @@ const (
 	mayaAPIServiceLabel   = "openebs.io/component-name=maya-apiserver-svc"
 	backupEndpoint        = "/latest/backups/"
 	restorePath           = "/latest/restore/"
-	operator              = "openebs"
 	casTypeCStor          = "cstor"
+	operator              = "openebs"
 	backupStatusInterval  = 5
 	restoreStatusInterval = 5
 	openebsVolumeLabel    = "openebs.io/cas-type"
+)
+
+const (
+	// NAMESPACE config key for OpenEBS namespace
+	NAMESPACE = "namespace"
 )
 
 // Plugin defines snapshot plugin for CStor volume
@@ -65,6 +70,9 @@ type Plugin struct {
 
 	// config to store parameters from velero server
 	config map[string]string
+
+	// namespace in which openebs is installed, default is openebs
+	namespace string
 
 	// cl stores cloud connection information
 	cl *cloud.Conn
@@ -137,7 +145,17 @@ func (p *Plugin) getServerAddress() string {
 
 // getMapiAddr return maya API server's ip address
 func (p *Plugin) getMapiAddr() string {
-	sclist, err := p.K8sClient.Services(operator).List(
+	var openebsNs string
+
+	// check if user has provided openebs namespace
+	if p.namespace != "" {
+		openebsNs = p.namespace
+	} else {
+		// use default ns 'openebs', if user has not given any ns
+		openebsNs = operator
+	}
+
+	sclist, err := p.K8sClient.Services(openebsNs).List(
 		metav1.ListOptions{
 			LabelSelector: mayaAPIServiceLabel,
 		},
@@ -159,7 +177,7 @@ func (p *Plugin) getMapiAddr() string {
 usingname:
 	// There are no any services having MayaApiService Label
 	// Let's try to find by name only..
-	sc, err := p.K8sClient.Services(operator).Get(mayaAPIServiceName, metav1.GetOptions{})
+	sc, err := p.K8sClient.Services(openebsNs).Get(mayaAPIServiceName, metav1.GetOptions{})
 	if err != nil {
 		p.Log.Errorf("Error getting IP Address for service{%s} : %v", mayaAPIServiceName, err.Error())
 		return ""
@@ -173,6 +191,10 @@ usingname:
 
 // Init CStor snapshot plugin
 func (p *Plugin) Init(config map[string]string) error {
+	if ns, ok := config[NAMESPACE]; ok {
+		p.namespace = ns
+	}
+
 	conf, err := rest.InClusterConfig()
 	if err != nil {
 		p.Log.Errorf("Failed to get cluster config : %s", err.Error())
