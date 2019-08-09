@@ -34,6 +34,8 @@ spec:
     provider: <GCP_OR_AWS>
     region: <AWS_REGION>
 ```
+If you have multiple installation of openebs then you need to add `spec.config.namespace: <OPENEBS_NAMESPACE>`.
+
 *Note:*
 
 - _`prefix` is for backup file name._

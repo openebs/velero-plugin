@@ -33,9 +33,8 @@ var _ velero.VolumeSnapshotter = (*BlockStore)(nil)
 
 // Init the plugin
 func (p *BlockStore) Init(config map[string]string) error {
-	p.Log.Infof("Initializing velero plugin for CStor %v", config)
+	p.Log.Infof("Initializing velero plugin for CStor")
 
-	// TODO check for type of volume
 	p.plugin = &cstor.Plugin{Log: p.Log}
 	return p.plugin.Init(config)
 }

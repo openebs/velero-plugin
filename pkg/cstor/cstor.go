@@ -28,13 +28,13 @@ import (
 
 	cloud "github.com/openebs/velero-plugin/pkg/clouduploader"
 	"github.com/pkg/errors"
+
 	/* Due to dependency conflict, please ensure openebs
 	 * dependency manually instead of using dep
 	 */
 	v1alpha1 "github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
-	k8serror "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -48,11 +48,15 @@ const (
 	mayaAPIServiceLabel   = "openebs.io/component-name=maya-apiserver-svc"
 	backupEndpoint        = "/latest/backups/"
 	restorePath           = "/latest/restore/"
-	operator              = "openebs"
 	casTypeCStor          = "cstor"
 	backupStatusInterval  = 5
 	restoreStatusInterval = 5
 	openebsVolumeLabel    = "openebs.io/cas-type"
+)
+
+const (
+	// NAMESPACE config key for OpenEBS namespace
+	NAMESPACE = "namespace"
 )
 
 // Plugin defines snapshot plugin for CStor volume
@@ -65,6 +69,9 @@ type Plugin struct {
 
 	// config to store parameters from velero server
 	config map[string]string
+
+	// namespace in which openebs is installed, default is openebs
+	namespace string
 
 	// cl stores cloud connection information
 	cl *cloud.Conn
@@ -137,42 +144,59 @@ func (p *Plugin) getServerAddress() string {
 
 // getMapiAddr return maya API server's ip address
 func (p *Plugin) getMapiAddr() string {
-	sclist, err := p.K8sClient.Services(operator).List(
+	var openebsNs string
+
+	// check if user has provided openebs namespace
+	if p.namespace != "" {
+		openebsNs = p.namespace
+	} else {
+		openebsNs = metav1.NamespaceAll
+	}
+
+	sclist, err := p.K8sClient.Services(openebsNs).List(
 		metav1.ListOptions{
 			LabelSelector: mayaAPIServiceLabel,
 		},
 	)
+
 	if err != nil {
-		if k8serror.IsNotFound(err) {
-			goto usingname
-		}
 		p.Log.Errorf("Error getting maya-apiservice : %v", err.Error())
 		return ""
 	}
 
-	for _, s := range sclist.Items {
-		if len(s.Spec.ClusterIP) != 0 {
-			return "http://" + s.Spec.ClusterIP + ":" + strconv.FormatInt(int64(s.Spec.Ports[0].Port), 10)
-		}
+	if len(sclist.Items) != 0 {
+		goto fetchip
 	}
 
-usingname:
 	// There are no any services having MayaApiService Label
 	// Let's try to find by name only..
-	sc, err := p.K8sClient.Services(operator).Get(mayaAPIServiceName, metav1.GetOptions{})
+	sclist, err = p.K8sClient.Services(openebsNs).List(
+		metav1.ListOptions{
+			FieldSelector: "metadata.name=" + mayaAPIServiceName,
+		})
 	if err != nil {
 		p.Log.Errorf("Error getting IP Address for service{%s} : %v", mayaAPIServiceName, err.Error())
 		return ""
 	}
 
-	if len(sc.Spec.ClusterIP) != 0 {
-		return "http://" + sc.Spec.ClusterIP + ":" + strconv.FormatInt(int64(sc.Spec.Ports[0].Port), 10)
+fetchip:
+	for _, s := range sclist.Items {
+		if len(s.Spec.ClusterIP) != 0 {
+			// update the namespace
+			p.namespace = s.Namespace
+			return "http://" + s.Spec.ClusterIP + ":" + strconv.FormatInt(int64(s.Spec.Ports[0].Port), 10)
+		}
 	}
+
 	return ""
 }
 
 // Init CStor snapshot plugin
 func (p *Plugin) Init(config map[string]string) error {
+	if ns, ok := config[NAMESPACE]; ok {
+		p.namespace = ns
+	}
+
 	conf, err := rest.InClusterConfig()
 	if err != nil {
 		p.Log.Errorf("Failed to get cluster config : %s", err.Error())

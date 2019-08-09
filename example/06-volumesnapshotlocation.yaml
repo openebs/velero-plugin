@@ -26,3 +26,4 @@ spec:
     backupPathPrefix: <PREFIX_FOR_BACKUP_PATH>
     provider: <GCP_OR_AWS>
     region: <AWS_REGION>
+    namespace: <OPENEBS_NAMESPACE>
