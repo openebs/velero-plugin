@@ -34,8 +34,7 @@ spec:
     provider: <GCP_OR_AWS>
     region: <AWS_REGION>
 ```
-Above configuration assumes that OpenEBS is installed in `openebs` namespace.
-If openebs is installed in different namespace then you need to add `spec.config.namespace: <OPENEBS_NAMESPACE>`.
+If you have multiple installation of openebs then you need to add `spec.config.namespace: <OPENEBS_NAMESPACE>`.
 
 *Note:*
 
