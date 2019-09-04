@@ -328,7 +328,7 @@ func (p *Plugin) CreateSnapshot(volumeID, volumeAZ string, tags map[string]strin
 	vol.backupName = bkpname
 	err := p.backupPVC(volumeID)
 	if err != nil {
-		return "", errors.New("failed to create backup for PVC")
+		return "", errors.Errorf("failed to create backup for PVC.. %s", err)
 	}
 
 	p.Log.Infof("creating snapshot{%s}", bkpname)
@@ -342,7 +342,7 @@ func (p *Plugin) CreateSnapshot(volumeID, volumeAZ string, tags map[string]strin
 	}
 
 	if len(strings.TrimSpace(bkpname)) == 0 {
-		return "", errors.New("No bkpname")
+		return "", errors.New("Missing bkpname")
 	}
 
 	bkpSpec := &v1alpha1.CStorBackupSpec{
@@ -431,7 +431,7 @@ func (p *Plugin) CreateVolumeFromSnapshot(snapshotID, volumeType, volumeAZ strin
 
 	newVol, e := p.createPVC(volumeID, snapName)
 	if e != nil {
-		return "", errors.Errorf("Failed to restore PVC")
+		return "", errors.Errorf("Failed to restore PVC.. %s", e)
 	}
 
 	p.Log.Infof("New volume(%v) created", newVol)

@@ -17,10 +17,18 @@ limitations under the License.
 package cstor
 
 import (
+	"time"
+
 	"github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
 	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+// CVRWaitCount control time limit for waitForAllCVR
+var CVRWaitCount = 100
+
+// CVRCheckInterval defines amount of delay for CVR check
+var CVRCheckInterval = 5 * time.Second
 
 // waitForAllCVR will ensure that all CVR related to
 // given volumes are created
@@ -30,7 +38,7 @@ func (p *Plugin) waitForAllCVR(vol *Volume) error {
 		return errors.Errorf("Failed to fetch replicaCount for volume{%s}", vol.volname)
 	}
 
-	for {
+	for cnt := 0; cnt < CVRWaitCount; cnt++ {
 		cvrList, err := p.OpenEBSClient.
 			OpenebsV1alpha1().
 			CStorVolumeReplicas(p.namespace).
@@ -42,6 +50,7 @@ func (p *Plugin) waitForAllCVR(vol *Volume) error {
 		}
 
 		if len(cvrList.Items) != replicaCount {
+			time.Sleep(CVRCheckInterval)
 			continue
 		}
 
@@ -56,7 +65,10 @@ func (p *Plugin) waitForAllCVR(vol *Volume) error {
 		if cvrCount == replicaCount {
 			return nil
 		}
+		time.Sleep(CVRCheckInterval)
 	}
+
+	return errors.Errorf("CVR for volume{%s} are not ready!", vol.volname)
 }
 
 // getCVRCount returns the number of CVR for given volume

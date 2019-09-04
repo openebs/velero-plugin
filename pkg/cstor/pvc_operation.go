@@ -18,11 +18,18 @@ package cstor
 
 import (
 	"encoding/json"
+	"time"
 
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+// PVCWaitCount control time limit for createPVC
+var PVCWaitCount = 100
+
+// PVCCheckInterval defines amount of delay for PVC bound check
+var PVCCheckInterval = 5 * time.Second
 
 // backupPVC perform backup for given volume's PVC
 func (p *Plugin) backupPVC(volumeID string) error {
@@ -75,7 +82,8 @@ func (p *Plugin) backupPVC(volumeID string) error {
 
 // createPVC create PVC for given volume name
 func (p *Plugin) createPVC(volumeID, snapName string) (*Volume, error) {
-	var pvc v1.PersistentVolumeClaim
+	pvc := &v1.PersistentVolumeClaim{}
+	var vol *Volume
 	var data []byte
 	var ok bool
 
@@ -88,11 +96,11 @@ func (p *Plugin) createPVC(volumeID, snapName string) (*Volume, error) {
 		return nil, errors.New("Failed to download PVC")
 	}
 
-	if err := json.Unmarshal(data, &pvc); err != nil {
+	if err := json.Unmarshal(data, pvc); err != nil {
 		return nil, errors.New("Failed to decode pvc")
 	}
 
-	newVol, err := p.getVolumeFromPVC(pvc)
+	newVol, err := p.getVolumeFromPVC(*pvc)
 	if err == nil {
 		newVol.backupName = snapName
 		return newVol, nil
@@ -103,13 +111,13 @@ func (p *Plugin) createPVC(volumeID, snapName string) (*Volume, error) {
 	rpvc, err := p.K8sClient.
 		CoreV1().
 		PersistentVolumeClaims(pvc.Namespace).
-		Create(&pvc)
+		Create(pvc)
 	if err != nil {
 		return nil, errors.Errorf("Failed to create PVC : %s", err.Error())
 	}
 
-	for {
-		pvc, err := p.K8sClient.
+	for cnt := 0; cnt < PVCWaitCount; cnt++ {
+		pvc, err = p.K8sClient.
 			CoreV1().
 			PersistentVolumeClaims(rpvc.Namespace).
 			Get(rpvc.Name, metav1.GetOptions{})
@@ -124,19 +132,25 @@ func (p *Plugin) createPVC(volumeID, snapName string) (*Volume, error) {
 		}
 		if pvc.Status.Phase == v1.ClaimBound {
 			p.Log.Infof("PVC(%v) created..", pvc.Name)
-			vol := &Volume{
+			vol = &Volume{
 				volname:    pvc.Spec.VolumeName,
 				namespace:  pvc.Namespace,
 				backupName: snapName,
 				casType:    *pvc.Spec.StorageClassName,
 			}
-
-			if err = p.waitForAllCVR(vol); err != nil {
-				return nil, err
-			}
-			return vol, nil
+			break
 		}
+		time.Sleep(PVCCheckInterval)
 	}
+
+	if vol == nil {
+		return nil, errors.Errorf("PVC{%s} is not bounded!", rpvc.Name)
+	}
+
+	if err = p.waitForAllCVR(vol); err != nil {
+		return nil, err
+	}
+	return vol, nil
 }
 
 // getVolumeFromPVC returns volume info for given PVC if PVC is in bound state
