@@ -17,7 +17,6 @@ limitations under the License.
 package cstor
 
 import (
-	"bytes"
 	"encoding/json"
 	"io/ioutil"
 	"net"
@@ -33,13 +32,14 @@ import (
 	 * dependency manually instead of using dep
 	 */
 	v1alpha1 "github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
+	openebs "github.com/openebs/maya/pkg/client/generated/clientset/versioned"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
-	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	k8client "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 )
 
@@ -65,7 +65,10 @@ type Plugin struct {
 	Log logrus.FieldLogger
 
 	// K8sClient is used for kubernetes CR operation
-	K8sClient corev1.CoreV1Interface
+	K8sClient *k8client.Clientset
+
+	// OpenEBSClient is used for openEBS CR operation
+	OpenEBSClient *openebs.Clientset
 
 	// config to store parameters from velero server
 	config map[string]string
@@ -142,55 +145,6 @@ func (p *Plugin) getServerAddress() string {
 	return ""
 }
 
-// getMapiAddr return maya API server's ip address
-func (p *Plugin) getMapiAddr() string {
-	var openebsNs string
-
-	// check if user has provided openebs namespace
-	if p.namespace != "" {
-		openebsNs = p.namespace
-	} else {
-		openebsNs = metav1.NamespaceAll
-	}
-
-	sclist, err := p.K8sClient.Services(openebsNs).List(
-		metav1.ListOptions{
-			LabelSelector: mayaAPIServiceLabel,
-		},
-	)
-
-	if err != nil {
-		p.Log.Errorf("Error getting maya-apiservice : %v", err.Error())
-		return ""
-	}
-
-	if len(sclist.Items) != 0 {
-		goto fetchip
-	}
-
-	// There are no any services having MayaApiService Label
-	// Let's try to find by name only..
-	sclist, err = p.K8sClient.Services(openebsNs).List(
-		metav1.ListOptions{
-			FieldSelector: "metadata.name=" + mayaAPIServiceName,
-		})
-	if err != nil {
-		p.Log.Errorf("Error getting IP Address for service{%s} : %v", mayaAPIServiceName, err.Error())
-		return ""
-	}
-
-fetchip:
-	for _, s := range sclist.Items {
-		if len(s.Spec.ClusterIP) != 0 {
-			// update the namespace
-			p.namespace = s.Namespace
-			return "http://" + s.Spec.ClusterIP + ":" + strconv.FormatInt(int64(s.Spec.Ports[0].Port), 10)
-		}
-	}
-
-	return ""
-}
-
 // Init CStor snapshot plugin
 func (p *Plugin) Init(config map[string]string) error {
 	if ns, ok := config[NAMESPACE]; ok {
@@ -209,7 +163,15 @@ func (p *Plugin) Init(config map[string]string) error {
 		return errors.New("Error creating k8s client")
 	}
 
-	p.K8sClient = clientset.CoreV1()
+	p.K8sClient = clientset
+
+	openEBSClient, err := openebs.NewForConfig(conf)
+	if err != nil {
+		p.Log.Errorf("Failed to create openEBS client. %s", err)
+		return err
+	}
+	p.OpenEBSClient = openEBSClient
+
 	p.mayaAddr = p.getMapiAddr()
 	if p.mayaAddr == "" {
 		return errors.New("Error fetching OpenEBS rest client address")
@@ -217,7 +179,7 @@ func (p *Plugin) Init(config map[string]string) error {
 
 	p.cstorServerAddr = p.getServerAddress()
 	if p.cstorServerAddr == "" {
-		return errors.New("Error fetch cstorVeleroServer address")
+		return errors.New("Error fetching cstorVeleroServer address")
 	}
 	p.config = config
 	if p.volumes == nil {
@@ -255,6 +217,11 @@ func (p *Plugin) GetVolumeID(unstructuredPV runtime.Unstructured) (string, error
 
 	if volType != casTypeCStor {
 		return "", nil
+	}
+
+	if pv.Status.Phase == v1.VolumeReleased ||
+		pv.Status.Phase == v1.VolumeFailed {
+		return "", errors.New("PV is in released state")
 	}
 
 	if _, exists := p.volumes[pv.Name]; !exists {
@@ -429,7 +396,10 @@ func (p *Plugin) getSnapInfo(snapshotID string) (*Snapshot, error) {
 	volumeID := s[0]
 	bkpName := s[1]
 
-	pv, err := p.K8sClient.PersistentVolumes().Get(snapshotID, metav1.GetOptions{})
+	pv, err := p.K8sClient.
+		CoreV1().
+		PersistentVolumes().
+		Get(snapshotID, metav1.GetOptions{})
 	if err != nil {
 		return nil, errors.Errorf("Error fetching namespaces for volume{%s} : %s", volumeID, err.Error())
 	}
@@ -519,104 +489,6 @@ func (p *Plugin) GetVolumeInfo(volumeID, volumeAZ string) (string, *int64, error
 	return "cstor-snapshot", nil, nil
 }
 
-// createPVC  create PVC for given volume name
-func (p *Plugin) createPVC(volumeID, snapName string) (*Volume, error) {
-	var pvc v1.PersistentVolumeClaim
-	var data []byte
-	var ok bool
-
-	filename := p.cl.GenerateRemoteFilename(volumeID, snapName)
-	if filename == "" {
-		return nil, errors.New("Error creating remote file name for pvc backup")
-	}
-
-	if data, ok = p.cl.Read(filename + ".pvc"); !ok {
-		return nil, errors.New("Failed to download PVC")
-	}
-
-	if err := json.Unmarshal(data, &pvc); err != nil {
-		return nil, errors.New("Failed to decode pvc")
-	}
-
-	newVol, err := p.getVolumeFromPVC(pvc)
-	if err == nil {
-		newVol.backupName = snapName
-		return newVol, nil
-	}
-
-	pvc.Annotations = make(map[string]string)
-	pvc.Annotations["openebs.io/created-through"] = "restore"
-	rpvc, er := p.K8sClient.PersistentVolumeClaims(pvc.Namespace).Create(&pvc)
-	if er != nil {
-		return nil, errors.Errorf("Failed to create PVC : %s", er.Error())
-	}
-
-	for {
-		pvc, er := p.K8sClient.PersistentVolumeClaims(rpvc.Namespace).Get(rpvc.Name, metav1.GetOptions{})
-		if er != nil || pvc.Status.Phase == v1.ClaimLost {
-			if err := p.K8sClient.PersistentVolumeClaims(pvc.Namespace).Delete(rpvc.Name, nil); err != nil {
-				p.Log.Warnf("Failed to delete pvc {%s} : %s", rpvc.Name, err.Error())
-			}
-			return nil, errors.Errorf("Failed to create PVC : %s", er.Error())
-		}
-		if pvc.Status.Phase == v1.ClaimBound {
-			p.Log.Infof("PVC(%v) created..", pvc.Name)
-			return &Volume{
-				volname:    pvc.Spec.VolumeName,
-				namespace:  pvc.Namespace,
-				backupName: snapName,
-				casType:    *pvc.Spec.StorageClassName,
-			}, nil
-		}
-	}
-}
-
-// backupPVC perform backup for given volume's PVC
-func (p *Plugin) backupPVC(volumeID string) error {
-	vol := p.volumes[volumeID]
-	var bkpPvc *v1.PersistentVolumeClaim
-
-	pvcs, err := p.K8sClient.PersistentVolumeClaims(vol.namespace).List(metav1.ListOptions{})
-	if err != nil {
-		p.Log.Errorf("Error fetching PVC list : %s", err.Error())
-		return errors.New("Failed to fetch PVC list")
-	}
-
-	for _, pvc := range pvcs.Items {
-		if pvc.Spec.VolumeName == vol.volname {
-			bkpPvc = &pvc
-			break
-		}
-	}
-
-	if bkpPvc == nil {
-		p.Log.Errorf("Failed to find PVC for PV{%s}", vol.volname)
-		return errors.Errorf("Failed to find PVC for volume{%s}", vol.volname)
-	}
-
-	bkpPvc.ResourceVersion = ""
-	bkpPvc.SelfLink = ""
-	bkpPvc.Annotations = nil
-	bkpPvc.UID = ""
-	bkpPvc.Spec.VolumeName = ""
-
-	data, err := json.MarshalIndent(bkpPvc, "", "\t")
-	if err != nil {
-		return errors.New("Error doing json parsing")
-	}
-
-	filename := p.cl.GenerateRemoteFilename(vol.volname, vol.backupName)
-	if filename == "" {
-		return errors.New("Error creating remote file name for pvc backup")
-	}
-
-	if ok := p.cl.Write(data, filename+".pvc"); !ok {
-		return errors.New("Failed to upload PVC")
-	}
-
-	return nil
-}
-
 // SetVolumeID set volumeID for given PV
 func (p *Plugin) SetVolumeID(unstructuredPV runtime.Unstructured, volumeID string) (runtime.Unstructured, error) {
 	pv := new(v1.PersistentVolume)
@@ -633,140 +505,4 @@ func (p *Plugin) SetVolumeID(unstructuredPV runtime.Unstructured, volumeID strin
 	}
 
 	return &unstructured.Unstructured{Object: res}, nil
-}
-
-// httpRestCall execute REST API
-func (p *Plugin) httpRestCall(url, reqtype string, data []byte) ([]byte, error) {
-	req, err := http.NewRequest(reqtype, url, bytes.NewBuffer(data))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Add("Content-Type", "application/json")
-
-	c := &http.Client{
-		Timeout: 60 * time.Second,
-	}
-
-	resp, err := c.Do(req)
-	if err != nil {
-		return nil, errors.Errorf("Error when connecting to maya-apiserver : %s", err.Error())
-	}
-
-	defer func() {
-		if err := resp.Body.Close(); err != nil {
-			p.Log.Warnf("Failed to close response : %s", err.Error())
-		}
-	}()
-
-	respdata, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, errors.Errorf("Unable to read response from maya-apiserver : %s", err.Error())
-	}
-
-	code := resp.StatusCode
-	if code != http.StatusOK {
-		return nil, errors.Errorf("Status error{%v}", http.StatusText(code))
-	}
-	return respdata, nil
-}
-
-// getVolumeFromPVC returns volume info for given PVC if PVC is in bound state
-func (p *Plugin) getVolumeFromPVC(pvc v1.PersistentVolumeClaim) (*Volume, error) {
-	rpvc, err := p.K8sClient.PersistentVolumeClaims(pvc.Namespace).Get(pvc.Name, metav1.GetOptions{})
-	if err != nil {
-		return nil, errors.Errorf("PVC{%s} does not exist", pvc.Name)
-	}
-
-	if rpvc.Status.Phase == v1.ClaimLost {
-		p.Log.Errorf("PVC{%s} is not bound yet!", rpvc.Name)
-		panic(errors.Errorf("PVC{%s} is not bound yet", rpvc.Name))
-	} else {
-		return &Volume{
-			volname:   rpvc.Spec.VolumeName,
-			namespace: rpvc.Namespace,
-			casType:   *rpvc.Spec.StorageClassName,
-		}, nil
-	}
-}
-
-// checkBackupStatus queries MayaAPI server for given backup status
-// and wait until backup completes
-func (p *Plugin) checkBackupStatus(bkp *v1alpha1.CStorBackup) {
-	var bkpdone bool
-	url := p.mayaAddr + backupEndpoint
-	bkpvolume, exists := p.volumes[bkp.Spec.VolumeName]
-
-	if !exists {
-		p.Log.Errorf("Failed to fetch volume info for {%s}", bkp.Spec.VolumeName)
-		panic(errors.Errorf("Failed to fetch volume info for {%s}", bkp.Spec.VolumeName))
-	}
-
-	bkpData, err := json.Marshal(bkp)
-	if err != nil {
-		p.Log.Errorf("JSON marshal failed : %s", err.Error())
-		panic(errors.Errorf("JSON marshal failed : %s", err.Error()))
-	}
-
-	for !bkpdone {
-		time.Sleep(backupStatusInterval * time.Second)
-		var bs v1alpha1.CStorBackup
-
-		resp, err := p.httpRestCall(url, "GET", bkpData)
-		if err != nil {
-			p.Log.Warnf("Failed to fetch backup status : %s", err.Error())
-			continue
-		}
-
-		err = json.Unmarshal(resp, &bs)
-		if err != nil {
-			p.Log.Warnf("Unmarshal failed : %s", err.Error())
-			continue
-		}
-
-		bkpvolume.backupStatus = bs.Status
-
-		switch bs.Status {
-		case v1alpha1.BKPCStorStatusDone, v1alpha1.BKPCStorStatusFailed, v1alpha1.BKPCStorStatusInvalid:
-			bkpdone = true
-			p.cl.ExitServer = true
-		}
-	}
-}
-
-// checkRestoreStatus queries MayaAPI server for given restore status
-// and wait until restore completes
-func (p *Plugin) checkRestoreStatus(rst *v1alpha1.CStorRestore, vol *Volume) {
-	var rstdone bool
-	url := p.mayaAddr + restorePath
-
-	rstData, err := json.Marshal(rst)
-	if err != nil {
-		p.Log.Errorf("JSON marshal failed : %s", err.Error())
-		panic(errors.Errorf("JSON marshal failed : %s", err.Error()))
-	}
-
-	for !rstdone {
-		time.Sleep(restoreStatusInterval * time.Second)
-		var rs v1alpha1.CStorRestore
-
-		resp, err := p.httpRestCall(url, "GET", rstData)
-		if err != nil {
-			p.Log.Warnf("Failed to fetch backup status : %s", err.Error())
-			continue
-		}
-
-		err = json.Unmarshal(resp, &rs.Status)
-		if err != nil {
-			p.Log.Warnf("Unmarshal failed : %s", err.Error())
-			continue
-		}
-
-		vol.restoreStatus = rs.Status
-
-		switch rs.Status {
-		case v1alpha1.RSTCStorStatusDone, v1alpha1.RSTCStorStatusFailed, v1alpha1.RSTCStorStatusInvalid:
-			rstdone = true
-			p.cl.ExitServer = true
-		}
-	}
 }
