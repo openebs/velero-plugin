@@ -23,7 +23,7 @@ BUILD_IMAGE ?= gcr.io/heptio-images/golang:1.9-alpine3.6
 
 # list only velero-plugin source code directories
 PACKAGES = $(shell go list ./... | grep -v 'vendor')
-
+TESTPKG:=./velero-blockstore-cstor/... ./pkg/... ./tests/...
 
 IMAGE ?= openebs/velero-plugin
 
@@ -104,6 +104,10 @@ golint:
 	@gometalinter.v1 --vendor --disable-all -E errcheck -E misspell ./...
 
 check: golint-travis format vet
+
+test:
+	echo ${TESTPKG}
+	CGO_ENABLED=0 go test -v ${TESTPKG}
 
 deploy-image:
 	@DIMAGE=${IMAGE} ./push
