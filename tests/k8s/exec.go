@@ -31,7 +31,7 @@ import (
 func (k *KubeClient) Exec(command, pod, container, ns string) (string, string, error) {
 	var stderr, stdout bytes.Buffer
 
-	req := k.Core().
+	req := k.CoreV1().
 		RESTClient().
 		Post().
 		Resource("pods").

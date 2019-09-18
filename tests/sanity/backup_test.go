@@ -33,9 +33,7 @@ import (
 const (
 	AppNs            = "litmus"
 	BackupLocation   = "default"
-	VeleroNamespace  = "velero"
 	SnapshotLocation = "default"
-	openebsNS        = "openebs"
 )
 
 func TestVELERO(t *testing.T) {
