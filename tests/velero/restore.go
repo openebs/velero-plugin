@@ -17,6 +17,7 @@ limitations under the License.
 package sanity
 
 import (
+	"fmt"
 	"sort"
 	"time"
 
@@ -136,6 +137,7 @@ func (c *ClientSet) waitForRestoreCompletion(rst string) (v1.RestorePhase, error
 		if isRestoreDone(rst) {
 			return rst.Status.Phase, nil
 		}
+		fmt.Printf("Waiting for restore %s completion..\n", rst.Name)
 		time.Sleep(5 * time.Second)
 	}
 }

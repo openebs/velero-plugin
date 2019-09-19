@@ -17,6 +17,7 @@ limitations under the License.
 package sanity
 
 import (
+	"fmt"
 	"time"
 
 	v1 "github.com/heptio/velero/pkg/apis/velero/v1"
@@ -78,7 +79,6 @@ func (c *ClientSet) CreateSchedule(ns, period string, count int) (string, v1.Bac
 	if count < 0 {
 		return o.Name, status, nil
 	}
-	println("starting to wait")
 	if status, err = c.waitForScheduleCompletion(o.Name, count); err == nil {
 		return o.Name, status, nil
 	}
@@ -106,6 +106,7 @@ func (c *ClientSet) waitForScheduleCompletion(name string, count int) (v1.Backup
 				bcount++
 			}
 		}
+		fmt.Printf("Waiting for schedule %s completion completed Backup:%d/%d\n", name, bcount, count)
 		time.Sleep(5 * time.Second)
 	}
 	return v1.BackupPhaseCompleted, nil

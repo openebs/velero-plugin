@@ -17,6 +17,7 @@ limitations under the License.
 package sanity
 
 import (
+	"fmt"
 	"math/rand"
 	"time"
 
@@ -133,6 +134,7 @@ func (c *ClientSet) waitForBackupCompletion(name string) (v1.BackupPhase, error)
 		if isBackupDone(bkp) {
 			return bkp.Status.Phase, nil
 		}
+		fmt.Printf("Waiting for backup %s completion..\n", name)
 		time.Sleep(5 * time.Second)
 	}
 }

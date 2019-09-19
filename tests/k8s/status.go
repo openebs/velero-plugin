@@ -65,7 +65,7 @@ func (k *KubeClient) WaitForDeployment(labelSelector, ns string) error {
 		if err != nil {
 			return err
 		} else if len(deploymentList.Items) == 0 {
-			fmt.Printf("Deployment for %s/%s is not availabel..", ns, labelSelector)
+			fmt.Printf("Deployment for %s/%s is not availabel..\n", ns, labelSelector)
 			time.Sleep(2 * time.Second)
 			continue
 		}
@@ -89,6 +89,7 @@ func (k *KubeClient) WaitForDeployment(labelSelector, ns string) error {
 		if ready {
 			return nil
 		}
+		fmt.Printf("Waiting for deployment for %s/%s to be ready..", ns, labelSelector)
 		time.Sleep(5 * time.Second)
 	}
 }
@@ -121,6 +122,7 @@ func (k *KubeClient) WaitForDeploymentCleanup(labelSelector, ns string) error {
 		} else if len(deploymentList.Items) == 0 {
 			return nil
 		}
+		fmt.Printf("Waiting for cleanup of deployment %s/%s..\n", ns, labelSelector)
 		time.Sleep(5 * time.Second)
 	}
 

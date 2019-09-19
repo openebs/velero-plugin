@@ -17,8 +17,8 @@ limitations under the License.
 package app
 
 const (
-	// BusyboxYAML for busybox application
-	BusyboxYAML = `apiVersion: v1
+	// BusyboxYaml for busybox application
+	BusyboxYaml = `apiVersion: v1
 kind: Pod
 metadata:
   name: busybox-cstor

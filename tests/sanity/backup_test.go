@@ -31,7 +31,7 @@ import (
 )
 
 const (
-	AppNs            = "litmus"
+	AppNs            = "test"
 	BackupLocation   = "default"
 	SnapshotLocation = "default"
 )
@@ -60,7 +60,7 @@ var _ = BeforeSuite(func() {
 	err = openebs.Client.CreateVolume(openebs.PVCYaml, AppNs, true)
 	Expect(err).NotTo(HaveOccurred())
 
-	err = app.DeployApplication(app.BusyboxYAML, AppNs)
+	err = app.DeployApplication(app.BusyboxYaml, AppNs)
 	Expect(err).NotTo(HaveOccurred())
 
 	velero.BackupLocation = BackupLocation
@@ -94,7 +94,7 @@ var _ = Describe("Backup/Restore Test", func() {
 	Context("Restore Test", func() {
 		BeforeEach(func() {
 			By("Destroying Application and Volume")
-			err = app.DestroyApplication(app.BusyboxYAML, AppNs)
+			err = app.DestroyApplication(app.BusyboxYaml, AppNs)
 			Expect(err).NotTo(HaveOccurred())
 			err = openebs.Client.DeleteVolume(openebs.PVCYaml, AppNs)
 			Expect(err).NotTo(HaveOccurred())

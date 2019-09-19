@@ -1,5 +1,5 @@
 sudo: required
-dist: trusty
+dist: xenial
 services:
   - docker
 language: go
@@ -22,8 +22,7 @@ before_script:
   - mkdir -p $HOME/.kube $HOME/.minikube
   # Start minukube server
   - sudo minikube start --vm-driver=none --kubernetes-version=v1.13.0
-  - sudo cp -a /root/.kube $HOME
-  - sudo chown -R $USER $HOME/.kube /root/.minikube
+  - sudo chown -R $USER $HOME/.kube $HOME/.minikube
   - JSONPATH='{range .items[*]}{@.metadata.name}:{range @.status.conditions[*]}{@.type}={@.status};{end}{end}'; until kubectl get nodes -o jsonpath="$JSONPATH" 2>&1 | grep -q "Ready=True"; do sleep 1; done
 script:
   - make check
@@ -42,7 +41,7 @@ script:
     fi
   - ./script/install-openebs.sh
   - ./script/install-velero.sh
-  - make test
+  - travis_wait make test
 after_success:
   - make deploy-image
 notifications:

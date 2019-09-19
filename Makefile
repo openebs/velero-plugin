@@ -23,7 +23,6 @@ BUILD_IMAGE ?= gcr.io/heptio-images/golang:1.9-alpine3.6
 
 # list only velero-plugin source code directories
 PACKAGES = $(shell go list ./... | grep -v 'vendor')
-TESTPKG:=./velero-blockstore-cstor/... ./pkg/... ./tests/...
 
 IMAGE ?= openebs/velero-plugin
 
@@ -88,11 +87,7 @@ bootstrap:
 	done
 
 vet:
-	go vet \
-		./velero-blockstore-cstor	\
-		./pkg/clouduploader	\
-		./pkg/cstor	\
-		./pkg/snapshot
+	go vet ${PACKAGES}
 
 # Target to run gometalinter in Travis (deadcode, golint, errcheck, unconvert, goconst)
 golint-travis:
@@ -106,8 +101,7 @@ golint:
 check: golint-travis format vet
 
 test:
-	echo ${TESTPKG}
-	CGO_ENABLED=0 go test -v ${TESTPKG}
+	CGO_ENABLED=0 go test -v ${PACKAGES} -timeout 20m
 
 deploy-image:
 	@DIMAGE=${IMAGE} ./push
