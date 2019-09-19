@@ -77,6 +77,7 @@ func (c *ClientSet) CreateSPC(spcYAML string) error {
 		if !k8serrors.IsAlreadyExists(err) {
 			return err
 		}
+		SPCName = spc.Name
 		return nil
 	}
 

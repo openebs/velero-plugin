@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package sanity
+package velero
 
 import (
 	"fmt"
@@ -126,6 +126,7 @@ func (c *ClientSet) CreateBackup(ns string) (string, v1.BackupPhase, error) {
 }
 
 func (c *ClientSet) waitForBackupCompletion(name string) (v1.BackupPhase, error) {
+	dumpLog := 0
 	for {
 		bkp, err := c.getBackup(name)
 		if err != nil {
@@ -134,7 +135,11 @@ func (c *ClientSet) waitForBackupCompletion(name string) (v1.BackupPhase, error)
 		if isBackupDone(bkp) {
 			return bkp.Status.Phase, nil
 		}
-		fmt.Printf("Waiting for backup %s completion..\n", name)
+		if dumpLog > 6 {
+			fmt.Printf("Waiting for backup %s completion..\n", name)
+			dumpLog = 0
+		}
+		dumpLog++
 		time.Sleep(5 * time.Second)
 	}
 }

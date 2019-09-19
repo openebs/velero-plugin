@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package sanity
+package velero
 
 import v1 "github.com/heptio/velero/pkg/apis/velero/v1"
 

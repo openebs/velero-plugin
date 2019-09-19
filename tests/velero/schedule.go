@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package sanity
+package velero
 
 import (
 	"fmt"
@@ -84,6 +84,7 @@ func (c *ClientSet) CreateSchedule(ns, period string, count int) (string, v1.Bac
 }
 
 func (c *ClientSet) waitForScheduleCompletion(name string, count int) (v1.BackupPhase, error) {
+	dumpLog := 0
 	for bcount := 0; bcount < count; {
 		olist, err := c.VeleroV1().
 			Backups(VeleroNamespace).
@@ -104,7 +105,11 @@ func (c *ClientSet) waitForScheduleCompletion(name string, count int) (v1.Backup
 				bcount++
 			}
 		}
-		fmt.Printf("Waiting for schedule %s completion completed Backup:%d/%d\n", name, bcount, count)
+		if dumpLog > 6 {
+			fmt.Printf("Waiting for schedule %s completion completed Backup:%d/%d\n", name, bcount, count)
+			dumpLog = 0
+		}
+		dumpLog++
 		time.Sleep(5 * time.Second)
 	}
 	return v1.BackupPhaseCompleted, nil

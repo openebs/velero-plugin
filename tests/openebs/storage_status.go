@@ -32,9 +32,12 @@ const (
 	cVRLabel           = "cstorpool.openebs.io/uid"
 	cstorID            = "OPENEBS_IO_CSTOR_ID"
 	cstorPoolContainer = "cstor-pool"
+	// CVRMaxRetry count to check CVR updated state
+	CVRMaxRetry = 5
 )
 
 func (c *ClientSet) waitForHealthyCVR(pvc *v1.PersistentVolumeClaim) error {
+	dumpLog := 0
 	for {
 		if healthy := c.CheckCVRStatus(pvc.Name,
 			pvc.Namespace,
@@ -42,7 +45,11 @@ func (c *ClientSet) waitForHealthyCVR(pvc *v1.PersistentVolumeClaim) error {
 			break
 		}
 		time.Sleep(5 * time.Second)
-		fmt.Printf("Waiting for %s/%s's CVR\n", pvc.Namespace, pvc.Name)
+		if dumpLog > 6 {
+			fmt.Printf("Waiting for %s/%s's CVR\n", pvc.Namespace, pvc.Name)
+			dumpLog = 0
+		}
+		dumpLog++
 	}
 	return nil
 }
@@ -51,20 +58,27 @@ func (c *ClientSet) waitForHealthyCVR(pvc *v1.PersistentVolumeClaim) error {
 func (c *ClientSet) CheckCVRStatus(pvc, ns string, status v1alpha1.CStorVolumeReplicaPhase) bool {
 	var match bool
 
-	cvrlist, err := c.getPVCCVRList(pvc, ns)
-	if err != nil {
-		return match
-	}
+	for i := 0; i < CVRMaxRetry; i++ {
+		cvrlist, err := c.getPVCCVRList(pvc, ns)
+		if err != nil {
+			return match
+		}
 
-	if len(cvrlist.Items) == 0 {
-		return match
-	}
-
-	match = true
-	for _, v := range cvrlist.Items {
-		if v.Status.Phase != status {
+		match = true
+		if len(cvrlist.Items) == 0 {
 			match = false
 		}
+
+		for _, v := range cvrlist.Items {
+			if v.Status.Phase != status {
+				match = false
+			}
+		}
+
+		if match {
+			break
+		}
+		time.Sleep(5 * time.Second)
 	}
 
 	return match
@@ -108,6 +122,9 @@ func (c *ClientSet) CheckSnapshot(pvc, pvcNs, snapshot string) (bool, error) {
 		return availabel, err
 	}
 
+	if len(podList.Items) == 0 {
+		return availabel, errors.Errorf("No cStor Pod for %s/%s", OpenEBSNs, SPCName)
+	}
 	cvrlist, err := c.getPVCCVRList(PVCName, pvcNs)
 	if err != nil {
 		return availabel, err

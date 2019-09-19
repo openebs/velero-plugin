@@ -55,7 +55,7 @@ func (k *KubeClient) waitForPVCBound(pvc, ns string) (v1.PersistentVolumeClaimPh
 // WaitForDeployment wait for deployment having given labelSelector and namespace to be ready
 func (k *KubeClient) WaitForDeployment(labelSelector, ns string) error {
 	var ready bool
-
+	dumpLog := 0
 	for {
 		deploymentList, err := k.ExtensionsV1beta1().
 			Deployments(ns).
@@ -89,13 +89,18 @@ func (k *KubeClient) WaitForDeployment(labelSelector, ns string) error {
 		if ready {
 			return nil
 		}
-		fmt.Printf("Waiting for deployment for %s/%s to be ready..", ns, labelSelector)
+		if dumpLog > 6 {
+			fmt.Printf("Waiting for deployment for %s/%s to be ready..\n", ns, labelSelector)
+			dumpLog = 0
+		}
+		dumpLog++
 		time.Sleep(5 * time.Second)
 	}
 }
 
 // WaitForPod wait for given pod to become ready
 func (k *KubeClient) WaitForPod(podName, podNamespace string) error {
+	dumpLog := 0
 	for {
 		o, err := k.CoreV1().Pods(podNamespace).Get(podName, metav1.GetOptions{})
 		if err != nil {
@@ -105,12 +110,17 @@ func (k *KubeClient) WaitForPod(podName, podNamespace string) error {
 			return nil
 		}
 		time.Sleep(5 * time.Second)
-		fmt.Printf("checking for pod %s/%s\n", podNamespace, podName)
+		if dumpLog > 6 {
+			fmt.Printf("checking for pod %s/%s\n", podNamespace, podName)
+			dumpLog = 0
+		}
+		dumpLog++
 	}
 }
 
 // WaitForDeploymentCleanup wait for cleanup of deployment having given labelSelector and namespace
 func (k *KubeClient) WaitForDeploymentCleanup(labelSelector, ns string) error {
+	dumpLog := 0
 	for {
 		deploymentList, err := k.ExtensionsV1beta1().
 			Deployments(ns).
@@ -122,7 +132,11 @@ func (k *KubeClient) WaitForDeploymentCleanup(labelSelector, ns string) error {
 		} else if len(deploymentList.Items) == 0 {
 			return nil
 		}
-		fmt.Printf("Waiting for cleanup of deployment %s/%s..\n", ns, labelSelector)
+		if dumpLog > 6 {
+			fmt.Printf("Waiting for cleanup of deployment %s/%s..\n", ns, labelSelector)
+			dumpLog = 0
+		}
+		dumpLog++
 		time.Sleep(5 * time.Second)
 	}
 

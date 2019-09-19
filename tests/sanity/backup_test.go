@@ -33,7 +33,7 @@ import (
 const (
 	AppNs            = "test"
 	BackupLocation   = "default"
-	SnapshotLocation = "default"
+	SnapshotLocation = "gcp-default"
 )
 
 func TestVELERO(t *testing.T) {
@@ -73,6 +73,9 @@ var _ = Describe("Backup/Restore Test", func() {
 			var status v1.BackupPhase
 			By("Creating a backup")
 			backupName, status, err = velero.Client.CreateBackup(AppNs)
+			if err != nil && len(backupName) != 0 {
+				velero.Client.DumpBackupLogs(backupName)
+			}
 			Expect(err).NotTo(HaveOccurred())
 			Expect(status).To(Equal(v1.BackupPhaseCompleted))
 		})
@@ -107,6 +110,15 @@ var _ = Describe("Backup/Restore Test", func() {
 			status, err = velero.Client.CreateRestore(AppNs, backupName)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(status).To(Equal(v1.RestorePhaseCompleted))
+
+			By("Checking if restored PVC is bound or not")
+			phase, err := k8s.Client.GetPVCPhase(app.PVCName, AppNs)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(phase).To(Equal(corev1.ClaimBound))
+
+			By("Checking if restored CVR are in error state")
+			ok := openebs.Client.CheckCVRStatus(app.PVCName, AppNs, v1alpha1.CVRStatusError)
+			Expect(ok).To(BeTrue())
 		})
 
 		It("Restore from scheduled backup Test 1", func() {

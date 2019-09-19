@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package sanity
+package velero
 
 import (
 	"fmt"
@@ -129,6 +129,7 @@ func (c *ClientSet) CreateRestore(ns, backup string) (v1.RestorePhase, error) {
 }
 
 func (c *ClientSet) waitForRestoreCompletion(rst string) (v1.RestorePhase, error) {
+	dumpLog := 0
 	for {
 		rst, err := c.getRestore(rst)
 		if err != nil {
@@ -137,7 +138,11 @@ func (c *ClientSet) waitForRestoreCompletion(rst string) (v1.RestorePhase, error
 		if isRestoreDone(rst) {
 			return rst.Status.Phase, nil
 		}
-		fmt.Printf("Waiting for restore %s completion..\n", rst.Name)
+		if dumpLog > 6 {
+			fmt.Printf("Waiting for restore %s completion..\n", rst.Name)
+			dumpLog = 0
+		}
+		dumpLog++
 		time.Sleep(5 * time.Second)
 	}
 }
