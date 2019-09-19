@@ -32,13 +32,12 @@ func (c *ClientSet) generateScheduleName() (string, error) {
 		if len(b) == 0 {
 			continue
 		}
-		o, err := c.VeleroV1().
+		_, err := c.VeleroV1().
 			Schedules(VeleroNamespace).
 			Get(b, metav1.GetOptions{})
 		if err != nil && k8serrors.IsNotFound(err) {
 			return b, nil
 		}
-		println(o)
 	}
 	return "", errors.New("Failed to generate unique backup name")
 }
@@ -71,7 +70,6 @@ func (c *ClientSet) CreateSchedule(ns, period string, count int) (string, v1.Bac
 	o, err := c.VeleroV1().
 		Schedules(VeleroNamespace).
 		Create(sched)
-	println(err)
 	if err != nil {
 		return "", status, err
 	}
@@ -114,9 +112,7 @@ func (c *ClientSet) waitForScheduleCompletion(name string, count int) (v1.Backup
 
 // DeleteSchedule delete given schedule
 func (c *ClientSet) DeleteSchedule(schedule string) error {
-	err := c.VeleroV1().
+	return c.VeleroV1().
 		Schedules(VeleroNamespace).
 		Delete(schedule, &metav1.DeleteOptions{})
-	println(err)
-	return err
 }
