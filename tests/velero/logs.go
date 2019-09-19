@@ -26,8 +26,6 @@ import (
 
 // DumpBackupLogs dump logs of given backup on stdout
 func (c *ClientSet) DumpBackupLogs(backupName string) error {
-	backupName = "kasnsssw"
-
 	return log.Stream(c.VeleroV1(),
 		VeleroNamespace,
 		backupName,

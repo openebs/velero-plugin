@@ -33,7 +33,7 @@ import (
 const (
 	AppNs            = "test"
 	BackupLocation   = "default"
-	SnapshotLocation = "gcp-default"
+	SnapshotLocation = "default"
 )
 
 func TestVELERO(t *testing.T) {
@@ -74,7 +74,7 @@ var _ = Describe("Backup/Restore Test", func() {
 			By("Creating a backup")
 			backupName, status, err = velero.Client.CreateBackup(AppNs)
 			if err != nil && len(backupName) != 0 {
-				velero.Client.DumpBackupLogs(backupName)
+				_ = velero.Client.DumpBackupLogs(backupName)
 			}
 			Expect(err).NotTo(HaveOccurred())
 			Expect(status).To(Equal(v1.BackupPhaseCompleted))
