@@ -99,6 +99,7 @@ func (c *ClientSet) waitForScheduleCompletion(name string, count int) (v1.Backup
 			bkp := bkp
 			if isBackupDone(&bkp) {
 				if bkp.Status.Phase != v1.BackupPhaseCompleted {
+					_ = c.DumpBackupLogs(bkp.Name)
 					return bkp.Status.Phase,
 						errors.Errorf("Backup{%s} failed.. %s", bkp.Name, bkp.Status.Phase)
 				}

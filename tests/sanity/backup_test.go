@@ -73,7 +73,8 @@ var _ = Describe("Backup/Restore Test", func() {
 			var status v1.BackupPhase
 			By("Creating a backup")
 			backupName, status, err = velero.Client.CreateBackup(AppNs)
-			if err != nil && len(backupName) != 0 {
+			if ((err != nil) || status != v1.BackupPhaseCompleted) &&
+				len(backupName) != 0 {
 				_ = velero.Client.DumpBackupLogs(backupName)
 			}
 			Expect(err).NotTo(HaveOccurred())
