@@ -141,3 +141,10 @@ func (k *KubeClient) WaitForDeploymentCleanup(labelSelector, ns string) error {
 	}
 
 }
+
+// GetPodList return list of pod for given label and namespace
+func (k *KubeClient) GetPodList(ns, label string) (*corev1.PodList, error) {
+	return k.CoreV1().Pods(ns).List(metav1.ListOptions{
+		LabelSelector: label,
+	})
+}

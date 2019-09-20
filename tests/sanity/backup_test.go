@@ -76,6 +76,7 @@ var _ = Describe("Backup/Restore Test", func() {
 			if ((err != nil) || status != v1.BackupPhaseCompleted) &&
 				len(backupName) != 0 {
 				_ = velero.Client.DumpBackupLogs(backupName)
+				_ = openebs.Client.DumpLogs()
 			}
 			Expect(err).NotTo(HaveOccurred())
 			Expect(status).To(Equal(v1.BackupPhaseCompleted))
