@@ -72,6 +72,10 @@ var _ = Describe("Backup/Restore Test", func() {
 		It("Backup Test 1", func() {
 			var status v1.BackupPhase
 			By("Creating a backup")
+
+			err = openebs.Client.WaitForHealthyCVR(openebs.AppPVC)
+			Expect(err).NotTo(HaveOccurred())
+
 			backupName, status, err = velero.Client.CreateBackup(AppNs)
 			if ((err != nil) || status != v1.BackupPhaseCompleted) &&
 				len(backupName) != 0 {

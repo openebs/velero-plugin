@@ -36,7 +36,8 @@ const (
 	CVRMaxRetry = 5
 )
 
-func (c *ClientSet) waitForHealthyCVR(pvc *v1.PersistentVolumeClaim) error {
+// WaitForHealthyCVR wait till CVR for given PVC becomes healthy
+func (c *ClientSet) WaitForHealthyCVR(pvc *v1.PersistentVolumeClaim) error {
 	dumpLog := 0
 	for {
 		if healthy := c.CheckCVRStatus(pvc.Name,
