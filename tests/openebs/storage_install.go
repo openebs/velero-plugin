@@ -110,7 +110,7 @@ func (c *ClientSet) CreateVolume(pvcYAML, pvcNs string, wait bool) error {
 	if wait {
 		err = c.WaitForHealthyCVR(&pvc)
 	}
-	if err != nil {
+	if err == nil {
 		AppPVC = &pvc
 	}
 	return err
