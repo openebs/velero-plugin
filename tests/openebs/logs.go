@@ -17,8 +17,6 @@ limitations under the License.
 package openebs
 
 import (
-	"fmt"
-
 	k8s "github.com/openebs/velero-plugin/tests/k8s"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -91,7 +89,6 @@ func getPodContainerList(podList *corev1.PodList) [][]string {
 	for _, p := range podList.Items {
 		for _, c := range p.Spec.Containers {
 			pod = append(pod, []string{p.Name, c.Name})
-			fmt.Println(c.Name)
 		}
 	}
 	return pod

@@ -18,6 +18,7 @@ package sanity
 
 import (
 	"testing"
+	"time"
 
 	v1 "github.com/heptio/velero/pkg/apis/velero/v1"
 	. "github.com/onsi/ginkgo"
@@ -75,6 +76,8 @@ var _ = Describe("Backup/Restore Test", func() {
 
 			err = openebs.Client.WaitForHealthyCVR(openebs.AppPVC)
 			Expect(err).NotTo(HaveOccurred())
+			// There are chances that istgt is not updated, but replica is healthy
+			time.Sleep(30 * time.Second)
 
 			backupName, status, err = velero.Client.CreateBackup(AppNs)
 			if ((err != nil) || status != v1.BackupPhaseCompleted) &&
