@@ -26,12 +26,14 @@ import (
 const (
 	mayaAPIPodLabel = "openebs.io/component-name=maya-apiserver"
 	cstorPodLabel   = "app=cstor-pool"
+	pvcPodLabel     = "openebs.io/target=cstor-target"
 )
 
 // DumpLogs will dump openebs logs
 func (c *ClientSet) DumpLogs() error {
 	mayaPod := c.getMayaAPIServerPodName()
 	spcPod := c.getSPCPodName()
+	pvcPod := c.getPVCPodName()
 
 	for _, v := range mayaPod {
 		_ = k8s.Client.DumpLogs(OpenEBSNs, v[0], v[1])
@@ -39,6 +41,10 @@ func (c *ClientSet) DumpLogs() error {
 	for _, v := range spcPod {
 		_ = k8s.Client.DumpLogs(OpenEBSNs, v[0], v[1])
 	}
+	for _, v := range pvcPod {
+		_ = k8s.Client.DumpLogs(OpenEBSNs, v[0], v[1])
+	}
+
 	return nil
 }
 
@@ -59,6 +65,18 @@ func (c *ClientSet) getMayaAPIServerPodName() [][]string {
 func (c *ClientSet) getSPCPodName() [][]string {
 	podList, err := k8s.Client.GetPodList(OpenEBSNs,
 		cstorPodLabel,
+	)
+	if err != nil {
+		return [][]string{}
+	}
+	return getPodContainerList(podList)
+}
+
+// getPVCPodName return PVC pod name and container
+// {{"pod1","container1"},{"pod2","container2"},}
+func (c *ClientSet) getPVCPodName() [][]string {
+	podList, err := k8s.Client.GetPodList(OpenEBSNs,
+		pvcPodLabel,
 	)
 	if err != nil {
 		return [][]string{}
