@@ -17,8 +17,6 @@ limitations under the License.
 package openebs
 
 import (
-	"fmt"
-
 	k8s "github.com/openebs/velero-plugin/tests/k8s"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -26,12 +24,14 @@ import (
 const (
 	mayaAPIPodLabel = "openebs.io/component-name=maya-apiserver"
 	cstorPodLabel   = "app=cstor-pool"
+	pvcPodLabel     = "openebs.io/target=cstor-target"
 )
 
 // DumpLogs will dump openebs logs
 func (c *ClientSet) DumpLogs() error {
 	mayaPod := c.getMayaAPIServerPodName()
 	spcPod := c.getSPCPodName()
+	pvcPod := c.getPVCPodName()
 
 	for _, v := range mayaPod {
 		_ = k8s.Client.DumpLogs(OpenEBSNs, v[0], v[1])
@@ -39,6 +39,10 @@ func (c *ClientSet) DumpLogs() error {
 	for _, v := range spcPod {
 		_ = k8s.Client.DumpLogs(OpenEBSNs, v[0], v[1])
 	}
+	for _, v := range pvcPod {
+		_ = k8s.Client.DumpLogs(OpenEBSNs, v[0], v[1])
+	}
+
 	return nil
 }
 
@@ -66,6 +70,18 @@ func (c *ClientSet) getSPCPodName() [][]string {
 	return getPodContainerList(podList)
 }
 
+// getPVCPodName return PVC pod name and container
+// {{"pod1","container1"},{"pod2","container2"},}
+func (c *ClientSet) getPVCPodName() [][]string {
+	podList, err := k8s.Client.GetPodList(OpenEBSNs,
+		pvcPodLabel,
+	)
+	if err != nil {
+		return [][]string{}
+	}
+	return getPodContainerList(podList)
+}
+
 // returns {{"pod1","container1"},{"pod2","container2"},}
 func getPodContainerList(podList *corev1.PodList) [][]string {
 	pod := make([][]string, 0)
@@ -73,7 +89,6 @@ func getPodContainerList(podList *corev1.PodList) [][]string {
 	for _, p := range podList.Items {
 		for _, c := range p.Spec.Containers {
 			pod = append(pod, []string{p.Name, c.Name})
-			fmt.Println(c.Name)
 		}
 	}
 	return pod

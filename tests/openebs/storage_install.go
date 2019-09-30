@@ -42,6 +42,9 @@ var (
 
 	// PVCName for PVC
 	PVCName string
+
+	// AppPVC created by openebs
+	AppPVC *corev1.PersistentVolumeClaim
 )
 
 const (
@@ -105,7 +108,10 @@ func (c *ClientSet) CreateVolume(pvcYAML, pvcNs string, wait bool) error {
 	time.Sleep(5 * time.Second)
 	PVCName = pvc.Name
 	if wait {
-		err = c.waitForHealthyCVR(&pvc)
+		err = c.WaitForHealthyCVR(&pvc)
+	}
+	if err == nil {
+		AppPVC = &pvc
 	}
 	return err
 }
