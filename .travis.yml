@@ -33,7 +33,8 @@ script:
     vR=`echo $TRAVIS_BRANCH |awk -F 'velero_'  '{print $2}'`
     if [ -z $TRAVIS_BRANCH ] || [ $TRAVIS_BRANCH == "master" ] || [ -z $vR ]; then
       export VELERO_RELEASE=v1.0.0
-      export OPENEBS_RELEASE="1.1.0"
+      # In travis we use openebs operator from openebs/openebs:master only.
+      export OPENEBS_RELEASE="master"
     else
       export VELERO_RELEASE=v${vR}
       oR=`echo $TRAVIS_BRANCH |awk -F '-' '{print $1}'`
