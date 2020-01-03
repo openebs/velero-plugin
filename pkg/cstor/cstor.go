@@ -35,6 +35,7 @@ import (
 	openebs "github.com/openebs/maya/pkg/client/generated/clientset/versioned"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -124,6 +125,14 @@ type Volume struct {
 
 	//restoreStatus is restore progress status for given volume
 	restoreStatus v1alpha1.CStorRestoreStatus
+
+	//size is volume size in string
+	size resource.Quantity
+
+	//storageClass is volume's storageclass
+	storageClass string
+
+	iscsi v1.ISCSIPersistentVolumeSource
 }
 
 func (p *Plugin) getServerAddress() string {
@@ -226,9 +235,9 @@ func (p *Plugin) GetVolumeID(unstructuredPV runtime.Unstructured) (string, error
 
 	if _, exists := p.volumes[pv.Name]; !exists {
 		p.volumes[pv.Name] = &Volume{
-			volname:   pv.Name,
-			casType:   pv.Spec.StorageClassName,
-			namespace: pv.Spec.ClaimRef.Namespace,
+			volname:      pv.Name,
+			storageClass: pv.Spec.StorageClassName,
+			namespace:    pv.Spec.ClaimRef.Namespace,
 		}
 	}
 
@@ -401,7 +410,7 @@ func (p *Plugin) getSnapInfo(snapshotID string) (*Snapshot, error) {
 		PersistentVolumes().
 		Get(snapshotID, metav1.GetOptions{})
 	if err != nil {
-		return nil, errors.Errorf("Error fetching namespaces for volume{%s} : %s", volumeID, err.Error())
+		return nil, errors.Errorf("Error fetching volume{%s} : %s", volumeID, err.Error())
 	}
 
 	if pv.Spec.ClaimRef.Namespace == "" {
@@ -429,24 +438,22 @@ func (p *Plugin) CreateVolumeFromSnapshot(snapshotID, volumeType, volumeAZ strin
 
 	p.Log.Infof("Restoring snapshot{%s} for volume:%s", snapName, volumeID)
 
-	newVol, e := p.createPVC(volumeID, snapName)
-	if e != nil {
-		return "", errors.Errorf("Failed to restore PVC.. %s", e)
-	}
-
-	p.Log.Infof("New volume(%v) created", newVol)
-
-	restoreSpec := &v1alpha1.CStorRestoreSpec{
-		RestoreName: newVol.backupName,
-		VolumeName:  newVol.volname,
-		RestoreSrc:  p.cstorServerAddr,
+	newVol, err := p.getVolInfo(volumeID, snapName)
+	if err != nil {
+		return "", errors.Wrapf(err, "Failed to read PVC")
 	}
 
 	restore := &v1alpha1.CStorRestore{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: newVol.namespace,
+			Namespace: p.namespace,
 		},
-		Spec: *restoreSpec,
+		Spec: v1alpha1.CStorRestoreSpec{
+			RestoreName:  newVol.backupName,
+			VolumeName:   newVol.volname,
+			RestoreSrc:   p.cstorServerAddr,
+			StorageClass: newVol.storageClass,
+			Size:         newVol.size,
+		},
 	}
 
 	url := p.mayaAddr + restorePath
@@ -457,9 +464,16 @@ func (p *Plugin) CreateVolumeFromSnapshot(snapshotID, volumeType, volumeAZ strin
 		return "", err
 	}
 
-	if _, err := p.httpRestCall(url, "POST", restoreData); err != nil {
+	data, err := p.httpRestCall(url, "POST", restoreData)
+	if err != nil {
 		p.Log.Errorf("Error executing REST api : %s", err.Error())
 		return "", errors.Errorf("Error executing REST api for restore : %s", err.Error())
+	}
+
+	err = p.updateVolCASInfo(data, newVol.volname)
+	if err != nil {
+		p.Log.Errorf("Failed to parse response : %v", err)
+		return "", errors.Errorf("Error parsing response : %s", err)
 	}
 
 	filename := p.cl.GenerateRemoteFilename(volumeID, snapName)
@@ -497,7 +511,10 @@ func (p *Plugin) SetVolumeID(unstructuredPV runtime.Unstructured, volumeID strin
 		return nil, errors.WithStack(err)
 	}
 
-	pv.Name = volumeID
+	vol := p.volumes[volumeID]
+	pv.Spec.PersistentVolumeSource = v1.PersistentVolumeSource{
+		ISCSI: &vol.iscsi,
+	}
 
 	res, err := runtime.DefaultUnstructuredConverter.ToUnstructured(pv)
 	if err != nil {
@@ -505,4 +522,8 @@ func (p *Plugin) SetVolumeID(unstructuredPV runtime.Unstructured, volumeID strin
 	}
 
 	return &unstructured.Unstructured{Object: res}, nil
+}
+
+func (p *Plugin) getVolInfo(volumeID, snapName string) (*Volume, error) {
+	return p.getPVCInfo(volumeID, snapName)
 }

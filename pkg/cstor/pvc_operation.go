@@ -133,11 +133,12 @@ func (p *Plugin) createPVC(volumeID, snapName string) (*Volume, error) {
 		if pvc.Status.Phase == v1.ClaimBound {
 			p.Log.Infof("PVC(%v) created..", pvc.Name)
 			vol = &Volume{
-				volname:    pvc.Spec.VolumeName,
-				namespace:  pvc.Namespace,
-				backupName: snapName,
-				casType:    *pvc.Spec.StorageClassName,
+				volname:      pvc.Spec.VolumeName,
+				namespace:    pvc.Namespace,
+				backupName:   snapName,
+				storageClass: *pvc.Spec.StorageClassName,
 			}
+			p.volumes[vol.volname] = vol
 			break
 		}
 		time.Sleep(PVCCheckInterval)
@@ -151,6 +152,36 @@ func (p *Plugin) createPVC(volumeID, snapName string) (*Volume, error) {
 		return nil, err
 	}
 	return vol, nil
+}
+
+func (p *Plugin) getPVCInfo(volumeID, snapName string) (*Volume, error) {
+	pvc := &v1.PersistentVolumeClaim{}
+	var vol *Volume
+	var data []byte
+	var ok bool
+
+	filename := p.cl.GenerateRemoteFilename(volumeID, snapName)
+	if filename == "" {
+		return nil, errors.New("Error creating remote file name for pvc backup")
+	}
+
+	if data, ok = p.cl.Read(filename + ".pvc"); !ok {
+		return nil, errors.New("Failed to download PVC")
+	}
+
+	if err := json.Unmarshal(data, pvc); err != nil {
+		return nil, errors.New("Failed to decode pvc")
+	}
+
+	vol = &Volume{
+		volname:      volumeID,
+		backupName:   snapName,
+		storageClass: *pvc.Spec.StorageClassName,
+		size:         pvc.Spec.Resources.Requests[v1.ResourceStorage],
+	}
+	p.volumes[vol.volname] = vol
+	return vol, nil
+
 }
 
 // getVolumeFromPVC returns volume info for given PVC if PVC is in bound state
@@ -168,11 +199,11 @@ func (p *Plugin) getVolumeFromPVC(pvc v1.PersistentVolumeClaim) (*Volume, error)
 		panic(errors.Errorf("PVC{%s} is not bound yet", rpvc.Name))
 	} else {
 		vol := &Volume{
-			volname:   rpvc.Spec.VolumeName,
-			namespace: rpvc.Namespace,
-			casType:   *rpvc.Spec.StorageClassName,
+			volname:      rpvc.Spec.VolumeName,
+			namespace:    rpvc.Namespace,
+			storageClass: *rpvc.Spec.StorageClassName,
 		}
-
+		p.volumes[vol.volname] = vol
 		if err = p.waitForAllCVR(vol); err != nil {
 			return nil, err
 		}
