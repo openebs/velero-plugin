@@ -45,6 +45,9 @@ const (
 	// OpenEBS
 	OpenEBSVersionKey CASKey = "openebs.io/version"
 
+	// OpenEBSDisableReconcileKey is the label key decides to reconcile or not
+	OpenEBSDisableReconcileKey CASKey = "reconcile.openebs.io/disable"
+
 	// CASConfigKey is the key to fetch configurations w.r.t a CAS entity
 	CASConfigKey CASKey = "cas.openebs.io/config"
 
@@ -69,12 +72,25 @@ const (
 	// StorageClassKey is the key to fetch name of StorageClass
 	StorageClassKey CASKey = "openebs.io/storageclass"
 
+	// ConfigClassKey is the key to fetch name of CStorVolume ConfigClass
+	ConfigClassKey CASKey = "openebs.io/config-class"
+
 	// CASTypeKey is the key to fetch storage engine for the volume
 	CASTypeKey CASKey = "openebs.io/cas-type"
 
 	// StorageClassHeaderKey is the key to fetch name of StorageClass
 	// This key is present only in get request headers
 	StorageClassHeaderKey CASKey = "storageclass"
+
+	// PredecessorBDKey is the key to fetch the predecessor BD in case of
+	// block device replacement.
+	PredecessorBDKey = "openebs.io/bd-predecessor"
+
+	// PVCreatedByKey is key to fetch the details of pv creation in case of restore
+	PVCreatedByKey = "openebs.io/created-through"
+
+	// AnnPVCASVolKey is key to fetch the name of PV resources for cStor
+	AnnPVCASVolKey = "openebs.io/pv-resource-name"
 )
 
 // CASPlainKey represents a openebs key used either in resource annotation
