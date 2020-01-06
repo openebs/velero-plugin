@@ -134,6 +134,7 @@ func (p *Plugin) createPVC(volumeID, snapName string) (*Volume, error) {
 			p.Log.Infof("PVC(%v) created..", pvc.Name)
 			vol = &Volume{
 				volname:      pvc.Spec.VolumeName,
+				snapshotTag:  pvc.Spec.VolumeName,
 				namespace:    pvc.Namespace,
 				backupName:   snapName,
 				storageClass: *pvc.Spec.StorageClassName,
@@ -175,6 +176,7 @@ func (p *Plugin) getPVCInfo(volumeID, snapName string) (*Volume, error) {
 
 	vol = &Volume{
 		volname:      volumeID,
+		snapshotTag:  volumeID,
 		backupName:   snapName,
 		storageClass: *pvc.Spec.StorageClassName,
 		size:         pvc.Spec.Resources.Requests[v1.ResourceStorage],
@@ -200,6 +202,7 @@ func (p *Plugin) getVolumeFromPVC(pvc v1.PersistentVolumeClaim) (*Volume, error)
 	} else {
 		vol := &Volume{
 			volname:      rpvc.Spec.VolumeName,
+			snapshotTag:  rpvc.Spec.VolumeName,
 			namespace:    rpvc.Namespace,
 			storageClass: *rpvc.Spec.StorageClassName,
 		}

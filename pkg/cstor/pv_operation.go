@@ -3,9 +3,12 @@ package cstor
 import (
 	"encoding/json"
 
+	uuid "github.com/gofrs/uuid"
 	v1alpha1 "github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
+	apierror "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func (p *Plugin) updateVolCASInfo(data []byte, volumeID string) error {
@@ -28,4 +31,82 @@ func (p *Plugin) updateVolCASInfo(data []byte, volumeID string) error {
 		ReadOnly:     false,
 	}
 	return nil
+}
+
+func (p *Plugin) restoreVolumeFromCloud(vol *Volume) error {
+	p.cl.ExitServer = false
+	restore := &v1alpha1.CStorRestore{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: p.namespace,
+		},
+		Spec: v1alpha1.CStorRestoreSpec{
+			RestoreName:  vol.backupName,
+			VolumeName:   vol.volname,
+			RestoreSrc:   p.cstorServerAddr,
+			StorageClass: vol.storageClass,
+			Size:         vol.size,
+		},
+	}
+
+	url := p.mayaAddr + restorePath
+
+	restoreData, err := json.Marshal(restore)
+	if err != nil {
+		return err
+	}
+
+	data, err := p.httpRestCall(url, "POST", restoreData)
+	if err != nil {
+		return errors.Wrapf(err, "Error executing REST api for restore")
+	}
+
+	err = p.updateVolCASInfo(data, vol.volname)
+	if err != nil {
+		return errors.Wrapf(err, "Error parsing restore API response")
+	}
+
+	filename := p.cl.GenerateRemoteFilename(vol.snapshotTag, vol.backupName)
+	if filename == "" {
+		return errors.Errorf("Error creating remote file name for restore")
+	}
+
+	go p.checkRestoreStatus(restore, vol)
+
+	ret := p.cl.Download(filename)
+	if !ret {
+		return errors.New("Failed to restore snapshot")
+	}
+
+	if vol.restoreStatus != v1alpha1.RSTCStorStatusDone {
+		return errors.Errorf("Failed to restore.. status {%s}", vol.restoreStatus)
+	}
+
+	return nil
+}
+
+func (p *Plugin) generateRestorePVName(volumeID string) (string, error) {
+	pv, err := p.K8sClient.
+		CoreV1().
+		PersistentVolumes().
+		Get(volumeID, metav1.GetOptions{})
+	if err != nil {
+		if apierror.IsNotFound(err) {
+			return volumeID, nil
+		}
+		return "", errors.Wrapf(err, "Error checking if PV with same name exist")
+	}
+
+	if pv.Spec.ClaimRef == nil {
+		p.Log.Infof("PV %s is not claimed.. using the same PV for restore", volumeID)
+		return volumeID, nil
+	}
+
+	nuuid, err := uuid.NewV4()
+	if err != nil {
+		return "", errors.Wrapf(err, "Error generating uuid for PV rename")
+	}
+
+	oldVolumeID, volumeID := volumeID, "cstor-clone-"+nuuid.String()
+	p.Log.Infof("Renaming PV %s to %s", oldVolumeID, volumeID)
+	return volumeID, nil
 }

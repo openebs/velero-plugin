@@ -129,6 +129,9 @@ type Volume struct {
 	//size is volume size in string
 	size resource.Quantity
 
+	// snapshotTag is cloud snapshot file identifier.. It will be same as volname if PV is not getting renamed
+	snapshotTag string
+
 	//storageClass is volume's storageclass
 	storageClass string
 
@@ -236,6 +239,7 @@ func (p *Plugin) GetVolumeID(unstructuredPV runtime.Unstructured) (string, error
 	if _, exists := p.volumes[pv.Name]; !exists {
 		p.volumes[pv.Name] = &Volume{
 			volname:      pv.Name,
+			snapshotTag:  pv.Name,
 			storageClass: pv.Spec.StorageClassName,
 			namespace:    pv.Spec.ClaimRef.Namespace,
 		}
@@ -382,7 +386,7 @@ func (p *Plugin) CreateSnapshot(volumeID, volumeAZ string, tags map[string]strin
 	}
 
 	p.Log.Infof("Snapshot Successfully Created")
-	filename := p.cl.GenerateRemoteFilename(volumeID, vol.backupName)
+	filename := p.cl.GenerateRemoteFilename(vol.snapshotTag, vol.backupName)
 	if filename == "" {
 		return "", errors.Errorf("Error creating remote file name for backup")
 	}
@@ -408,15 +412,17 @@ func (p *Plugin) getSnapInfo(snapshotID string) (*Snapshot, error) {
 	pv, err := p.K8sClient.
 		CoreV1().
 		PersistentVolumes().
-		Get(snapshotID, metav1.GetOptions{})
+		Get(volumeID, metav1.GetOptions{})
 	if err != nil {
 		return nil, errors.Errorf("Error fetching volume{%s} : %s", volumeID, err.Error())
 	}
 
+	//TODO
 	if pv.Spec.ClaimRef.Namespace == "" {
 		return nil, errors.Errorf("No namespace in pv.spec.claimref for PV{%s}", snapshotID)
 
 	}
+
 	return &Snapshot{
 		volID:      volumeID,
 		backupName: bkpName,
@@ -427,7 +433,6 @@ func (p *Plugin) getSnapInfo(snapshotID string) (*Snapshot, error) {
 // CreateVolumeFromSnapshot create CStor volume for given
 // snapshotID and perform restore operation on it
 func (p *Plugin) CreateVolumeFromSnapshot(snapshotID, volumeType, volumeAZ string, iops *int64) (string, error) {
-	p.cl.ExitServer = false
 	if volumeType != "cstor-snapshot" {
 		return "", errors.Errorf("Invalid volume type{%s}", volumeType)
 	}
@@ -443,51 +448,10 @@ func (p *Plugin) CreateVolumeFromSnapshot(snapshotID, volumeType, volumeAZ strin
 		return "", errors.Wrapf(err, "Failed to read PVC")
 	}
 
-	restore := &v1alpha1.CStorRestore{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: p.namespace,
-		},
-		Spec: v1alpha1.CStorRestoreSpec{
-			RestoreName:  newVol.backupName,
-			VolumeName:   newVol.volname,
-			RestoreSrc:   p.cstorServerAddr,
-			StorageClass: newVol.storageClass,
-			Size:         newVol.size,
-		},
-	}
-
-	url := p.mayaAddr + restorePath
-
-	restoreData, err := json.Marshal(restore)
+	err = p.restoreVolumeFromCloud(newVol)
 	if err != nil {
-		p.Log.Errorf("Error during JSON marshal : %s", err.Error())
-		return "", err
-	}
-
-	data, err := p.httpRestCall(url, "POST", restoreData)
-	if err != nil {
-		p.Log.Errorf("Error executing REST api : %s", err.Error())
-		return "", errors.Errorf("Error executing REST api for restore : %s", err.Error())
-	}
-
-	err = p.updateVolCASInfo(data, newVol.volname)
-	if err != nil {
-		p.Log.Errorf("Failed to parse response : %v", err)
-		return "", errors.Errorf("Error parsing response : %s", err)
-	}
-
-	filename := p.cl.GenerateRemoteFilename(volumeID, snapName)
-	if filename == "" {
-		p.Log.Errorf("Error failed to create remote file-name for backup")
-		return "", errors.Errorf("Error creating remote file name for backup")
-	}
-
-	go p.checkRestoreStatus(restore, newVol)
-
-	ret := p.cl.Download(filename)
-	if !ret {
-		p.Log.Errorf("Failed to restore snapshot")
-		return "", errors.New("Failed to restore snapshot")
+		p.Log.Errorf("Failed to restore volume : %s", err)
+		return "", errors.Wrapf(err, "Failed to restore volume")
 	}
 
 	if newVol.restoreStatus == v1alpha1.RSTCStorStatusDone {
@@ -516,6 +480,12 @@ func (p *Plugin) SetVolumeID(unstructuredPV runtime.Unstructured, volumeID strin
 		ISCSI: &vol.iscsi,
 	}
 
+	if pv.Annotations == nil {
+		pv.Annotations = map[string]string{}
+	}
+
+	pv.Annotations[v1alpha1.AnnPVCASVolKey] = vol.volname
+
 	res, err := runtime.DefaultUnstructuredConverter.ToUnstructured(pv)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -525,5 +495,20 @@ func (p *Plugin) SetVolumeID(unstructuredPV runtime.Unstructured, volumeID strin
 }
 
 func (p *Plugin) getVolInfo(volumeID, snapName string) (*Volume, error) {
-	return p.getPVCInfo(volumeID, snapName)
+	vol, err := p.getPVCInfo(volumeID, snapName)
+	if err != nil {
+		return nil, err
+	}
+
+	// Let's rename PV if already created
+	newVolName, err := p.generateRestorePVName(vol.volname)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Failed to generate PV name")
+	}
+
+	delete(p.volumes, vol.volname)
+	vol.volname = newVolName
+	p.volumes[vol.volname] = vol
+
+	return vol, nil
 }
