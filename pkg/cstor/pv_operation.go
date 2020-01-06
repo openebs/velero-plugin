@@ -35,34 +35,10 @@ func (p *Plugin) updateVolCASInfo(data []byte, volumeID string) error {
 
 func (p *Plugin) restoreVolumeFromCloud(vol *Volume) error {
 	p.cl.ExitServer = false
-	restore := &v1alpha1.CStorRestore{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: p.namespace,
-		},
-		Spec: v1alpha1.CStorRestoreSpec{
-			RestoreName:  vol.backupName,
-			VolumeName:   vol.volname,
-			RestoreSrc:   p.cstorServerAddr,
-			StorageClass: vol.storageClass,
-			Size:         vol.size,
-		},
-	}
 
-	url := p.mayaAddr + restorePath
-
-	restoreData, err := json.Marshal(restore)
+	restore, err := p.sendRestoreRequest(vol)
 	if err != nil {
-		return err
-	}
-
-	data, err := p.httpRestCall(url, "POST", restoreData)
-	if err != nil {
-		return errors.Wrapf(err, "Error executing REST api for restore")
-	}
-
-	err = p.updateVolCASInfo(data, vol.volname)
-	if err != nil {
-		return errors.Wrapf(err, "Error parsing restore API response")
+		return errors.Wrapf(err, "Restore request to apiServer failed")
 	}
 
 	filename := p.cl.GenerateRemoteFilename(vol.snapshotTag, vol.backupName)

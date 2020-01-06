@@ -17,7 +17,6 @@ limitations under the License.
 package cstor
 
 import (
-	"encoding/json"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -325,67 +324,33 @@ func (p *Plugin) DeleteSnapshot(snapshotID string) error {
 
 // CreateSnapshot creates snapshot for CStor volume and upload it to cloud storage
 func (p *Plugin) CreateSnapshot(volumeID, volumeAZ string, tags map[string]string) (string, error) {
-	var vol *Volume
-
 	p.cl.ExitServer = false
-	bkpname, ret := tags["velero.io/backup"]
-	if !ret {
+
+	bkpname, ok := tags["velero.io/backup"]
+	if !ok {
 		return "", errors.New("Failed to get backup name")
 	}
 
-	if _, ret := p.volumes[volumeID]; !ret {
-		return "", errors.New("Volume is not found")
+	vol, ok := p.volumes[volumeID]
+	if !ok {
+		return "", errors.New("Volume not found")
 	}
-
-	vol = p.volumes[volumeID]
 	vol.backupName = bkpname
+
 	err := p.backupPVC(volumeID)
 	if err != nil {
-		return "", errors.Errorf("failed to create backup for PVC.. %s", err)
+		return "", errors.Wrapf(err, "failed to create backup for PVC")
 	}
 
 	p.Log.Infof("creating snapshot{%s}", bkpname)
 
-	splitName := strings.Split(bkpname, "-")
-	bname := ""
-	if len(splitName) >= 2 {
-		bname = strings.Join(splitName[0:len(splitName)-1], "-")
-	} else {
-		bname = bkpname
-	}
-
-	if len(strings.TrimSpace(bkpname)) == 0 {
-		return "", errors.New("Missing bkpname")
-	}
-
-	bkpSpec := &v1alpha1.CStorBackupSpec{
-		BackupName: bname,
-		VolumeName: volumeID,
-		SnapName:   bkpname,
-		BackupDest: p.cstorServerAddr,
-	}
-
-	bkp := &v1alpha1.CStorBackup{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: vol.namespace,
-		},
-		Spec: *bkpSpec,
-	}
-
-	url := p.mayaAddr + backupEndpoint
-
-	bkpData, err := json.Marshal(bkp)
+	bkp, err := p.sendBackupRequest(vol)
 	if err != nil {
-		p.Log.Errorf("Error during JSON marshal : %s", err.Error())
-		return "", err
-	}
-
-	_, err = p.httpRestCall(url, "POST", bkpData)
-	if err != nil {
-		return "", errors.Errorf("Error calling REST api : %s", err.Error())
+		return "", errors.Wrapf(err, "Failed to send backup request")
 	}
 
 	p.Log.Infof("Snapshot Successfully Created")
+
 	filename := p.cl.GenerateRemoteFilename(vol.snapshotTag, vol.backupName)
 	if filename == "" {
 		return "", errors.Errorf("Error creating remote file name for backup")
@@ -393,8 +358,8 @@ func (p *Plugin) CreateSnapshot(volumeID, volumeAZ string, tags map[string]strin
 
 	go p.checkBackupStatus(bkp)
 
-	ret = p.cl.Upload(filename)
-	if !ret {
+	ok = p.cl.Upload(filename)
+	if !ok {
 		return "", errors.New("Failed to upload snapshot")
 	}
 
@@ -422,7 +387,6 @@ func (p *Plugin) getSnapInfo(snapshotID string) (*Snapshot, error) {
 		return nil, errors.Errorf("No namespace in pv.spec.claimref for PV{%s}", snapshotID)
 
 	}
-
 	return &Snapshot{
 		volID:      volumeID,
 		backupName: bkpName,
