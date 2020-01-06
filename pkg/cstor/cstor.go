@@ -57,6 +57,9 @@ const (
 const (
 	// NAMESPACE config key for OpenEBS namespace
 	NAMESPACE = "namespace"
+
+	// LocalSnapshot config key for local snapshot
+	LocalSnapshot = "local"
 )
 
 // Plugin defines snapshot plugin for CStor volume
@@ -75,6 +78,9 @@ type Plugin struct {
 
 	// namespace in which openebs is installed, default is openebs
 	namespace string
+
+	// if only local snapshot enabled
+	local bool
 
 	// cl stores cloud connection information
 	cl *cloud.Conn
@@ -110,10 +116,10 @@ type Volume struct {
 	//volname is volume name
 	volname string
 
-	//casType is volume type
-	casType string
+	// srcVolname is source volume name in case of local restore
+	srcVolname string
 
-	//namespace is volume's namespace
+	//namespace is volume claim's namespace
 	namespace string
 
 	//backupName is snapshot name for given volume
@@ -198,6 +204,11 @@ func (p *Plugin) Init(config map[string]string) error {
 	}
 	if p.snapshots == nil {
 		p.snapshots = make(map[string]*Snapshot)
+	}
+
+	if local, ok := config[LocalSnapshot]; ok && local == "true" {
+		p.local = true
+		return nil
 	}
 
 	p.cl = &cloud.Conn{Log: p.Log}
@@ -309,6 +320,11 @@ func (p *Plugin) DeleteSnapshot(snapshotID string) error {
 		return errors.Errorf("HTTP Status error{%v} from maya-apiserver", code)
 	}
 
+	if p.local {
+		// volumesnapshotlocation is configured for local snapshot
+		return nil
+	}
+
 	filename := p.cl.GenerateRemoteFilename(snapInfo.volID, snapInfo.backupName)
 	if filename == "" {
 		return errors.Errorf("Error creating remote file name for backup")
@@ -324,7 +340,9 @@ func (p *Plugin) DeleteSnapshot(snapshotID string) error {
 
 // CreateSnapshot creates snapshot for CStor volume and upload it to cloud storage
 func (p *Plugin) CreateSnapshot(volumeID, volumeAZ string, tags map[string]string) (string, error) {
-	p.cl.ExitServer = false
+	if !p.local {
+		p.cl.ExitServer = false
+	}
 
 	bkpname, ok := tags["velero.io/backup"]
 	if !ok {
@@ -337,9 +355,12 @@ func (p *Plugin) CreateSnapshot(volumeID, volumeAZ string, tags map[string]strin
 	}
 	vol.backupName = bkpname
 
-	err := p.backupPVC(volumeID)
-	if err != nil {
-		return "", errors.Wrapf(err, "failed to create backup for PVC")
+	if !p.local {
+		// If cloud snapshot is configured then we need to backup PVC also
+		err := p.backupPVC(volumeID)
+		if err != nil {
+			return "", errors.Wrapf(err, "failed to create backup for PVC")
+		}
 	}
 
 	p.Log.Infof("creating snapshot{%s}", bkpname)
@@ -350,6 +371,11 @@ func (p *Plugin) CreateSnapshot(volumeID, volumeAZ string, tags map[string]strin
 	}
 
 	p.Log.Infof("Snapshot Successfully Created")
+
+	if p.local {
+		// local snapshot
+		return volumeID + "-velero-bkp-" + bkpname, nil
+	}
 
 	filename := p.cl.GenerateRemoteFilename(vol.snapshotTag, vol.backupName)
 	if filename == "" {
@@ -412,7 +438,12 @@ func (p *Plugin) CreateVolumeFromSnapshot(snapshotID, volumeType, volumeAZ strin
 		return "", errors.Wrapf(err, "Failed to read PVC")
 	}
 
-	err = p.restoreVolumeFromCloud(newVol)
+	fn := p.restoreVolumeFromCloud
+	if p.local {
+		fn = p.restoreVolumeFromLocal
+	}
+
+	err = fn(newVol)
 	if err != nil {
 		p.Log.Errorf("Failed to restore volume : %s", err)
 		return "", errors.Wrapf(err, "Failed to restore volume")
@@ -439,10 +470,14 @@ func (p *Plugin) SetVolumeID(unstructuredPV runtime.Unstructured, volumeID strin
 		return nil, errors.WithStack(err)
 	}
 
+	// Set Old PV fsType
+	fsType := pv.Spec.PersistentVolumeSource.ISCSI.FSType
+
 	vol := p.volumes[volumeID]
 	pv.Spec.PersistentVolumeSource = v1.PersistentVolumeSource{
 		ISCSI: &vol.iscsi,
 	}
+	pv.Spec.PersistentVolumeSource.ISCSI.FSType = fsType
 
 	if pv.Annotations == nil {
 		pv.Annotations = map[string]string{}
@@ -459,7 +494,12 @@ func (p *Plugin) SetVolumeID(unstructuredPV runtime.Unstructured, volumeID strin
 }
 
 func (p *Plugin) getVolInfo(volumeID, snapName string) (*Volume, error) {
-	vol, err := p.getPVCInfo(volumeID, snapName)
+	fn := p.getPVCInfo
+	if p.local {
+		fn = p.getPVInfo
+	}
+
+	vol, err := fn(volumeID, snapName)
 	if err != nil {
 		return nil, err
 	}

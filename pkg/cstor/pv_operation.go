@@ -11,6 +11,26 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+func (p *Plugin) getPVInfo(volumeID, snapName string) (*Volume, error) {
+	pv, err := p.K8sClient.
+		CoreV1().
+		PersistentVolumes().
+		Get(volumeID, metav1.GetOptions{})
+	if err != nil {
+		return nil, errors.Errorf("Error fetching volume{%s} : %s", volumeID, err.Error())
+	}
+
+	vol := &Volume{
+		volname:      volumeID,
+		srcVolname:   volumeID,
+		backupName:   snapName,
+		storageClass: pv.Spec.StorageClassName,
+		size:         pv.Spec.Capacity[v1.ResourceStorage],
+	}
+	p.volumes[vol.volname] = vol
+	return vol, nil
+}
+
 func (p *Plugin) updateVolCASInfo(data []byte, volumeID string) error {
 	var cas v1alpha1.CASVolume
 
@@ -57,6 +77,15 @@ func (p *Plugin) restoreVolumeFromCloud(vol *Volume) error {
 		return errors.Errorf("Failed to restore.. status {%s}", vol.restoreStatus)
 	}
 
+	return nil
+}
+
+func (p *Plugin) restoreVolumeFromLocal(vol *Volume) error {
+	_, err := p.sendRestoreRequest(vol)
+	if err != nil {
+		return errors.Wrapf(err, "Restore request to apiServer failed")
+	}
+	vol.restoreStatus = v1alpha1.RSTCStorStatusDone
 	return nil
 }
 

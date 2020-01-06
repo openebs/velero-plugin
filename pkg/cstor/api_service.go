@@ -134,6 +134,7 @@ func (p *Plugin) sendBackupRequest(vol *Volume) (*v1alpha1.CStorBackup, error) {
 		VolumeName: vol.volname,
 		SnapName:   vol.backupName,
 		BackupDest: p.cstorServerAddr,
+		LocalSnap:  p.local,
 	}
 
 	bkp := &v1alpha1.CStorBackup{
