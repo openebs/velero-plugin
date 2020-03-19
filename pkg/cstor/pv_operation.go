@@ -86,3 +86,32 @@ func (p *Plugin) generateRestorePVName(volumeID string) (string, error) {
 	p.Log.Infof("Renaming PV %s to %s", oldVolumeID, volumeID)
 	return volumeID, nil
 }
+
+func (p *Plugin) getPVInfo(volumeID, snapName string) (*Volume, error) {
+	pv, err := p.K8sClient.
+		CoreV1().
+		PersistentVolumes().
+		Get(volumeID, metav1.GetOptions{})
+	if err != nil {
+		return nil, errors.Errorf("Error fetching volume{%s} : %s", volumeID, err.Error())
+	}
+
+	vol := &Volume{
+		volname:      volumeID,
+		srcVolname:   volumeID,
+		backupName:   snapName,
+		storageClass: pv.Spec.StorageClassName,
+		size:         pv.Spec.Capacity[v1.ResourceStorage],
+	}
+	p.volumes[vol.volname] = vol
+	return vol, nil
+}
+
+func (p *Plugin) restoreVolumeFromLocal(vol *Volume) error {
+	_, err := p.sendRestoreRequest(vol)
+	if err != nil {
+		return errors.Wrapf(err, "Restore request to apiServer failed")
+	}
+	vol.restoreStatus = v1alpha1.RSTCStorStatusDone
+	return nil
+}

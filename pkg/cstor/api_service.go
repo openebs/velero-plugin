@@ -134,6 +134,7 @@ func (p *Plugin) sendBackupRequest(vol *Volume) (*v1alpha1.CStorBackup, error) {
 		VolumeName: vol.volname,
 		SnapName:   vol.backupName,
 		BackupDest: p.cstorServerAddr,
+		LocalSnap:  p.local,
 	}
 
 	bkp := &v1alpha1.CStorBackup{
@@ -159,6 +160,11 @@ func (p *Plugin) sendBackupRequest(vol *Volume) (*v1alpha1.CStorBackup, error) {
 }
 
 func (p *Plugin) sendRestoreRequest(vol *Volume) (*v1alpha1.CStorRestore, error) {
+	restoreSrc := p.cstorServerAddr
+	if p.local {
+		restoreSrc = vol.srcVolname
+	}
+
 	restore := &v1alpha1.CStorRestore{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: p.namespace,
@@ -166,9 +172,10 @@ func (p *Plugin) sendRestoreRequest(vol *Volume) (*v1alpha1.CStorRestore, error)
 		Spec: v1alpha1.CStorRestoreSpec{
 			RestoreName:  vol.backupName,
 			VolumeName:   vol.volname,
-			RestoreSrc:   p.cstorServerAddr,
+			RestoreSrc:   restoreSrc,
 			StorageClass: vol.storageClass,
 			Size:         vol.size,
+			Local:        p.local,
 		},
 	}
 
