@@ -191,10 +191,31 @@ func (p *Plugin) sendRestoreRequest(vol *Volume) (*v1alpha1.CStorRestore, error)
 		return nil, errors.Wrapf(err, "Error executing REST api for restore")
 	}
 
-	err = p.updateVolCASInfo(data, vol.volname)
-	if err != nil {
-		return nil, errors.Wrapf(err, "Error parsing restore API response")
+	// if apiserver is having version <=1.8 then it will return empty response
+	ok, err := isEmptyRestResponse(data)
+	if !ok && err == nil {
+		err = p.updateVolCASInfo(data, vol.volname)
+		if err != nil {
+			err = errors.Wrapf(err, "Error parsing restore API response")
+		}
 	}
 
 	return restore, err
+}
+
+func isEmptyRestResponse(data []byte) (bool, error) {
+	var obj interface{}
+
+	dec := json.NewDecoder(bytes.NewReader(data))
+	err := dec.Decode(&obj)
+	if err != nil {
+		return false, err
+	}
+
+	res, ok := obj.(string)
+	if ok && len(res) == 0 {
+		return true, nil
+	}
+
+	return false, nil
 }
