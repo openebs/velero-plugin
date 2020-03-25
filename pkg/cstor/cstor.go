@@ -476,18 +476,17 @@ func (p *Plugin) SetVolumeID(unstructuredPV runtime.Unstructured, volumeID strin
 		return nil, errors.WithStack(err)
 	}
 
-	fsType := pv.Spec.PersistentVolumeSource.ISCSI.FSType
-
 	vol := p.volumes[volumeID]
-	pv.Spec.PersistentVolumeSource = v1.PersistentVolumeSource{
-		ISCSI: &vol.iscsi,
-	}
 
-	// Set Old PV fsType
-	pv.Spec.PersistentVolumeSource.ISCSI.FSType = fsType
+	if p.local {
+		fsType := pv.Spec.PersistentVolumeSource.ISCSI.FSType
 
-	if pv.Annotations == nil {
-		pv.Annotations = map[string]string{}
+		pv.Spec.PersistentVolumeSource = v1.PersistentVolumeSource{
+			ISCSI: &vol.iscsi,
+		}
+
+		// Set Old PV fsType
+		pv.Spec.PersistentVolumeSource.ISCSI.FSType = fsType
 	}
 
 	pv.Name = vol.volname
