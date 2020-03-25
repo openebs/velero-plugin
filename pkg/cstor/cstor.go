@@ -440,7 +440,7 @@ func (p *Plugin) CreateVolumeFromSnapshot(snapshotID, volumeType, volumeAZ strin
 
 	newVol, err := p.getVolInfo(volumeID, snapName)
 	if err != nil {
-		return "", errors.Wrapf(err, "Failed to read PVC")
+		return "", errors.Wrapf(err, "Failed to read PVC for volumeID=%s snap=%s", volumeID, snapName)
 	}
 
 	fn := p.restoreVolumeFromCloud
@@ -515,6 +515,7 @@ func (p *Plugin) getVolInfo(volumeID, snapName string) (*Volume, error) {
 	// To support namespace re-mapping for cloud-snapshot remove below check
 	if p.local {
 		// Let's rename PV if already created
+		// -- PV may exist in-case of namespace-remapping or stale PV
 		newVolName, err := p.generateRestorePVName(vol.volname)
 		if err != nil {
 			return nil, errors.Wrapf(err, "Failed to generate PV name")

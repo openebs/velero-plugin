@@ -61,7 +61,7 @@ func (p *Plugin) restoreVolumeFromCloud(vol *Volume) error {
 }
 
 func (p *Plugin) generateRestorePVName(volumeID string) (string, error) {
-	pv, err := p.K8sClient.
+	_, err := p.K8sClient.
 		CoreV1().
 		PersistentVolumes().
 		Get(volumeID, metav1.GetOptions{})
@@ -70,11 +70,6 @@ func (p *Plugin) generateRestorePVName(volumeID string) (string, error) {
 			return volumeID, nil
 		}
 		return "", errors.Wrapf(err, "Error checking if PV with same name exist")
-	}
-
-	if pv.Spec.ClaimRef == nil {
-		p.Log.Infof("PV %s is not claimed.. using the same PV for restore", volumeID)
-		return volumeID, nil
 	}
 
 	nuuid, err := uuid.NewV4()

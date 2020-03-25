@@ -99,11 +99,11 @@ func (p *Plugin) createPVC(volumeID, snapName string) (*Volume, error) {
 	}
 
 	if data, ok = p.cl.Read(filename + ".pvc"); !ok {
-		return nil, errors.New("Failed to download PVC")
+		return nil, errors.Errorf("Failed to download PVC file=%s", filename+".pvc")
 	}
 
 	if err := json.Unmarshal(data, pvc); err != nil {
-		return nil, errors.New("Failed to decode pvc")
+		return nil, errors.Errorf("Failed to decode pvc file=%s", filename+".pvc")
 	}
 
 	newVol, err := p.getVolumeFromPVC(*pvc)
@@ -126,7 +126,7 @@ func (p *Plugin) createPVC(volumeID, snapName string) (*Volume, error) {
 		PersistentVolumeClaims(pvc.Namespace).
 		Create(pvc)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to create PVC")
+		return nil, errors.Wrapf(err, "failed to create PVC=%s/%s", pvc.Namespace, pvc.Name)
 	}
 
 	for cnt := 0; cnt < PVCWaitCount; cnt++ {
@@ -139,9 +139,9 @@ func (p *Plugin) createPVC(volumeID, snapName string) (*Volume, error) {
 				CoreV1().
 				PersistentVolumeClaims(pvc.Namespace).
 				Delete(rpvc.Name, nil); err != nil {
-				p.Log.Warnf("Failed to delete pvc {%s} : %s", rpvc.Name, err.Error())
+				p.Log.Warnf("Failed to delete pvc {%s/%s} : %s", rpvc.Namespace, rpvc.Name, err.Error())
 			}
-			return nil, errors.Wrapf(err, "failed to create PVC")
+			return nil, errors.Wrapf(err, "failed to create PVC=%s/%s", rpvc.Namespace, rpvc.Name)
 		}
 		if pvc.Status.Phase == v1.ClaimBound {
 			p.Log.Infof("PVC(%v) created..", pvc.Name)
@@ -159,7 +159,7 @@ func (p *Plugin) createPVC(volumeID, snapName string) (*Volume, error) {
 	}
 
 	if vol == nil {
-		return nil, errors.Errorf("PVC{%s} is not bounded!", rpvc.Name)
+		return nil, errors.Errorf("PVC{%s/%s} is not bounded!", rpvc.Namespace, rpvc.Name)
 	}
 
 	if err = p.waitForAllCVR(vol); err != nil {

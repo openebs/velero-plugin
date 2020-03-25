@@ -118,6 +118,11 @@ To restore local snapshot, run the following command:
 
 `velero restore create --from-backup backup_name --restore-volumes=true --namespace-mappings source_ns:destination_ns`
 
+*Note:*
+- _Restore from local backup need to be done from same cluster only where local backups are created, unlike restore of remote backups which can be done to any cluster_
+
+*Limitation:*
+- _Restore of PV having storageClass, with volumeBindingMode set to WaitForFirstConsumer, won't work as expected_
 
 #### Creating a restore from cloud backup
 To restore data from backup, run the following command:
@@ -147,6 +152,8 @@ Once the restore is completed you should see the restore marked as `Completed`.
 1. kubectl exec -it <POOL_POD> -c cstor-pool -n openebs -- bash
 2. zfs set io.openebs:targetip=<TARGET_IP> <POOL_NAME/VOLUME_NAME>
 ```
+*Limitation:*
+- _Restore of remote-backup in different namespace(--namespace-remapping) is not supported_
 
 ### Creating a scheduled backup (or incremental backup for CStor volume)
 OpenEBS velero-plugin provides incremental backup support for CStor persistent volumes.

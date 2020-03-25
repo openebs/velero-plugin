@@ -46,7 +46,7 @@ func (p *Plugin) waitForAllCVR(vol *Volume) error {
 				LabelSelector: "openebs.io/persistent-volume=" + vol.volname,
 			})
 		if err != nil {
-			return errors.Errorf("Failed to fetch CVR.. %s", err)
+			return errors.Errorf("Failed to fetch CVR for volume=%s %s", vol.volname, err)
 		}
 
 		if len(cvrList.Items) != replicaCount {
