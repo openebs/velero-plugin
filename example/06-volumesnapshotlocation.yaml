@@ -16,14 +16,71 @@
 apiVersion: velero.io/v1
 kind: VolumeSnapshotLocation
 metadata:
+  # name -- volumeSnapshotLocation Name (gcp-default, aws-default...)
   name: <LOCATION_NAME>
   namespace: velero
 spec:
   provider: openebs.io/cstor-blockstore
   config:
+    # bucket -- bucket Name (velero, dev-cluster...)
     bucket: <YOUR_BUCKET>
+
+    # prefix -- prefix for backed up file (default: empty), name of the backed up cstor files will be in prefix-volume_name-backup_name format)
     prefix: <PREFIX_FOR_BACKUP_NAME>
+
+    # backupPathPrefix -- backupPathPrefix for remote backup path (default: empty), cstor backed up file be stored under "bucket/backupPathPrefix/backups/backup_name/")
     backupPathPrefix: <PREFIX_FOR_BACKUP_PATH>
+
+    # provider -- cloud provider name (default: empty, value can be gcp, aws)
     provider: <gcp_OR_aws>
+
+    # region -- cloud provider region
     region: <AWS_REGION>
+
+    # namespace -- namespace in which openebs is installed (default: openebs)
     namespace: <OPENEBS_NAMESPACE>
+
+
+### Sample VolumeSnapshotLocation YAML for various cloud-providers
+# ---
+# apiVersion: velero.io/v1
+# kind: VolumeSnapshotLocation
+# metadata:
+#   name: gcp-bucket
+#   namespace: velero
+# spec:
+#   provider: openebs.io/cstor-blockstore
+#   config:
+#     bucket: openebs-velero-example
+#     prefix: cstor
+#     provider: gcp
+
+# ---
+# apiVersion: velero.io/v1
+# kind: VolumeSnapshotLocation
+# metadata:
+#   name: minio-bucket
+#   namespace: velero
+# spec:
+#   provider: openebs.io/cstor-blockstore
+#   config:
+#     bucket: openebs-velero-example
+#     prefix: cstor
+#     provider: aws
+#     region: minio
+#     s3ForcePathStyle: "true"
+#     s3Url: http://minio.velero.svc:9000
+
+# ---
+# apiVersion: velero.io/v1
+# kind: VolumeSnapshotLocation
+# metadata:
+#   name: aws-bucket
+#   namespace: velero
+# spec:
+#   provider: openebs.io/cstor-blockstore
+#   config:
+#     bucket: openebs-velero-example
+#     prefix: cstor
+#     provider: aws
+#     region: ap-south-1

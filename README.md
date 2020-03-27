@@ -50,7 +50,7 @@ Run the following command to install development image of OpenEBS velero-plugin
 This command will add an init container to Velero deployment to install the OpenEBS velero-plugin.
 
 ## Configuring snapshot location
-To take a cloud backup of CStor volume through Velero, configure `VolumeSnapshotLocation` with provider `openebs.io/cstor-blockstore`. Sample YAML file for volumesnapshotlocation can be found at `example/06-volumesnapshotlocation.yaml`.
+To take remote backup of cStor volume snapshot to cloud or S3 compatible storage, configure VolumeSnapshotLocation with provider `openebs.io/cstor-blockstore`. Sample YAML file for volumesnapshotlocation can be found at `example/06-volumesnapshotlocation.yaml`.
 
 ```
 spec:
@@ -63,7 +63,7 @@ spec:
     region: <AWS_REGION>
 ```
 
-For local snapshot of CStor volume through velero, Refere `example/06-local-volumesnapshotlocation.yaml` to configure `VolumeSnapshotLocation`.
+For local backup(/snapshot) of CStor volume through velero, Refer `example/06-local-volumesnapshotlocation.yaml` to configure `VolumeSnapshotLocation`.
 
 ```
 spec:
@@ -87,11 +87,10 @@ If you have multiple installation of openebs then you need to add `spec.config.n
   _To store backup metadata and snapshot at same location, `BackupStorageLocation.prefix` and `VolumeSnapshotLocation.BackupPathPrefix` should be same._
 
 You can configure a backup storage location(`BackupStorageLocation`) similarly.
-Currently supported volumesnapshotlocations for velero-plugin are AWS, GCP and MinIO.
-
+Currently supported cloud-providers for velero-plugin are AWS, GCP and MinIO.
 
 ## Managing Backups
-Once the volumesnapshot location is configured, you can create the backup/restore of your CStor persistent storage volume.
+Once the volumesnapshotlocation is configured, you can create the backup/restore of your CStor persistent storage volume.
 
 ### Creating a backup
 To back up data of all your applications in the default namespace, run the following command:
@@ -114,7 +113,7 @@ Once the backup is completed you should see the backup marked as `Completed`.
 
 ### Creating a restore from backup
 #### Creating a restore from local backup/snapshot
-To restore local snapshot, run the following command:
+To restore local backup, run the following command:
 
 `velero restore create --from-backup backup_name --restore-volumes=true --namespace-mappings source_ns:destination_ns`
 
@@ -124,8 +123,8 @@ To restore local snapshot, run the following command:
 *Limitation:*
 - _Restore of PV having storageClass, with volumeBindingMode set to WaitForFirstConsumer, won't work as expected_
 
-#### Creating a restore from cloud backup
-To restore data from backup, run the following command:
+#### Creating a restore from remote/cloud backup
+To restore data from remote/cloud backup, run the following command:
 
 `velero restore create --from-backup backup_name --restore-volumes=true`
 
@@ -144,7 +143,7 @@ defaultbackup-20190513113453   defaultbackup   Completed   0          0         
 ```
 Once the restore is completed you should see the restore marked as `Completed`.
 
-*Note: After restore for cloud-backup is completed, you need to set target-ip for the volume in pool pod. If restore is from local snapshot then you don't need to update target-ip*
+*Note: After restore for remote/cloud-backup is completed, you need to set target-ip for the volume in pool pod. If restore is from local snapshot then you don't need to update target-ip*
 *Steps to get target-ip*
 1. kubectl get svc -n openebs <PV_NAME> -ojsonpath='{.spec.clusterIP}'
 *Steps to update `target-ip` in pool pod is as follow:*
@@ -153,7 +152,7 @@ Once the restore is completed you should see the restore marked as `Completed`.
 2. zfs set io.openebs:targetip=<TARGET_IP> <POOL_NAME/VOLUME_NAME>
 ```
 *Limitation:*
-- _Restore of remote-backup in different namespace(--namespace-remapping) is not supported_
+- _Restore of remote/cloud-backup in different namespace(--namespace-remapping) is not supported_
 
 ### Creating a scheduled backup (or incremental backup for CStor volume)
 OpenEBS velero-plugin provides incremental backup support for CStor persistent volumes.
@@ -179,7 +178,7 @@ During the first backup iteration of a schedule, full data of the volume will be
 #### Restoring from a scheduled local backup/snapshot
 In case of local backups/snapshots, you can restore from any completed backup created by the schedule.
 
-#### Restoring from a scheduled cloud backup
+#### Restoring from a scheduled remote/cloud backup
 Since backups taken are incremental for a schedule, the order of restoring data is important. You need to restore data in the order of the backups created. First restore must be created from the first completed backup of schedule.
 
 For example, below are the available backups for a schedule:
@@ -196,7 +195,7 @@ velero restore create --from-backup sched-20190513103034 --restore-volumes=true
 velero restore create --from-backup sched-20190513103534 --restore-volumes=true
 velero restore create --from-backup sched-20190513104034 --restore-volumes=true
 ```
-*Note: Velero clean-up the backups according to retain policy. By default retain policy is 30days. So you need to set retain policy for scheduled cloud-backup accordingly.*
+*Note: Velero clean-up the backups according to retain policy. By default retain policy is 30days. So you need to set retain policy for scheduled remote/cloud-backup accordingly.*
 
 ## License
 [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fopenebs%2Fvelero-plugin.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Fopenebs%2Fvelero-plugin?ref=badge_large)

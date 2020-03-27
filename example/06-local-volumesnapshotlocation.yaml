@@ -16,10 +16,13 @@
 apiVersion: velero.io/v1
 kind: VolumeSnapshotLocation
 metadata:
+  # name -- volumeSnapshotLocation Name (local-default...)
   name: <LOCATION_NAME>
   namespace: velero
 spec:
   provider: openebs.io/cstor-blockstore
   config:
+    # namespace -- namespace in which openebs is installed (default: openebs)
     namespace: <OPENEBS_NAMESPACE>
+
     local: "true"
