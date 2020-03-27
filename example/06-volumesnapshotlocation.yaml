@@ -67,9 +67,23 @@ spec:
 #     bucket: openebs-velero-example
 #     prefix: cstor
 #     provider: aws
+#
+#     # The AWS region where the bucket is located.
 #     region: minio
+#
+#     # Whether to use path-style addressing instead of virtual hosted bucket addressing.
+#     # Set to "true"
+#     # if using a local storage service like MinIO.
 #     s3ForcePathStyle: "true"
+#
+#     # AWS S3 URL, By default it will be generated from "region" and "bucket"
+#     # This field needs to be set for local storage services like MinIO.
 #     s3Url: http://minio.velero.svc:9000
+#
+#     # You can specify the multipart_chunksize  here for explicitness.
+#     # Minimum value can be set is 5Mi (5*1024*1024 Bytes).. expected value (5Mi/Gi)
+#     # If not set then it will be calculated from the file size
+#     multiPartChunkSize: 64Mi
 
 # ---
 # apiVersion: velero.io/v1
@@ -83,4 +97,11 @@ spec:
 #     bucket: openebs-velero-example
 #     prefix: cstor
 #     provider: aws
+#
+#     # The AWS region where the bucket is located.
 #     region: ap-south-1
+#
+#     # You can specify the multipart_chunksize  here for explicitness.
+#     # Minimum value can be set is 5Mi (5*1024*1024 Bytes).. expected value (5Mi/Gi)
+#     # If not set then it will be calculated from the file size
+#     multiPartChunkSize: 64Mi
