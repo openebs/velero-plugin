@@ -22,6 +22,7 @@ import (
 
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -98,18 +99,25 @@ func (p *Plugin) createPVC(volumeID, snapName string) (*Volume, error) {
 	}
 
 	if data, ok = p.cl.Read(filename + ".pvc"); !ok {
-		return nil, errors.New("Failed to download PVC")
+		return nil, errors.Errorf("Failed to download PVC file=%s", filename+".pvc")
 	}
 
 	if err := json.Unmarshal(data, pvc); err != nil {
-		return nil, errors.New("Failed to decode pvc")
+		return nil, errors.Errorf("Failed to decode pvc file=%s", filename+".pvc")
 	}
 
 	newVol, err := p.getVolumeFromPVC(*pvc)
-	if err == nil {
+	if newVol != nil {
 		newVol.backupName = snapName
+		newVol.snapshotTag = volumeID
 		return newVol, nil
 	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	p.Log.Infof("Creating PVC for volumeID:%s snapshot:%s", volumeID, snapName)
 
 	pvc.Annotations = make(map[string]string)
 	pvc.Annotations["openebs.io/created-through"] = "restore"
@@ -118,7 +126,7 @@ func (p *Plugin) createPVC(volumeID, snapName string) (*Volume, error) {
 		PersistentVolumeClaims(pvc.Namespace).
 		Create(pvc)
 	if err != nil {
-		return nil, errors.Errorf("Failed to create PVC : %s", err.Error())
+		return nil, errors.Wrapf(err, "failed to create PVC=%s/%s", pvc.Namespace, pvc.Name)
 	}
 
 	for cnt := 0; cnt < PVCWaitCount; cnt++ {
@@ -131,31 +139,64 @@ func (p *Plugin) createPVC(volumeID, snapName string) (*Volume, error) {
 				CoreV1().
 				PersistentVolumeClaims(pvc.Namespace).
 				Delete(rpvc.Name, nil); err != nil {
-				p.Log.Warnf("Failed to delete pvc {%s} : %s", rpvc.Name, err.Error())
+				p.Log.Warnf("Failed to delete pvc {%s/%s} : %s", rpvc.Namespace, rpvc.Name, err.Error())
 			}
-			return nil, errors.Errorf("Failed to create PVC : %s", err.Error())
+			return nil, errors.Wrapf(err, "failed to create PVC=%s/%s", rpvc.Namespace, rpvc.Name)
 		}
 		if pvc.Status.Phase == v1.ClaimBound {
 			p.Log.Infof("PVC(%v) created..", pvc.Name)
 			vol = &Volume{
-				volname:    pvc.Spec.VolumeName,
-				namespace:  pvc.Namespace,
-				backupName: snapName,
-				casType:    *pvc.Spec.StorageClassName,
+				volname:      pvc.Spec.VolumeName,
+				snapshotTag:  volumeID,
+				namespace:    pvc.Namespace,
+				backupName:   snapName,
+				storageClass: *pvc.Spec.StorageClassName,
 			}
+			p.volumes[vol.volname] = vol
 			break
 		}
 		time.Sleep(PVCCheckInterval)
 	}
 
 	if vol == nil {
-		return nil, errors.Errorf("PVC{%s} is not bounded!", rpvc.Name)
+		return nil, errors.Errorf("PVC{%s/%s} is not bounded!", rpvc.Namespace, rpvc.Name)
 	}
 
 	if err = p.waitForAllCVR(vol); err != nil {
 		return nil, err
 	}
 	return vol, nil
+}
+
+func (p *Plugin) getPVCInfo(volumeID, snapName string) (*Volume, error) {
+	pvc := &v1.PersistentVolumeClaim{}
+	var vol *Volume
+	var data []byte
+	var ok bool
+
+	filename := p.cl.GenerateRemoteFilename(volumeID, snapName)
+	if filename == "" {
+		return nil, errors.New("Error creating remote file name for pvc backup")
+	}
+
+	if data, ok = p.cl.Read(filename + ".pvc"); !ok {
+		return nil, errors.New("Failed to download PVC")
+	}
+
+	if err := json.Unmarshal(data, pvc); err != nil {
+		return nil, errors.New("Failed to decode pvc")
+	}
+
+	vol = &Volume{
+		volname:      volumeID,
+		snapshotTag:  volumeID,
+		backupName:   snapName,
+		storageClass: *pvc.Spec.StorageClassName,
+		size:         pvc.Spec.Resources.Requests[v1.ResourceStorage],
+	}
+	p.volumes[vol.volname] = vol
+	return vol, nil
+
 }
 
 // getVolumeFromPVC returns volume info for given PVC if PVC is in bound state
@@ -165,22 +206,26 @@ func (p *Plugin) getVolumeFromPVC(pvc v1.PersistentVolumeClaim) (*Volume, error)
 		PersistentVolumeClaims(pvc.Namespace).
 		Get(pvc.Name, metav1.GetOptions{})
 	if err != nil {
-		return nil, errors.Errorf("PVC{%s} does not exist", pvc.Name)
+		if k8serrors.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, errors.Wrapf(err, "failed to fetch PVC{%s}", pvc.Name)
 	}
 
 	if rpvc.Status.Phase == v1.ClaimLost {
 		p.Log.Errorf("PVC{%s} is not bound yet!", rpvc.Name)
-		panic(errors.Errorf("PVC{%s} is not bound yet", rpvc.Name))
-	} else {
-		vol := &Volume{
-			volname:   rpvc.Spec.VolumeName,
-			namespace: rpvc.Namespace,
-			casType:   *rpvc.Spec.StorageClassName,
-		}
-
-		if err = p.waitForAllCVR(vol); err != nil {
-			return nil, err
-		}
-		return vol, nil
+		return nil, errors.Errorf("pvc{%s} is not bound", rpvc.Name)
 	}
+	vol := &Volume{
+		volname:      rpvc.Spec.VolumeName,
+		snapshotTag:  rpvc.Spec.VolumeName,
+		namespace:    rpvc.Namespace,
+		storageClass: *rpvc.Spec.StorageClassName,
+	}
+	p.volumes[vol.volname] = vol
+
+	if err = p.waitForAllCVR(vol); err != nil {
+		return nil, errors.Wrapf(err, "cvr not ready")
+	}
+	return vol, nil
 }

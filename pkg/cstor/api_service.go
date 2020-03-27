@@ -18,11 +18,14 @@ package cstor
 
 import (
 	"bytes"
+	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
+	v1alpha1 "github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
 	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -115,4 +118,104 @@ fetchip:
 	}
 
 	return ""
+}
+
+func (p *Plugin) sendBackupRequest(vol *Volume) (*v1alpha1.CStorBackup, error) {
+	bname := vol.backupName // This will be backup/schedule name
+
+	// If it is scheduled backup then we need to fetch schedule name
+	splitName := strings.Split(vol.backupName, "-")
+	if len(splitName) >= 2 {
+		bname = strings.Join(splitName[0:len(splitName)-1], "-")
+	}
+
+	bkpSpec := &v1alpha1.CStorBackupSpec{
+		BackupName: bname,
+		VolumeName: vol.volname,
+		SnapName:   vol.backupName,
+		BackupDest: p.cstorServerAddr,
+		LocalSnap:  p.local,
+	}
+
+	bkp := &v1alpha1.CStorBackup{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: vol.namespace,
+		},
+		Spec: *bkpSpec,
+	}
+
+	url := p.mayaAddr + backupEndpoint
+
+	bkpData, err := json.Marshal(bkp)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Error parsing json")
+	}
+
+	_, err = p.httpRestCall(url, "POST", bkpData)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Error calling REST api")
+	}
+
+	return bkp, nil
+}
+
+func (p *Plugin) sendRestoreRequest(vol *Volume) (*v1alpha1.CStorRestore, error) {
+	restoreSrc := p.cstorServerAddr
+	if p.local {
+		restoreSrc = vol.srcVolname
+	}
+
+	restore := &v1alpha1.CStorRestore{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: p.namespace,
+		},
+		Spec: v1alpha1.CStorRestoreSpec{
+			RestoreName:  vol.backupName,
+			VolumeName:   vol.volname,
+			RestoreSrc:   restoreSrc,
+			StorageClass: vol.storageClass,
+			Size:         vol.size,
+			Local:        p.local,
+		},
+	}
+
+	url := p.mayaAddr + restorePath
+
+	restoreData, err := json.Marshal(restore)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := p.httpRestCall(url, "POST", restoreData)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Error executing REST api for restore")
+	}
+
+	// if apiserver is having version <=1.8 then it will return empty response
+	ok, err := isEmptyRestResponse(data)
+	if !ok && err == nil {
+		err = p.updateVolCASInfo(data, vol.volname)
+		if err != nil {
+			err = errors.Wrapf(err, "Error parsing restore API response")
+		}
+	}
+
+	return restore, err
+}
+
+func isEmptyRestResponse(data []byte) (bool, error) {
+	var obj interface{}
+
+	dec := json.NewDecoder(bytes.NewReader(data))
+	err := dec.Decode(&obj)
+	if err != nil {
+		return false, err
+	}
+
+	res, ok := obj.(string)
+	if ok && len(res) == 0 {
+		return true, nil
+	}
+
+	return false, nil
 }

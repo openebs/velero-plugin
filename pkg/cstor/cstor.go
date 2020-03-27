@@ -17,7 +17,6 @@ limitations under the License.
 package cstor
 
 import (
-	"encoding/json"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -35,6 +34,7 @@ import (
 	openebs "github.com/openebs/maya/pkg/client/generated/clientset/versioned"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -57,6 +57,9 @@ const (
 const (
 	// NAMESPACE config key for OpenEBS namespace
 	NAMESPACE = "namespace"
+
+	// LocalSnapshot config key for local snapshot
+	LocalSnapshot = "local"
 )
 
 // Plugin defines snapshot plugin for CStor volume
@@ -91,6 +94,9 @@ type Plugin struct {
 
 	// snapshots list of snapshot
 	snapshots map[string]*Snapshot
+
+	// if only local snapshot enabled
+	local bool
 }
 
 // Snapshot describes snapshot object information
@@ -110,10 +116,10 @@ type Volume struct {
 	//volname is volume name
 	volname string
 
-	//casType is volume type
-	casType string
+	// srcVolname is source volume name in case of local restore
+	srcVolname string
 
-	//namespace is volume's namespace
+	//namespace is volume claim's namespace
 	namespace string
 
 	//backupName is snapshot name for given volume
@@ -124,6 +130,17 @@ type Volume struct {
 
 	//restoreStatus is restore progress status for given volume
 	restoreStatus v1alpha1.CStorRestoreStatus
+
+	//size is volume size in string
+	size resource.Quantity
+
+	// snapshotTag is cloud snapshot file identifier.. It will be same as volume name from backup
+	snapshotTag string
+
+	//storageClass is volume's storageclass
+	storageClass string
+
+	iscsi v1.ISCSIPersistentVolumeSource
 }
 
 func (p *Plugin) getServerAddress() string {
@@ -182,11 +199,17 @@ func (p *Plugin) Init(config map[string]string) error {
 		return errors.New("Error fetching cstorVeleroServer address")
 	}
 	p.config = config
+
 	if p.volumes == nil {
 		p.volumes = make(map[string]*Volume)
 	}
 	if p.snapshots == nil {
 		p.snapshots = make(map[string]*Snapshot)
+	}
+
+	if local, ok := config[LocalSnapshot]; ok && local == "true" {
+		p.local = true
+		return nil
 	}
 
 	p.cl = &cloud.Conn{Log: p.Log}
@@ -226,9 +249,10 @@ func (p *Plugin) GetVolumeID(unstructuredPV runtime.Unstructured) (string, error
 
 	if _, exists := p.volumes[pv.Name]; !exists {
 		p.volumes[pv.Name] = &Volume{
-			volname:   pv.Name,
-			casType:   pv.Spec.StorageClassName,
-			namespace: pv.Spec.ClaimRef.Namespace,
+			volname:      pv.Name,
+			snapshotTag:  pv.Name,
+			storageClass: pv.Spec.StorageClassName,
+			namespace:    pv.Spec.ClaimRef.Namespace,
 		}
 	}
 
@@ -269,7 +293,6 @@ func (p *Plugin) DeleteSnapshot(snapshotID string) error {
 	q := req.URL.Query()
 	q.Add("volume", snapInfo.volID)
 	q.Add("namespace", snapInfo.namespace)
-	q.Add("casType", casTypeCStor)
 
 	req.URL.RawQuery = q.Encode()
 
@@ -297,6 +320,11 @@ func (p *Plugin) DeleteSnapshot(snapshotID string) error {
 		return errors.Errorf("HTTP Status error{%v} from maya-apiserver", code)
 	}
 
+	if p.local {
+		// volumesnapshotlocation is configured for local snapshot
+		return nil
+	}
+
 	filename := p.cl.GenerateRemoteFilename(snapInfo.volID, snapInfo.backupName)
 	if filename == "" {
 		return errors.Errorf("Error creating remote file name for backup")
@@ -312,76 +340,52 @@ func (p *Plugin) DeleteSnapshot(snapshotID string) error {
 
 // CreateSnapshot creates snapshot for CStor volume and upload it to cloud storage
 func (p *Plugin) CreateSnapshot(volumeID, volumeAZ string, tags map[string]string) (string, error) {
-	var vol *Volume
+	if !p.local {
+		p.cl.ExitServer = false
+	}
 
-	p.cl.ExitServer = false
-	bkpname, ret := tags["velero.io/backup"]
-	if !ret {
+	bkpname, ok := tags["velero.io/backup"]
+	if !ok {
 		return "", errors.New("Failed to get backup name")
 	}
 
-	if _, ret := p.volumes[volumeID]; !ret {
-		return "", errors.New("Volume is not found")
+	vol, ok := p.volumes[volumeID]
+	if !ok {
+		return "", errors.New("Volume not found")
 	}
-
-	vol = p.volumes[volumeID]
 	vol.backupName = bkpname
-	err := p.backupPVC(volumeID)
-	if err != nil {
-		return "", errors.Errorf("failed to create backup for PVC.. %s", err)
+
+	if !p.local {
+		// If cloud snapshot is configured then we need to backup PVC also
+		err := p.backupPVC(volumeID)
+		if err != nil {
+			return "", errors.Wrapf(err, "failed to create backup for PVC")
+		}
 	}
 
 	p.Log.Infof("creating snapshot{%s}", bkpname)
 
-	splitName := strings.Split(bkpname, "-")
-	bname := ""
-	if len(splitName) >= 2 {
-		bname = strings.Join(splitName[0:len(splitName)-1], "-")
-	} else {
-		bname = bkpname
-	}
-
-	if len(strings.TrimSpace(bkpname)) == 0 {
-		return "", errors.New("Missing bkpname")
-	}
-
-	bkpSpec := &v1alpha1.CStorBackupSpec{
-		BackupName: bname,
-		VolumeName: volumeID,
-		SnapName:   bkpname,
-		BackupDest: p.cstorServerAddr,
-	}
-
-	bkp := &v1alpha1.CStorBackup{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: vol.namespace,
-		},
-		Spec: *bkpSpec,
-	}
-
-	url := p.mayaAddr + backupEndpoint
-
-	bkpData, err := json.Marshal(bkp)
+	bkp, err := p.sendBackupRequest(vol)
 	if err != nil {
-		p.Log.Errorf("Error during JSON marshal : %s", err.Error())
-		return "", err
-	}
-
-	_, err = p.httpRestCall(url, "POST", bkpData)
-	if err != nil {
-		return "", errors.Errorf("Error calling REST api : %s", err.Error())
+		return "", errors.Wrapf(err, "Failed to send backup request")
 	}
 
 	p.Log.Infof("Snapshot Successfully Created")
-	filename := p.cl.GenerateRemoteFilename(volumeID, vol.backupName)
+
+	if p.local {
+		// local snapshot
+		return volumeID + "-velero-bkp-" + bkpname, nil
+	}
+
+	filename := p.cl.GenerateRemoteFilename(vol.snapshotTag, vol.backupName)
 	if filename == "" {
 		return "", errors.Errorf("Error creating remote file name for backup")
 	}
 
 	go p.checkBackupStatus(bkp)
 
-	ret = p.cl.Upload(filename)
-	if !ret {
+	ok = p.cl.Upload(filename)
+	if !ok {
 		return "", errors.New("Failed to upload snapshot")
 	}
 
@@ -399,11 +403,12 @@ func (p *Plugin) getSnapInfo(snapshotID string) (*Snapshot, error) {
 	pv, err := p.K8sClient.
 		CoreV1().
 		PersistentVolumes().
-		Get(snapshotID, metav1.GetOptions{})
+		Get(volumeID, metav1.GetOptions{})
 	if err != nil {
-		return nil, errors.Errorf("Error fetching namespaces for volume{%s} : %s", volumeID, err.Error())
+		return nil, errors.Errorf("Error fetching volume{%s} : %s", volumeID, err.Error())
 	}
 
+	//TODO
 	if pv.Spec.ClaimRef.Namespace == "" {
 		return nil, errors.Errorf("No namespace in pv.spec.claimref for PV{%s}", snapshotID)
 
@@ -418,7 +423,6 @@ func (p *Plugin) getSnapInfo(snapshotID string) (*Snapshot, error) {
 // CreateVolumeFromSnapshot create CStor volume for given
 // snapshotID and perform restore operation on it
 func (p *Plugin) CreateVolumeFromSnapshot(snapshotID, volumeType, volumeAZ string, iops *int64) (string, error) {
-	p.cl.ExitServer = false
 	if volumeType != "cstor-snapshot" {
 		return "", errors.Errorf("Invalid volume type{%s}", volumeType)
 	}
@@ -427,57 +431,32 @@ func (p *Plugin) CreateVolumeFromSnapshot(snapshotID, volumeType, volumeAZ strin
 	volumeID := s[0]
 	snapName := s[1]
 
-	p.Log.Infof("Restoring snapshot{%s} for volume:%s", snapName, volumeID)
-
-	newVol, e := p.createPVC(volumeID, snapName)
-	if e != nil {
-		return "", errors.Errorf("Failed to restore PVC.. %s", e)
+	snapType := "cloud"
+	if p.local {
+		snapType = "local"
 	}
 
-	p.Log.Infof("New volume(%v) created", newVol)
+	p.Log.Infof("Restoring %s snapshot{%s} for volume:%s", snapType, snapName, volumeID)
 
-	restoreSpec := &v1alpha1.CStorRestoreSpec{
-		RestoreName: newVol.backupName,
-		VolumeName:  newVol.volname,
-		RestoreSrc:  p.cstorServerAddr,
-	}
-
-	restore := &v1alpha1.CStorRestore{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: newVol.namespace,
-		},
-		Spec: *restoreSpec,
-	}
-
-	url := p.mayaAddr + restorePath
-
-	restoreData, err := json.Marshal(restore)
+	newVol, err := p.getVolInfo(volumeID, snapName)
 	if err != nil {
-		p.Log.Errorf("Error during JSON marshal : %s", err.Error())
-		return "", err
+		return "", errors.Wrapf(err, "Failed to read PVC for volumeID=%s snap=%s", volumeID, snapName)
 	}
 
-	if _, err := p.httpRestCall(url, "POST", restoreData); err != nil {
-		p.Log.Errorf("Error executing REST api : %s", err.Error())
-		return "", errors.Errorf("Error executing REST api for restore : %s", err.Error())
+	fn := p.restoreVolumeFromCloud
+	if p.local {
+		fn = p.restoreVolumeFromLocal
 	}
 
-	filename := p.cl.GenerateRemoteFilename(volumeID, snapName)
-	if filename == "" {
-		p.Log.Errorf("Error failed to create remote file-name for backup")
-		return "", errors.Errorf("Error creating remote file name for backup")
-	}
+	err = fn(newVol)
 
-	go p.checkRestoreStatus(restore, newVol)
-
-	ret := p.cl.Download(filename)
-	if !ret {
-		p.Log.Errorf("Failed to restore snapshot")
-		return "", errors.New("Failed to restore snapshot")
+	if err != nil {
+		p.Log.Errorf("Failed to restore volume : %s", err)
+		return "", errors.Wrapf(err, "Failed to restore volume")
 	}
 
 	if newVol.restoreStatus == v1alpha1.RSTCStorStatusDone {
-		p.Log.Infof("Restore completed")
+		p.Log.Infof("Restore completed for CStor volume:%s snapshot:%s", volumeID, snapName)
 		return newVol.volname, nil
 	}
 
@@ -497,7 +476,20 @@ func (p *Plugin) SetVolumeID(unstructuredPV runtime.Unstructured, volumeID strin
 		return nil, errors.WithStack(err)
 	}
 
-	pv.Name = volumeID
+	vol := p.volumes[volumeID]
+
+	if p.local {
+		fsType := pv.Spec.PersistentVolumeSource.ISCSI.FSType
+
+		pv.Spec.PersistentVolumeSource = v1.PersistentVolumeSource{
+			ISCSI: &vol.iscsi,
+		}
+
+		// Set Old PV fsType
+		pv.Spec.PersistentVolumeSource.ISCSI.FSType = fsType
+	}
+
+	pv.Name = vol.volname
 
 	res, err := runtime.DefaultUnstructuredConverter.ToUnstructured(pv)
 	if err != nil {
@@ -505,4 +497,37 @@ func (p *Plugin) SetVolumeID(unstructuredPV runtime.Unstructured, volumeID strin
 	}
 
 	return &unstructured.Unstructured{Object: res}, nil
+}
+
+func (p *Plugin) getVolInfo(volumeID, snapName string) (*Volume, error) {
+	// To support namespace re-mapping for cloud snapshot,
+	// change createPVC to getPVCInfo
+	fn := p.createPVC
+	if p.local {
+		fn = p.getPVInfo
+	}
+
+	vol, err := fn(volumeID, snapName)
+	if err != nil {
+		return nil, err
+	}
+
+	// To support namespace re-mapping for cloud-snapshot remove below check
+	if p.local {
+		// Let's rename PV if already created
+		// -- PV may exist in-case of namespace-remapping or stale PV
+		newVolName, err := p.generateRestorePVName(vol.volname)
+		if err != nil {
+			return nil, errors.Wrapf(err, "Failed to generate PV name")
+		}
+
+		delete(p.volumes, vol.volname)
+		vol.volname = newVolName
+	}
+
+	p.volumes[vol.volname] = vol
+
+	p.Log.Infof("Generated PV name is %s", vol.volname)
+
+	return vol, nil
 }
