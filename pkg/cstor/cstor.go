@@ -253,6 +253,7 @@ func (p *Plugin) GetVolumeID(unstructuredPV runtime.Unstructured) (string, error
 			snapshotTag:  pv.Name,
 			storageClass: pv.Spec.StorageClassName,
 			namespace:    pv.Spec.ClaimRef.Namespace,
+			size:         pv.Spec.Capacity[v1.ResourceStorage],
 		}
 	}
 
@@ -354,6 +355,10 @@ func (p *Plugin) CreateSnapshot(volumeID, volumeAZ string, tags map[string]strin
 		return "", errors.New("Volume not found")
 	}
 	vol.backupName = bkpname
+	size, ok := vol.size.AsInt64()
+	if !ok {
+		return "", errors.Errorf("Failed to parse volume size %v", vol.size)
+	}
 
 	if !p.local {
 		// If cloud snapshot is configured then we need to backup PVC also
@@ -384,7 +389,7 @@ func (p *Plugin) CreateSnapshot(volumeID, volumeAZ string, tags map[string]strin
 
 	go p.checkBackupStatus(bkp)
 
-	ok = p.cl.Upload(filename)
+	ok = p.cl.Upload(filename, size)
 	if !ok {
 		return "", errors.New("Failed to upload snapshot")
 	}

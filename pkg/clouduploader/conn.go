@@ -23,12 +23,15 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"gocloud.dev/blob"
 	"gocloud.dev/blob/gcsblob"
 	"gocloud.dev/blob/s3blob"
 	"gocloud.dev/gcp"
+	"google.golang.org/api/googleapi"
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 const (
@@ -67,6 +70,9 @@ const (
 
 	// AWSSsl if ssl needs to be enabled
 	AWSSsl = "DisableSSL"
+
+	// MultiPartChunkSize is chunk size in case of multi-part upload of individual files
+	MultiPartChunkSize = "multiPartChunkSize"
 )
 
 // Conn defines resource used for cloud related operation
@@ -94,6 +100,9 @@ type Conn struct {
 
 	// file represent remote file name
 	file string
+
+	// partSize for multi-part upload, default value 5MB for AWS (8MB for GCP)
+	partSize int64
 
 	// exitServer, if server connection needs to be stopped or not
 	ExitServer bool
@@ -123,6 +132,9 @@ func (c *Conn) setupGCP(ctx context.Context, bucket string, config map[string]st
 	if err != nil {
 		return nil, err
 	}
+
+	// For GCP we will use default chunk size only since uploader is not using multi-part
+	c.partSize = googleapi.DefaultUploadChunkSize
 	return gcsblob.OpenBucket(ctx, d, bucket, nil)
 }
 
@@ -160,6 +172,13 @@ func (c *Conn) setupAWS(ctx context.Context, bucketName string, config map[strin
 		}
 	}
 
+	pSize, err := getPartSize(config)
+	if err != nil {
+		return nil, errors.Wrapf(err, "invalid multiPartChunkSize")
+	}
+	// if partSize is 0 then it will be calculated from file size
+	c.partSize = pSize
+
 	s := session.Must(session.NewSession(awsconfig))
 	return s3blob.OpenBucket(ctx, s, bucketName, nil)
 }
@@ -167,24 +186,28 @@ func (c *Conn) setupAWS(ctx context.Context, bucketName string, config map[strin
 // Init initialize connection to cloud blob storage
 func (c *Conn) Init(config map[string]string) error {
 	provider, ok := config[PROVIDER]
+
 	if !ok {
 		return errors.New("Failed to get provider name")
 	}
 	c.provider = provider
 
 	bucketName, ok := config[BUCKET]
+
 	if !ok {
 		return errors.New("Failed to get bucket name")
 	}
 	c.bucketname = bucketName
 
 	prefix, ok := config[PREFIX]
+
 	if !ok {
 		prefix = ""
 	}
 	c.prefix = prefix
 
 	backupPathPrefix, ok := config[BackupPathPrefix]
+
 	if !ok {
 		backupPathPrefix = ""
 	}
@@ -206,7 +229,7 @@ func (c *Conn) Create(opType ServerOperation) ReadWriter {
 	}
 	switch opType {
 	case OpBackup:
-		w, err := c.bucket.NewWriter(c.ctx, c.file, nil)
+		w, err := c.bucket.NewWriter(c.ctx, c.file, &blob.WriterOptions{BufferSize: int(c.partSize)})
 		if err != nil {
 			c.Log.Errorf("Failed to obtain writer: %s", err.Error())
 			return nil
@@ -249,4 +272,25 @@ func (c *Conn) Destroy(rw ReadWriter, opType ServerOperation) {
 		}
 		return
 	}
+}
+
+func getPartSize(config map[string]string) (val int64, err error) {
+	partSize, ok := config[MultiPartChunkSize]
+	if !ok {
+		return
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			err = errors.Errorf("failed to parse '%s'", partSize)
+		}
+	}()
+
+	d := resource.MustParse(partSize)
+	val = d.Value()
+
+	if val < s3manager.MinUploadPartSize {
+		err = errors.Errorf("multiPartChunkSize should be more than %v", s3manager.MinUploadPartSize)
+	}
+	return
 }

@@ -42,7 +42,8 @@ spec:
 
 
 ### Sample VolumeSnapshotLocation YAML for various cloud-providers
-# ---
+# # For GCP
+#---
 # apiVersion: velero.io/v1
 # kind: VolumeSnapshotLocation
 # metadata:
@@ -55,22 +56,41 @@ spec:
 #     prefix: cstor
 #     provider: gcp
 
+#
+# # For MinIO
 # ---
 # apiVersion: velero.io/v1
 # kind: VolumeSnapshotLocation
 # metadata:
-#   name: minio-bucket
+#   name: minio
 #   namespace: velero
 # spec:
 #   provider: openebs.io/cstor-blockstore
 #   config:
 #     bucket: openebs-velero-example
+#
 #     prefix: cstor
+#
 #     provider: aws
+#
+#     # The region where the server is located.
 #     region: minio
+#
+#     # Whether to use path-style addressing instead of virtual hosted bucket addressing.
+#     # Set to "true"
 #     s3ForcePathStyle: "true"
+#
+#     # S3 URL, By default it will be generated from "region" and "bucket"
 #     s3Url: http://minio.velero.svc:9000
+#
+#     # You can specify the multipart_chunksize  here for explicitness.
+#     # multiPartChunkSize can be from 5Mi(5*1024*1024 Bytes) to 5Gi
+#     # For more information: https://docs.min.io/docs/minio-server-limits-per-tenant.html
+#     # If not set then it will be calculated from the file size
+#     multiPartChunkSize: 64Mi
 
+#
+# # For AWS
 # ---
 # apiVersion: velero.io/v1
 # kind: VolumeSnapshotLocation
@@ -81,6 +101,16 @@ spec:
 #   provider: openebs.io/cstor-blockstore
 #   config:
 #     bucket: openebs-velero-example
+#
 #     prefix: cstor
+#
 #     provider: aws
+#
+#     # The AWS region where the bucket is located.
 #     region: ap-south-1
+#
+#     # You can specify the multipart_chunksize  here for explicitness.
+#     # multiPartChunkSize can be from 5Mi(5*1024*1024 Bytes) to 5Gi
+#     # For more information: https://docs.aws.amazon.com/AmazonS3/latest/dev/qfacts.html
+#     # If not set then it will be calculated from the file size
+#     multiPartChunkSize: 64Mi

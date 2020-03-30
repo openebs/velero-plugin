@@ -16,6 +16,8 @@ limitations under the License.
 
 package clouduploader
 
+import "github.com/aws/aws-sdk-go/service/s3/s3manager"
+
 const (
 	// backupDir is remote storage-bucket directory
 	backupDir = "backups"
@@ -24,9 +26,20 @@ const (
 // Upload will perform upload operation for given file.
 // It will create a TCP server through which client can
 // connect and upload data to cloud blob storage file
-func (c *Conn) Upload(file string) bool {
+func (c *Conn) Upload(file string, fileSize int64) bool {
 	c.Log.Infof("Uploading snapshot to  '%s' with provider{%s} to bucket{%s}", file, c.provider, c.bucketname)
+
 	c.file = file
+	if c.partSize == 0 {
+		// MaxUploadParts is limited to 10k
+		// 100 is arbitrary value considering snapshot metadata
+		partSize := (fileSize / s3manager.MaxUploadParts) + 100
+		if partSize < s3manager.MinUploadPartSize {
+			partSize = s3manager.MinUploadPartSize
+		}
+		c.partSize = partSize
+	}
+
 	s := &Server{
 		Log: c.Log,
 		cl:  c,
