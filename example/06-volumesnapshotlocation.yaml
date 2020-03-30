@@ -84,7 +84,8 @@ spec:
 #     s3Url: http://minio.velero.svc:9000
 #
 #     # You can specify the multipart_chunksize  here for explicitness.
-#     # Minimum value can be set is 5Mi (5*1024*1024 Bytes).. expected value (5Mi/Gi)
+#     # multiPartChunkSize can be from 5Mi(5*1024*1024 Bytes) to 5Gi
+#     # For more information: https://docs.min.io/docs/minio-server-limits-per-tenant.html
 #     # If not set then it will be calculated from the file size
 #     multiPartChunkSize: 64Mi
 
@@ -109,6 +110,7 @@ spec:
 #     region: ap-south-1
 #
 #     # You can specify the multipart_chunksize  here for explicitness.
-#     # Minimum value can be set is 5Mi (5*1024*1024 Bytes).. expected value (5Mi/Gi)
+#     # multiPartChunkSize can be from 5Mi(5*1024*1024 Bytes) to 5Gi
+#     # For more information: https://docs.aws.amazon.com/AmazonS3/latest/dev/qfacts.html
 #     # If not set then it will be calculated from the file size
 #     multiPartChunkSize: 64Mi

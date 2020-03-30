@@ -23,6 +23,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"gocloud.dev/blob"
@@ -287,5 +288,9 @@ func getPartSize(config map[string]string) (val int64, err error) {
 
 	d := resource.MustParse(partSize)
 	val = d.Value()
+
+	if val < s3manager.MinUploadPartSize {
+		err = errors.Errorf("multiPartChunkSize should be more than %v", s3manager.MinUploadPartSize)
+	}
 	return
 }
