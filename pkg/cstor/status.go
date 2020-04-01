@@ -65,6 +65,9 @@ func (p *Plugin) checkBackupStatus(bkp *v1alpha1.CStorBackup) {
 		case v1alpha1.BKPCStorStatusDone, v1alpha1.BKPCStorStatusFailed, v1alpha1.BKPCStorStatusInvalid:
 			bkpDone = true
 			p.cl.ExitServer = true
+			if err = p.cleanupCompletedBackup(bs); err != nil {
+				p.Log.Warningf("failed to execute clean-up request for backup=%s err=%s", bs.Name, err)
+			}
 		}
 	}
 }
@@ -106,4 +109,58 @@ func (p *Plugin) checkRestoreStatus(rst *v1alpha1.CStorRestore, vol *Volume) {
 			p.cl.ExitServer = true
 		}
 	}
+}
+
+// cleanupCompletedBackup send the delete request to apiserver
+// to cleanup backup resources
+// If it is normal backup then it will delete the current backup
+// If it is scheduled backup then
+//		- if current backup is succeeded then it will delete the previous backup
+//		- if current backup is failed then it will delete the current backup
+func (p *Plugin) cleanupCompletedBackup(bkp v1alpha1.CStorBackup) error {
+	targetedSnapName := bkp.Spec.SnapName
+	if isScheduledBackup(bkp) && isBackupSucceeded(bkp) {
+		// if current backup is first backup of schedule then skip the clean-up
+		if len(bkp.Spec.PrevSnapName) == 0 {
+			return nil
+		}
+		targetedSnapName = bkp.Spec.PrevSnapName
+	}
+
+	p.Log.Infof("executing clean-up request.. snapshot=%s volume=%s ns=%s backup=%s",
+		targetedSnapName,
+		bkp.Spec.VolumeName,
+		bkp.Namespace,
+		bkp.Spec.BackupName,
+	)
+
+	return p.sendDeleteRequest(targetedSnapName,
+		bkp.Spec.VolumeName,
+		bkp.Namespace,
+		bkp.Spec.BackupName)
+}
+
+// return true if given backup is part of schedule
+func isScheduledBackup(bkp v1alpha1.CStorBackup) bool {
+	// if backup is scheduled backup then snapshot name and backup name are different
+	if bkp.Spec.SnapName != bkp.Spec.BackupName {
+		return true
+	}
+	return false
+}
+
+// isBackupFailed returns true if backup failed
+func isBackupFailed(bkp v1alpha1.CStorBackup) bool {
+	if bkp.Status == v1alpha1.BKPCStorStatusFailed || bkp.Status == v1alpha1.BKPCStorStatusInvalid {
+		return true
+	}
+	return false
+}
+
+// isBackupSucceeded returns true if backup completed successfully
+func isBackupSucceeded(bkp v1alpha1.CStorBackup) bool {
+	if bkp.Status == v1alpha1.BKPCStorStatusDone {
+		return true
+	}
+	return false
 }

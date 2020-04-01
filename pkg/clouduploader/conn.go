@@ -274,6 +274,10 @@ func (c *Conn) Destroy(rw ReadWriter, opType ServerOperation) {
 	}
 }
 
+// getPartSize returns the multiPartChunkSize from the config
+// - if multiPartChunkSize is not specified then it will return 0
+// - if multiPartChunkSize is less then s3manager.MinUploadPartSize/5Mb then it will return an error
+// - if multiPartChunkSize is invalid then it will return an error
 func getPartSize(config map[string]string) (val int64, err error) {
 	partSize, ok := config[MultiPartChunkSize]
 	if !ok {

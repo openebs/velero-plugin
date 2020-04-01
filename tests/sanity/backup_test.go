@@ -87,6 +87,9 @@ var _ = Describe("Backup/Restore Test", func() {
 			}
 			Expect(err).NotTo(HaveOccurred())
 			Expect(status).To(Equal(v1.BackupPhaseCompleted))
+			isExist, err := openebs.Client.IsBackupResourcesExist(backupName, app.PVCName, AppNs)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(isExist).To(BeFalse())
 		})
 	})
 
@@ -100,6 +103,15 @@ var _ = Describe("Backup/Restore Test", func() {
 			Expect(status).To(Equal(v1.BackupPhaseCompleted))
 			err = velero.Client.DeleteSchedule(scheduleName)
 			Expect(err).NotTo(HaveOccurred())
+
+			bkplist, err := velero.Client.GetScheduledBackups(scheduleName)
+			Expect(err).NotTo(HaveOccurred())
+
+			for _, bkp := range bkplist {
+				isExist, err := openebs.Client.IsBackupResourcesExist(bkp, app.PVCName, AppNs)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(isExist).To(BeFalse())
+			}
 		})
 	})
 
@@ -167,5 +179,4 @@ var _ = Describe("Backup/Restore Test", func() {
 			}
 		})
 	})
-
 })

@@ -17,12 +17,9 @@ limitations under the License.
 package cstor
 
 import (
-	"io/ioutil"
 	"net"
-	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	cloud "github.com/openebs/velero-plugin/pkg/clouduploader"
 	"github.com/pkg/errors"
@@ -276,49 +273,22 @@ func (p *Plugin) DeleteSnapshot(snapshotID string) error {
 		snapInfo = p.snapshots[snapshotID]
 	}
 
-	if snapInfo.volID == "" || snapInfo.backupName == "" || snapInfo.namespace == "" {
-		return errors.Errorf("Got insufficient info vol:{%s} snap:{%s} ns:{%s}",
+	scheduleName := p.getScheduleName(snapInfo.backupName)
+
+	if snapInfo.volID == "" || snapInfo.backupName == "" || snapInfo.namespace == "" || scheduleName == "" {
+		return errors.Errorf("Got insufficient info vol:{%s} snap:{%s} ns:{%s} schedule:{%s}",
 			snapInfo.volID,
 			snapInfo.backupName,
-			snapInfo.namespace)
+			snapInfo.namespace,
+			scheduleName)
 	}
 
-	url := p.mayaAddr + backupEndpoint + snapInfo.backupName
-
-	req, err := http.NewRequest("DELETE", url, nil)
+	err = p.sendDeleteRequest(snapInfo.backupName,
+		snapInfo.volID,
+		snapInfo.namespace,
+		scheduleName)
 	if err != nil {
-		p.Log.Errorf("Failed to create HTTP request")
-		return err
-	}
-
-	q := req.URL.Query()
-	q.Add("volume", snapInfo.volID)
-	q.Add("namespace", snapInfo.namespace)
-
-	req.URL.RawQuery = q.Encode()
-
-	c := &http.Client{
-		Timeout: 60 * time.Second,
-	}
-	resp, err := c.Do(req)
-	if err != nil {
-		return errors.Errorf("Error when connecting to maya-apiserver : %s", err.Error())
-	}
-
-	defer func() {
-		if err := resp.Body.Close(); err != nil {
-			p.Log.Warnf("Failed to close response : %s", err.Error())
-		}
-	}()
-
-	_, err = ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return errors.Errorf("Unable to read response from maya-apiserver : %s", err.Error())
-	}
-
-	code := resp.StatusCode
-	if code != http.StatusOK {
-		return errors.Errorf("HTTP Status error{%v} from maya-apiserver", code)
+		return errors.Wrapf(err, "failed to execute maya-apiserver DELETE API")
 	}
 
 	if p.local {
@@ -535,4 +505,17 @@ func (p *Plugin) getVolInfo(volumeID, snapName string) (*Volume, error) {
 	p.Log.Infof("Generated PV name is %s", vol.volname)
 
 	return vol, nil
+}
+
+// getScheduleName return the schedule name for the given backup
+func (p *Plugin) getScheduleName(backupName string) string {
+	// for non-scheduled backup, we are considering backup name as schedule name only
+	scheduleName := backupName
+
+	// If it is scheduled backup then we need to get the schedule name
+	splitName := strings.Split(backupName, "-")
+	if len(splitName) >= 2 {
+		scheduleName = strings.Join(splitName[0:len(splitName)-1], "-")
+	}
+	return scheduleName
 }
