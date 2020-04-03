@@ -20,6 +20,7 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"time"
 
 	cloud "github.com/openebs/velero-plugin/pkg/clouduploader"
 	"github.com/pkg/errors"
@@ -508,14 +509,20 @@ func (p *Plugin) getVolInfo(volumeID, snapName string) (*Volume, error) {
 }
 
 // getScheduleName return the schedule name for the given backup
+// It will check if backup name have 'bkp-20060102150405' format
 func (p *Plugin) getScheduleName(backupName string) string {
 	// for non-scheduled backup, we are considering backup name as schedule name only
-	scheduleName := backupName
+	scheduleOrBackupName := backupName
 
 	// If it is scheduled backup then we need to get the schedule name
 	splitName := strings.Split(backupName, "-")
 	if len(splitName) >= 2 {
-		scheduleName = strings.Join(splitName[0:len(splitName)-1], "-")
+		t, err := time.Parse("20060102150405", splitName[len(splitName)-1])
+		if err != nil {
+			// last substring is not timestamp, so it is not generated from schedule
+			return scheduleOrBackupName
+		}
+		scheduleOrBackupName = strings.Join(splitName[0:len(splitName)-1], "-")
 	}
-	return scheduleName
+	return scheduleOrBackupName
 }

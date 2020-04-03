@@ -212,6 +212,11 @@ func (c *ClientSet) IsBackupResourcesExist(backup, pvc, ns string) (bool, error)
 		return false, errors.Wrapf(err, "failed to fetch cstorcompletedbackup list for backup %s/%s", ns, backup)
 	}
 
+	if isSchedule && len(cblist.Items) == 0 {
+		return true, errors.Errorf("for schedule cstorcompletedbackups should be present")
+	}
+
+	// for schedule cstorcompletedbackups is not deleted by apiserver to support incremental backup
 	if isSchedule && len(cblist.Items) == 1 {
 		cbkp := cblist.Items[0]
 		// if given backup is the last backup then relevant  cstorbackup will not be deleted
