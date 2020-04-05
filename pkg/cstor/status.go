@@ -119,9 +119,15 @@ func (p *Plugin) checkRestoreStatus(rst *v1alpha1.CStorRestore, vol *Volume) {
 //		- if current backup is failed then it will delete the current backup
 func (p *Plugin) cleanupCompletedBackup(bkp v1alpha1.CStorBackup) error {
 	targetedSnapName := bkp.Spec.SnapName
+
+	// In case of scheduled backup we are using the last completed backup to send
+	// differential snapshot. So We don't need to delete the last completed backup.
 	if isScheduledBackup(bkp) && isBackupSucceeded(bkp) {
-		// if current backup is first backup of schedule then skip the clean-up
+		// For incremental backup We are using PrevSnapName to send the differential snapshot
+		// Since Given backup is completed successfully We can delete the 2nd last completed backup
 		if len(bkp.Spec.PrevSnapName) == 0 {
+			// PrevSnapName will be empty if the given backup is base backup
+			// clean-up is not required for base backup
 			return nil
 		}
 		targetedSnapName = bkp.Spec.PrevSnapName
