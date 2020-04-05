@@ -113,10 +113,11 @@ func (p *Plugin) checkRestoreStatus(rst *v1alpha1.CStorRestore, vol *Volume) {
 
 // cleanupCompletedBackup send the delete request to apiserver
 // to cleanup backup resources
-// If it is normal backup then it will delete the current backup
+// If it is normal backup then it will delete the current backup, it can be failed or succeeded backup
 // If it is scheduled backup then
-//		- if current backup is succeeded then it will delete the previous backup
-//		- if current backup is failed then it will delete the current backup
+//		- if current backup is base backup, not incremental one, then it will not perform any clean-up
+//		- if current backup is incremental backup and failed one then it will delete that(current) backup
+//		- if current backup is incremental backup and completed successfully then it will delete the last completed or previous backup
 func (p *Plugin) cleanupCompletedBackup(bkp v1alpha1.CStorBackup) error {
 	targetedSnapName := bkp.Spec.SnapName
 
