@@ -517,7 +517,7 @@ func (p *Plugin) getScheduleName(backupName string) string {
 	// If it is scheduled backup then we need to get the schedule name
 	splitName := strings.Split(backupName, "-")
 	if len(splitName) >= 2 {
-		t, err := time.Parse("20060102150405", splitName[len(splitName)-1])
+		_, err := time.Parse("20060102150405", splitName[len(splitName)-1])
 		if err != nil {
 			// last substring is not timestamp, so it is not generated from schedule
 			return scheduleOrBackupName

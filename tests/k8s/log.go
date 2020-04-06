@@ -38,11 +38,14 @@ func (k *KubeClient) DumpLogs(ns, podName, container string) error {
 
 	readCloser, err := req.Stream()
 	if err != nil {
-		fmt.Printf("DumpLogs: Error occured for %s/%s:%s.. %s", ns, podName, container, err)
+		fmt.Printf("DumpLogs: Error occurred for %s/%s:%s.. %s", ns, podName, container, err)
 		return err
 	}
 
-	defer readCloser.Close()
+	defer func() {
+		_ = readCloser.Close()
+	}()
+
 	_, err = io.Copy(os.Stdout, readCloser)
 	fmt.Println(err)
 	return err

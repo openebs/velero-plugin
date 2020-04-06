@@ -156,14 +156,6 @@ func isScheduledBackup(bkp v1alpha1.CStorBackup) bool {
 	return false
 }
 
-// isBackupFailed returns true if backup failed
-func isBackupFailed(bkp v1alpha1.CStorBackup) bool {
-	if bkp.Status == v1alpha1.BKPCStorStatusFailed || bkp.Status == v1alpha1.BKPCStorStatusInvalid {
-		return true
-	}
-	return false
-}
-
 // isBackupSucceeded returns true if backup completed successfully
 func isBackupSucceeded(bkp v1alpha1.CStorBackup) bool {
 	if bkp.Status == v1alpha1.BKPCStorStatusDone {
