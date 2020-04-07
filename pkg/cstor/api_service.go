@@ -22,7 +22,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	v1alpha1 "github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
@@ -121,16 +120,10 @@ fetchip:
 }
 
 func (p *Plugin) sendBackupRequest(vol *Volume) (*v1alpha1.CStorBackup, error) {
-	bname := vol.backupName // This will be backup/schedule name
-
-	// If it is scheduled backup then we need to fetch schedule name
-	splitName := strings.Split(vol.backupName, "-")
-	if len(splitName) >= 2 {
-		bname = strings.Join(splitName[0:len(splitName)-1], "-")
-	}
+	scheduleName := p.getScheduleName(vol.backupName) // This will be backup/schedule name
 
 	bkpSpec := &v1alpha1.CStorBackupSpec{
-		BackupName: bname,
+		BackupName: scheduleName,
 		VolumeName: vol.volname,
 		SnapName:   vol.backupName,
 		BackupDest: p.cstorServerAddr,
@@ -218,4 +211,47 @@ func isEmptyRestResponse(data []byte) (bool, error) {
 	}
 
 	return false, nil
+}
+
+func (p *Plugin) sendDeleteRequest(backup, volume, namespace, schedule string) error {
+	url := p.mayaAddr + backupEndpoint + backup
+
+	req, err := http.NewRequest("DELETE", url, nil)
+	if err != nil {
+		return errors.Wrapf(err, "failed to create HTTP request")
+	}
+
+	q := req.URL.Query()
+	q.Add("volume", volume)
+	q.Add("namespace", namespace)
+	q.Add("schedule", schedule)
+
+	req.URL.RawQuery = q.Encode()
+
+	c := &http.Client{
+		Timeout: 60 * time.Second,
+	}
+
+	resp, err := c.Do(req)
+	if err != nil {
+		return errors.Wrapf(err, "failed to connect maya-apiserver")
+	}
+
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			p.Log.Warnf("Failed to close response err=%s", err)
+		}
+	}()
+
+	_, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return errors.Wrapf(err, "failed to read response from maya-apiserver")
+	}
+
+	code := resp.StatusCode
+	if code != http.StatusOK {
+		return errors.Errorf("HTTP Status error{%v} from maya-apiserver", code)
+	}
+
+	return nil
 }

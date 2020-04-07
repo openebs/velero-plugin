@@ -110,6 +110,9 @@ defaultbackup       Completed   2019-05-09 17:08:41 +0530 IST   26d       gcp   
 ```
 Once the backup is completed you should see the backup marked as `Completed`.
 
+*Note:*
+- _If backup name ends with "-20190513104034" format then it is considered as part of scheduled backup_
+
 
 ### Creating a restore from backup
 #### Creating a restore from local backup/snapshot
@@ -173,6 +176,9 @@ newschedule     Enabled   2019-05-13 15:15:39 +0530 IST   */5 * * * *   720h0m0s
 ```
 
 During the first backup iteration of a schedule, full data of the volume will be backed up. For later backup iterations of a schedule, only modified or new data from the previous iteration will be backed up.
+
+*Note:*
+- _If backup name ends with "-20190513104034" format then it is considered as part of scheduled backup_
 
 ### Restoring from a scheduled backup
 #### Restoring from a scheduled local backup/snapshot

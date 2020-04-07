@@ -18,6 +18,7 @@ package openebs
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	v1alpha1 "github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
@@ -169,4 +170,77 @@ func getPoolNameFromCVR(k v1alpha1.CStorVolumeReplica) string {
 
 func getVolumeNameFromCVR(k v1alpha1.CStorVolumeReplica) string {
 	return k.Labels[cVRPVLabel]
+}
+
+// GetCStorBackups returns cstorbackup list for the given backup
+func (c *ClientSet) GetCStorBackups(backup, ns string) (*v1alpha1.CStorBackupList, error) {
+	return c.OpenebsV1alpha1().
+		CStorBackups(ns).
+		List(metav1.ListOptions{
+			LabelSelector: "openebs.io/backup=" + backup,
+		})
+}
+
+// GetCStorCompletedBackups returns cstorcompletedbackup list for the given backup
+func (c *ClientSet) GetCStorCompletedBackups(backup, ns string) (*v1alpha1.CStorCompletedBackupList, error) {
+	return c.OpenebsV1alpha1().
+		CStorCompletedBackups(ns).
+		List(metav1.ListOptions{
+			LabelSelector: "openebs.io/backup=" + backup,
+		})
+}
+
+// IsBackupResourcesExist checks if backupResources, for the given backup, exist or not
+func (c *ClientSet) IsBackupResourcesExist(backup, pvc, ns string) (bool, error) {
+	isSchedule := false
+	isLastBackup := false
+
+	scheduleName := backup
+	splitName := strings.Split(backup, "-")
+	if len(splitName) >= 2 {
+		isSchedule = true
+		scheduleName = strings.Join(splitName[0:len(splitName)-1], "-")
+	}
+
+	blist, err := c.GetCStorBackups(scheduleName, ns)
+	if err != nil {
+		return false, errors.Wrapf(err, "failed to fetch cstorbackup list for backup %s/%s", ns, backup)
+	}
+
+	cblist, err := c.GetCStorCompletedBackups(scheduleName, ns)
+	if err != nil {
+		return false, errors.Wrapf(err, "failed to fetch cstorcompletedbackup list for backup %s/%s", ns, backup)
+	}
+
+	if isSchedule && len(cblist.Items) == 0 {
+		return true, errors.Errorf("for schedule cstorcompletedbackups should be present")
+	}
+
+	// for schedule cstorcompletedbackups is not deleted by apiserver to support incremental backup
+	if isSchedule && len(cblist.Items) == 1 {
+		cbkp := cblist.Items[0]
+		// if given backup is the last backup then relevant  cstorbackup will not be deleted
+		for i, bkp := range blist.Items {
+			if bkp.Spec.SnapName == cbkp.Spec.PrevSnapName {
+				blist.Items = append(blist.Items[:i], blist.Items[i+1:]...)
+			}
+			if bkp.Spec.SnapName == backup {
+				isLastBackup = true
+			}
+		}
+		cblist.Items = cblist.Items[:0]
+	}
+
+	snapshotExist, err := c.CheckSnapshot(pvc, ns, backup)
+	if err != nil {
+		if !strings.Contains(err.Error(), "command terminated with exit code 1") {
+			return false, errors.Wrapf(err, "failed to verify snapshot for backup %s/%s", ns, backup)
+		}
+	}
+
+	if len(blist.Items) != 0 || len(cblist.Items) != 0 || (snapshotExist && !isLastBackup) {
+		return true, errors.Errorf("backup %s/%s backup:%d cbackup:%d snapshot:%v isLastBackup:%v", ns, backup, len(blist.Items), len(cblist.Items), snapshotExist, isLastBackup)
+	}
+
+	return false, nil
 }

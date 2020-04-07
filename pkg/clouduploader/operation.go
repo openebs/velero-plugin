@@ -27,7 +27,7 @@ const (
 // It will create a TCP server through which client can
 // connect and upload data to cloud blob storage file
 func (c *Conn) Upload(file string, fileSize int64) bool {
-	c.Log.Infof("Uploading snapshot to  '%s' with provider{%s} to bucket{%s}", file, c.provider, c.bucketname)
+	c.Log.Infof("Uploading snapshot to '%s' with provider{%s} to bucket{%s}", file, c.provider, c.bucketname)
 
 	c.file = file
 	if c.partSize == 0 {
@@ -59,7 +59,7 @@ func (c *Conn) Upload(file string, fileSize int64) bool {
 
 // Delete will delete file from cloud blob storage
 func (c *Conn) Delete(file string) bool {
-	c.Log.Infof("Removing snapshot:'%s' from bucket{%s} provider{%s}", file, c.bucket, c.provider)
+	c.Log.Infof("Removing snapshot:'%s' from bucket{%s} provider{%s}", file, c.bucketname, c.provider)
 
 	if c.bucket.Delete(c.ctx, file) != nil {
 		c.Log.Errorf("Failed to remove snapshot{%s} from cloud", file)
