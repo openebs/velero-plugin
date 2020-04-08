@@ -31,12 +31,13 @@ script:
   - kubectl cluster-info
   - |
     export VELERO_RELEASE=v1.0.0
-    if [ ! -z $TRAVIS_TAG ]; then
-      export OPENEBS_RELEASE=${TRAVIS_TAG}
-    else
-      # In travis we use openebs operator from openebs/openebs:master only.
-      export OPENEBS_RELEASE=master
-    fi
+    # In travis we use openebs operator from openebs/openebs:master only.
+    export OPENEBS_RELEASE=master
+    #if [ ! -z $TRAVIS_TAG ]; then
+    #  export OPENEBS_RELEASE=${TRAVIS_TAG}
+    #else
+    #  export OPENEBS_RELEASE=master
+    #fi
   - ./script/install-openebs.sh
   - ./script/install-velero.sh
   - travis_wait make test
