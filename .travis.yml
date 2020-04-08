@@ -30,15 +30,12 @@ script:
   - make container
   - kubectl cluster-info
   - |
-    vR=`echo $TRAVIS_BRANCH |awk -F 'velero_'  '{print $2}'`
-    if [ -z $TRAVIS_BRANCH ] || [ $TRAVIS_BRANCH == "master" ] || [ -z $vR ]; then
-      export VELERO_RELEASE=v1.0.0
-      # In travis we use openebs operator from openebs/openebs:master only.
-      export OPENEBS_RELEASE="master"
+    export VELERO_RELEASE=v1.0.0
+    if [ ! -z $TRAVIS_TAG ]; then
+      export OPENEBS_RELEASE=${TRAVIS_TAG}
     else
-      export VELERO_RELEASE=v${vR}
-      oR=`echo $TRAVIS_BRANCH |awk -F '-' '{print $1}'`
-      export OPENEBS_RELEASE=${oR}
+      # In travis we use openebs operator from openebs/openebs:master only.
+      export OPENEBS_RELEASE=master
     fi
   - ./script/install-openebs.sh
   - ./script/install-velero.sh
