@@ -1,8 +1,18 @@
 sudo: required
 dist: xenial
+
+jobs:
+  include:
+    - os: linux
+      arch: amd64
+    - os: linux
+      arch: arm64
+
 services:
   - docker
+
 language: go
+
 go:
   - 1.11.2
 
@@ -13,41 +23,44 @@ addons:
 install:
   - make bootstrap
   - make format
+
 before_script:
-  # Install kubectl binary
-  - curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/v1.13.0/bin/linux/amd64/kubectl && chmod +x kubectl && sudo mv kubectl /usr/local/bin/
-  # Install minikube
-  - curl -Lo minikube https://storage.googleapis.com/minikube/releases/v0.35.0/minikube-linux-amd64 && chmod +x minikube && sudo mv minikube /usr/local/bin/
-  # Initialize minukube and kubernetes config directory
-  - mkdir -p $HOME/.kube $HOME/.minikube
-  # Start minukube server
-  - sudo minikube start --vm-driver=none --kubernetes-version=v1.13.0
-  - sudo chown -R $USER $HOME/.kube $HOME/.minikube
-  - JSONPATH='{range .items[*]}{@.metadata.name}:{range @.status.conditions[*]}{@.type}={@.status};{end}{end}'; until kubectl get nodes -o jsonpath="$JSONPATH" 2>&1 | grep -q "Ready=True"; do sleep 1; done
+  # 1. Install kubectl binary
+  # 2. Install minikube
+  # 3. Initialize minukube and kubernetes config directory
+  # 4. Start minukube server
+  - if [ "$TRAVIS_CPU_ARCH" == "amd64" ]; then
+      curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/v1.13.0/bin/linux/amd64/kubectl && chmod +x kubectl && sudo mv kubectl /usr/local/bin/;
+      curl -Lo minikube https://storage.googleapis.com/minikube/releases/v0.35.0/minikube-linux-amd64 && chmod +x minikube && sudo mv minikube /usr/local/bin/;
+      mkdir -p $HOME/.kube $HOME/.minikube;
+      sudo minikube start --vm-driver=none --kubernetes-version=v1.13.0;
+      sudo chown -R $USER $HOME/.kube $HOME/.minikube;
+      JSONPATH='{range .items[*]}{@.metadata.name}:{range @.status.conditions[*]}{@.type}={@.status};{end}{end}'; until kubectl get nodes -o jsonpath="$JSONPATH" 2>&1 | grep -q "Ready=True"; do sleep 1; done;
+    fi
+
 script:
   - make check
   - make all-ci
   - make container
-  - kubectl cluster-info
-  - |
-    export VELERO_RELEASE=v1.0.0
-    # In travis we use openebs operator from openebs/openebs:master only.
-    export OPENEBS_RELEASE=master
-    #if [ ! -z $TRAVIS_TAG ]; then
-    #  export OPENEBS_RELEASE=${TRAVIS_TAG}
-    #else
-    #  export OPENEBS_RELEASE=master
-    #fi
-  - ./script/install-openebs.sh
-  - ./script/install-velero.sh
-  - travis_wait make test
+  # In travis we use openebs operator from openebs/openebs:master only.
+  - if [ "$TRAVIS_CPU_ARCH" == "amd64" ]; then
+      kubectl cluster-info;
+      export VELERO_RELEASE=v1.0.0;
+      export OPENEBS_RELEASE=master;
+      ./script/install-openebs.sh;
+      ./script/install-velero.sh;
+      travis_wait make test;
+    fi
+
 after_success:
   - make deploy-image
+
 notifications:
   email:
     recipients:
-    - kiran.mova@cloudbyte.com
+    - kiran.mova@mayadata.io
     - mayank.patel@mayadata.io
+
 branches:
   except:
     - /^*-v[0-9]/
