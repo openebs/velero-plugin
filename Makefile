@@ -24,7 +24,14 @@ BUILD_IMAGE ?= gcr.io/heptio-images/golang:1.9-alpine3.6
 # list only velero-plugin source code directories
 PACKAGES = $(shell go list ./... | grep -v 'vendor')
 
-IMAGE ?= openebs/velero-plugin
+ARCH ?= $(shell go env GOARCH)
+
+IMAGE = openebs/velero-plugin
+
+# if the architecture is arm64, image name will have arm64 suffix
+ifeq (${ARCH}, arm64)
+	IMAGE = openebs/velero-plugin-arm64
+endif
 
 ifeq (${IMAGE_TAG}, )
 	IMAGE_TAG = ci
@@ -33,8 +40,6 @@ endif
 
 # Specify the date of build
 BUILD_DATE = $(shell date +'%Y%m%d%H%M%S')
-
-ARCH ?= amd64
 
 # Tools required for different make targets or for development
 EXTERNAL_TOOLS=\
