@@ -1,4 +1,4 @@
-FROM alpine:3.6
+FROM alpine:3.10.4
 RUN mkdir /plugins
 ADD velero-* /plugins/
 USER nobody:nobody
