@@ -13,6 +13,7 @@ OpenEBS velero-plugin.
 - [Compatibility matrix](#compatibility-matrix)
 - [Prerequisite for velero-plugin](#prerequisite-for-velero-plugin)
 - [Installation of velero-plugin](#installation-of-velero-plugin)
+- [Developer Guide](#developer-guide)
 - [Configuring snapshot location](#configuring-snapshot-location)
   - [Configuring snapshot location for remote backup](#configuring-snapshot-location-for-remote-backup)
   - [Configuring snapshot location for local backup](#configuring-snapshot-location-for-local-backup)
@@ -64,6 +65,22 @@ Run the following command to install development image of OpenEBS velero-plugin
 `velero plugin add openebs/velero-plugin:1.9.0`
 
 This command will add an init container to Velero deployment to install the OpenEBS velero-plugin.
+
+## Developer Guide
+#### To build the plugin binary
+```
+make all-ci
+```
+
+#### To build the docker image for velero-plugin
+```
+make container IMAGE=<REPO NAME>
+```
+
+#### To push the image to repo
+```
+make deploy-image IMAGE=<REPO NAME>
+```
 
 ## Configuring snapshot location
 Velero-plugin support two types of backup:
