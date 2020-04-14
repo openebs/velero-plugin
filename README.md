@@ -14,18 +14,34 @@ OpenEBS velero-plugin.
 - [Prerequisite for velero-plugin](#prerequisite-for-velero-plugin)
 - [Installation of velero-plugin](#installation-of-velero-plugin)
 - [Configuring snapshot location](#configuring-snapshot-location)
+  - [Configuring snapshot location for remote backup](#configuring-snapshot-location-for-remote-backup)
+  - [Configuring snapshot location for local backup](#configuring-snapshot-location-for-local-backup)
 - [Managing Backups](#managing-backups)
   - [Creating a backup](#creating-a-backup)
   - [Creating a restore from backup](#creating-a-restore-from-backup)
+    - [Creating a restore from local backup](#creating-a-restore-from-local-backup)
+    - [Creating a restore from remote backup](#creating-a-restore-from-remote-backup)
   - [Creating a scheduled backup](#creating-a-scheduled-backup-or-incremental-backup-for-cstor-volume)
   - [Restoring from a scheduled backup](#restoring-from-a-scheduled-backup)
+    - [Restoring from a scheduled local backup](#restoring-from-a-scheduled-local-backup)
+    - [Restoring from a scheduled remote backup](#restoring-from-a-scheduled-remote-backup)
 
 ## Compatibility matrix
-|	OpenEBS/Maya Release	|	Velero Version	|	Velero-plugin Version	|	Codebase	          |
-|	--------------------	|	---------------	|	--------------------	|	------------------- |
-|	0.9                 	|	v0.11.0       	|	0.9.0               	|	v0.9.x	            |
-|	1.0.0               	|	v1.0.0        	|	1.0.0-velero_1.0.0	  |	1.0.0-velero_1.0.0	|
-|	1.1.0               	|	v1.0.0        	|	1.1.0-velero_1.0.0  	|	1.1.0-velero_1.0.0	|
+
+|	Velero-plugin Version	|	OpenEBS/Maya Release	|	Velero Version	  |	Codebase	          |
+|	--------------------	|	---------------	      |	------------------|	------------------- |
+|	0.9.0               	|	>= 0.9                |	>= v0.11.0       	|	v0.9.x	            |
+|	1.0.0-velero_1.0.0	  |	>= 1.0.0              |	>= v1.0.0        	|	1.0.0-velero_1.0.0	|
+|	1.1.0-velero_1.0.0  	|	>= 1.0.0              |	>= v1.0.0        	|	v1.1.x	            |
+|	1.2.0-velero_1.0.0  	|	>= 1.0.0              |	>= v1.0.0        	|	v1.2.x            	|
+|	1.3.0-velero_1.0.0  	|	>= 1.0.0              |	>= v1.0.0        	|	v1.3.x	            |
+|	1.4.0-velero_1.0.0  	|	>= 1.0.0              |	>= v1.0.0        	|	v1.4.x	            |
+|	1.5.0-velero_1.0.0  	|	>= 1.0.0              |	>= v1.0.0        	|	v1.5.x	            |
+|	1.6.0-velero_1.0.0  	|	>= 1.0.0              |	>= v1.0.0        	|	v1.6.x	            |
+|	1.7.0-velero_1.0.0  	|	>= 1.0.0              |	>= v1.0.0        	|	v1.7.x           	  |
+|	1.8.0-velero_1.0.0  	|	>= 1.0.0              |	>= v1.0.0        	|	v1.8.x	            |
+|	1.9.0                	|	>= 1.0.0             	|	>= v1.0.0        	|	v1.9.x	            |
+
 
 *Note:*
 
@@ -45,14 +61,24 @@ For installation steps of OpenEBS, visit https://github.com/openebs/openebs/rele
 ## Installation of velero-plugin
 Run the following command to install development image of OpenEBS velero-plugin
 
-`velero plugin add openebs/velero-plugin:ci`
+`velero plugin add openebs/velero-plugin:1.9.0`
 
 This command will add an init container to Velero deployment to install the OpenEBS velero-plugin.
 
 ## Configuring snapshot location
+Velero-plugin support two types of backup:
+1. Remote Backup
+
+	In case of remote backup Velero-plugin creates a snapshot on CStor volume and upload it to remote storage.
+
+2. Local Backup
+
+	In case of local backup Velero-plugin creates a snapshot on CStor volume.
+
+### Configuring snapshot location for remote backup
 To take remote backup of cStor volume snapshot to cloud or S3 compatible storage, configure VolumeSnapshotLocation with provider `openebs.io/cstor-blockstore`. Sample YAML file for volumesnapshotlocation can be found at `example/06-volumesnapshotlocation.yaml`.
 
-```
+```yaml
 spec:
   provider: openebs.io/cstor-blockstore
   config:
@@ -63,9 +89,12 @@ spec:
     region: <AWS_REGION>
 ```
 
+### Configuring snapshot location for local backup
 For local backup(/snapshot) of CStor volume through velero, Refer `example/06-local-volumesnapshotlocation.yaml` to configure `VolumeSnapshotLocation`.
 
-```
+For local backup Velero version must be >= v1.3.0, velero-plugin >=1.9.0 and OpenEBS >= 1.9.0.
+
+```yaml
 spec:
   provider: openebs.io/cstor-blockstore
   config:
@@ -115,7 +144,7 @@ Once the backup is completed you should see the backup marked as `Completed`.
 
 
 ### Creating a restore from backup
-#### Creating a restore from local backup/snapshot
+#### Creating a restore from local backup
 To restore local backup, run the following command:
 
 `velero restore create --from-backup backup_name --restore-volumes=true --namespace-mappings source_ns:destination_ns`
@@ -126,7 +155,7 @@ To restore local backup, run the following command:
 *Limitation:*
 - _Restore of PV having storageClass, with volumeBindingMode set to WaitForFirstConsumer, won't work as expected_
 
-#### Creating a restore from remote/cloud backup
+#### Creating a restore from remote backup
 To restore data from remote/cloud backup, run the following command:
 
 `velero restore create --from-backup backup_name --restore-volumes=true`
@@ -181,10 +210,10 @@ During the first backup iteration of a schedule, full data of the volume will be
 - _If backup name ends with "-20190513104034" format then it is considered as part of scheduled backup_
 
 ### Restoring from a scheduled backup
-#### Restoring from a scheduled local backup/snapshot
+#### Restoring from a scheduled local backup
 In case of local backups/snapshots, you can restore from any completed backup created by the schedule.
 
-#### Restoring from a scheduled remote/cloud backup
+#### Restoring from a scheduled remote backup
 Since backups taken are incremental for a schedule, the order of restoring data is important. You need to restore data in the order of the backups created. First restore must be created from the first completed backup of schedule.
 
 For example, below are the available backups for a schedule:
