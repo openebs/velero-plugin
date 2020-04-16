@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"time"
 
-	v1 "github.com/heptio/velero/pkg/apis/velero/v1"
 	"github.com/pkg/errors"
+	v1 "github.com/vmware-tanzu/velero/pkg/apis/velero/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -39,7 +39,7 @@ func (c *ClientSet) generateScheduleName() (string, error) {
 			return b, nil
 		}
 	}
-	return "", errors.New("Failed to generate unique backup name")
+	return "", errors.New("failed to generate unique backup name")
 }
 
 // CreateSchedule create scheduled backup for given namespace and wait till 'count' backup completed

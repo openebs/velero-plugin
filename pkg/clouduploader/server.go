@@ -127,7 +127,7 @@ func (s *Server) acceptClient(fd, epfd int) (int, error) {
 	}
 
 	if err = syscall.SetNonblock(connFd, true); err != nil {
-		if err := syscall.Close(connFd); err != nil {
+		if err = syscall.Close(connFd); err != nil {
 			s.Log.Warnf("Failed to close cline {%v} : %s", connFd, err.Error())
 		}
 		s.Log.Errorf("Failed to set non-blocking mode for client {%v}, closing it : %s", connFd, err.Error())
@@ -144,7 +144,7 @@ func (s *Server) acceptClient(fd, epfd int) (int, error) {
 
 	if c.file == nil {
 		s.Log.Errorf("Failed to create file interface")
-		panic(errors.New("Failed to create file interface"))
+		panic(errors.New("failed to create file interface"))
 	}
 
 	event = new(syscall.EpollEvent)
@@ -161,7 +161,7 @@ func (s *Server) acceptClient(fd, epfd int) (int, error) {
 	s.addClientToEvent(c, event)
 	if err := syscall.EpollCtl(epfd, syscall.EPOLL_CTL_ADD, connFd, event); err != nil {
 		s.Log.Errorf("Failed to add client fd{%v} to epoll: %s", connFd, err.Error())
-		if err := syscall.Close(connFd); err != nil {
+		if err = syscall.Close(connFd); err != nil {
 			s.Log.Warnf("Failed to close fd{%v} : %s", connFd, err.Error())
 		}
 		s.Log.Errorf("Connection closed for fd{%v} due to errors", connFd)
@@ -176,7 +176,7 @@ func (s *Server) handleRead(event syscall.EpollEvent) error {
 	var writer *blob.Writer
 
 	if s.OpType != OpBackup {
-		return errors.New("Invalid backup operation")
+		return errors.New("invalid backup operation")
 	}
 
 	writer = (*blob.Writer)(c.file)
@@ -201,7 +201,7 @@ func (s *Server) handleWrite(event syscall.EpollEvent) error {
 	var reader *blob.Reader
 
 	if s.OpType != OpRestore {
-		return errors.New("Invalid backup operation")
+		return errors.New("invalid backup operation")
 	}
 
 	reader = (*blob.Reader)(c.file)
@@ -218,7 +218,7 @@ func (s *Server) handleWrite(event syscall.EpollEvent) error {
 	} else {
 		s.updateClientStatus(c, TransferStatusFailed)
 		s.Log.Errorf("Error in downloading operation for client{%v} : %s", c.fd, e.Error())
-		return errors.New("Error in downloading operation")
+		return errors.New("error in downloading operation")
 	}
 	return nil
 }

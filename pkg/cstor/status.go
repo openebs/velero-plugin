@@ -117,7 +117,8 @@ func (p *Plugin) checkRestoreStatus(rst *v1alpha1.CStorRestore, vol *Volume) {
 // If it is scheduled backup then
 //		- if current backup is base backup, not incremental one, then it will not perform any clean-up
 //		- if current backup is incremental backup and failed one then it will delete that(current) backup
-//		- if current backup is incremental backup and completed successfully then it will delete the last completed or previous backup
+//		- if current backup is incremental backup and completed successfully then
+//		  it will delete the last completed or previous backup
 func (p *Plugin) cleanupCompletedBackup(bkp v1alpha1.CStorBackup) error {
 	targetedSnapName := bkp.Spec.SnapName
 
@@ -150,16 +151,10 @@ func (p *Plugin) cleanupCompletedBackup(bkp v1alpha1.CStorBackup) error {
 // return true if given backup is part of schedule
 func isScheduledBackup(bkp v1alpha1.CStorBackup) bool {
 	// if backup is scheduled backup then snapshot name and backup name are different
-	if bkp.Spec.SnapName != bkp.Spec.BackupName {
-		return true
-	}
-	return false
+	return bkp.Spec.SnapName != bkp.Spec.BackupName
 }
 
 // isBackupSucceeded returns true if backup completed successfully
 func isBackupSucceeded(bkp v1alpha1.CStorBackup) bool {
-	if bkp.Status == v1alpha1.BKPCStorStatusDone {
-		return true
-	}
-	return false
+	return bkp.Status == v1alpha1.BKPCStorStatusDone
 }

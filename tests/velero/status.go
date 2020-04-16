@@ -16,7 +16,7 @@ limitations under the License.
 
 package velero
 
-import v1 "github.com/heptio/velero/pkg/apis/velero/v1"
+import v1 "github.com/vmware-tanzu/velero/pkg/apis/velero/v1"
 
 func isBackupDone(bkp *v1.Backup) bool {
 	var completed bool

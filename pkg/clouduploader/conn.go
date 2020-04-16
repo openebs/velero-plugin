@@ -109,19 +109,22 @@ type Conn struct {
 }
 
 // setupBucket creates a connection to a particular cloud provider's blob storage.
-func (c *Conn) setupBucket(ctx context.Context, provider, bucket string, config map[string]string) (*blob.Bucket, error) {
+func (c *Conn) setupBucket(
+	ctx context.Context, provider, bucket string, config map[string]string,
+) (*blob.Bucket, error) {
 	switch provider {
 	case AWS:
 		return c.setupAWS(ctx, bucket, config)
 	case GCP:
 		return c.setupGCP(ctx, bucket, config)
 	default:
-		return nil, errors.New("Provider is not supported")
+		return nil, errors.New("provider is not supported")
 	}
 }
 
 // setupGCP creates a connection to GCP's blob storage
 func (c *Conn) setupGCP(ctx context.Context, bucket string, config map[string]string) (*blob.Bucket, error) {
+	_ = config
 	/* TBD: use cred file using env variable */
 	creds, err := gcp.DefaultCredentials(ctx)
 	if err != nil {
@@ -144,7 +147,7 @@ func (c *Conn) setupAWS(ctx context.Context, bucketName string, config map[strin
 
 	region, ok := config[REGION]
 	if !ok {
-		return nil, errors.New("No region provided for AWS")
+		return nil, errors.New("no region provided for AWS")
 	}
 
 	if awscred = os.Getenv(AWSCredentialsFile); len(awscred) == 0 {
@@ -188,14 +191,14 @@ func (c *Conn) Init(config map[string]string) error {
 	provider, ok := config[PROVIDER]
 
 	if !ok {
-		return errors.New("Failed to get provider name")
+		return errors.New("failed to get provider name")
 	}
 	c.provider = provider
 
 	bucketName, ok := config[BUCKET]
 
 	if !ok {
-		return errors.New("Failed to get bucket name")
+		return errors.New("failed to get bucket name")
 	}
 	c.bucketname = bucketName
 

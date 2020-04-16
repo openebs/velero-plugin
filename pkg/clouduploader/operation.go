@@ -110,7 +110,6 @@ func (c *Conn) Write(data []byte, file string) bool {
 	}
 	c.Log.Infof("successfully writtern object{%s} to {%s}", file, c.provider)
 	return true
-
 }
 
 // Read will return content of file from cloud blob storage

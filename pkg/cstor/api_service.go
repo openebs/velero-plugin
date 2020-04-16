@@ -47,7 +47,7 @@ func (p *Plugin) httpRestCall(url, reqtype string, data []byte) ([]byte, error) 
 	}
 
 	defer func() {
-		if err := resp.Body.Close(); err != nil {
+		if err = resp.Body.Close(); err != nil {
 			p.Log.Warnf("Failed to close response : %s", err.Error())
 		}
 	}()
@@ -238,7 +238,7 @@ func (p *Plugin) sendDeleteRequest(backup, volume, namespace, schedule string) e
 	}
 
 	defer func() {
-		if err := resp.Body.Close(); err != nil {
+		if err = resp.Body.Close(); err != nil {
 			p.Log.Warnf("Failed to close response err=%s", err)
 		}
 	}()

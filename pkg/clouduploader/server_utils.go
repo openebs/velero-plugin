@@ -41,7 +41,7 @@ func (s *Server) removeFromClientList(c *Client) {
 
 	if s.FirstClient == nil || s.state.runningCount == 0 {
 		s.Log.Errorf("ClientList is empty")
-		panic(errors.New("ClientList list is empty"))
+		panic(errors.New("clientList list is empty"))
 	} else if s.FirstClient == c {
 		s.FirstClient = c.next
 	} else {

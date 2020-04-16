@@ -239,7 +239,9 @@ func (c *ClientSet) IsBackupResourcesExist(backup, pvc, ns string) (bool, error)
 	}
 
 	if len(blist.Items) != 0 || len(cblist.Items) != 0 || (snapshotExist && !isLastBackup) {
-		return true, errors.Errorf("backup %s/%s backup:%d cbackup:%d snapshot:%v isLastBackup:%v", ns, backup, len(blist.Items), len(cblist.Items), snapshotExist, isLastBackup)
+		return true, errors.Errorf(
+			"backup %s/%s backup:%d cbackup:%d snapshot:%v isLastBackup:%v",
+			ns, backup, len(blist.Items), len(cblist.Items), snapshotExist, isLastBackup)
 	}
 
 	return false, nil

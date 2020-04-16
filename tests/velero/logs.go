@@ -20,8 +20,8 @@ import (
 	"os"
 	"time"
 
-	v1 "github.com/heptio/velero/pkg/apis/velero/v1"
-	log "github.com/heptio/velero/pkg/cmd/util/downloadrequest"
+	v1 "github.com/vmware-tanzu/velero/pkg/apis/velero/v1"
+	log "github.com/vmware-tanzu/velero/pkg/cmd/util/downloadrequest"
 )
 
 // DumpBackupLogs dump logs of given backup on stdout
@@ -31,5 +31,5 @@ func (c *ClientSet) DumpBackupLogs(backupName string) error {
 		backupName,
 		v1.DownloadTargetKindBackupLog,
 		os.Stdout,
-		time.Minute)
+		time.Minute, false)
 }

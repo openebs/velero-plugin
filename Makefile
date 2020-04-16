@@ -46,7 +46,6 @@ ci:
 	CGO_ENABLED=0 go build -v -o _output/$(BIN) ./$(BIN)
 
 # Run linter using docker image
-MODULE=github.com/openebs/velero-plugin
 lint-docker:
 	@docker run -i						\
 		--rm -v $$(pwd):/app -w /app 	\
