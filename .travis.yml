@@ -21,12 +21,12 @@ addons:
     update: true
 
 before_script:
-  - make lint-docker
-  # 1. Install kubectl binary
-  # 2. Install minikube
-  # 3. Initialize minukube and kubernetes config directory
-  # 4. Start minukube server
   - if [ "$TRAVIS_CPU_ARCH" == "amd64" ]; then
+      make lint-docker || travis_terminate 1;
+      # 1. Install kubectl binary
+      # 2. Install minikube
+      # 3. Initialize minukube and kubernetes config directory
+      # 4. Start minukube server
       curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/v1.13.0/bin/linux/amd64/kubectl && chmod +x kubectl && sudo mv kubectl /usr/local/bin/ || travis_terminate 1;
       curl -Lo minikube https://storage.googleapis.com/minikube/releases/v0.35.0/minikube-linux-amd64 && chmod +x minikube && sudo mv minikube /usr/local/bin/ || travis_terminate 1;
       mkdir -p $HOME/.kube $HOME/.minikube;
