@@ -150,14 +150,14 @@ func (c *Conn) setupAWS(ctx context.Context, bucketName string, config map[strin
 		return nil, errors.New("no region provided for AWS")
 	}
 
-	if awscred = os.Getenv(AWSCredentialsFile); len(awscred) == 0 {
+	if awscred = os.Getenv(AWSCredentialsFile); awscred == "" {
 		return nil, errors.New("error fetching aws credentials")
 	}
 
-	credentials := credentials.NewSharedCredentials(awscred, DefaultProfile)
+	cred := credentials.NewSharedCredentials(awscred, DefaultProfile)
 	awsconfig := aws.NewConfig().
 		WithRegion(region).
-		WithCredentials(credentials)
+		WithCredentials(cred)
 
 	if url, ok := config[AWSUrl]; ok {
 		awsconfig = awsconfig.WithEndpoint(url)

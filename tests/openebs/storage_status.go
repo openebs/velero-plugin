@@ -107,7 +107,7 @@ func (c *ClientSet) getPVCVolumeName(pvc, ns string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if len(o.Spec.VolumeName) == 0 {
+	if o.Spec.VolumeName == "" {
 		return "", errors.Errorf("Volume name is empty")
 	}
 	return o.Spec.VolumeName, nil
@@ -143,7 +143,7 @@ func (c *ClientSet) CheckSnapshot(pvc, pvcNs, snapshot string) (bool, error) {
 					"@" +
 					snapshot
 				_, e, err := k8s.Client.Exec(cmd, p.Name, cstorPoolContainer, p.Namespace)
-				if err != nil || len(e) != 0 {
+				if err != nil || e != "" {
 					return false, errors.Errorf("Error occurred for %v/%v@%v.. stderr:%v err:%v",
 						getPoolNameFromCVR(k), getVolumeNameFromCVR(k), snapshot, e, err)
 				}

@@ -29,7 +29,7 @@ import (
 func (c *ClientSet) generateScheduleName() (string, error) {
 	for i := 0; i < 10; {
 		b := generateRandomString(8)
-		if len(b) == 0 {
+		if b == "" {
 			continue
 		}
 		_, err := c.VeleroV1().

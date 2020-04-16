@@ -39,13 +39,12 @@ func (rc byCreationTimeStamp) Swap(i, j int) {
 
 func (rc byCreationTimeStamp) Less(i, j int) bool {
 	return rc[i].Name < rc[j].Name
-	//return rc[i].CreationTimestamp.Before(&rc[j].CreationTimestamp)
 }
 
 func (c *ClientSet) generateRestoreName(backup string) (string, error) {
 	for i := 0; i < 10; {
 		r := generateRandomString(8) + "-" + backup
-		if len(r) == 0 {
+		if r == "" {
 			continue
 		}
 		_, err := c.VeleroV1().

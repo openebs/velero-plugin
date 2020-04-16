@@ -22,13 +22,7 @@ func isBackupDone(bkp *v1.Backup) bool {
 	var completed bool
 
 	switch bkp.Status.Phase {
-	case v1.BackupPhaseFailedValidation:
-		fallthrough
-	case v1.BackupPhaseCompleted:
-		fallthrough
-	case v1.BackupPhasePartiallyFailed:
-		fallthrough
-	case v1.BackupPhaseFailed:
+	case v1.BackupPhaseFailedValidation, v1.BackupPhaseCompleted, v1.BackupPhasePartiallyFailed, v1.BackupPhaseFailed:
 		completed = true
 	}
 	return completed
@@ -38,13 +32,7 @@ func isRestoreDone(rst *v1.Restore) bool {
 	var completed bool
 
 	switch rst.Status.Phase {
-	case v1.RestorePhaseCompleted:
-		fallthrough
-	case v1.RestorePhaseFailed:
-		fallthrough
-	case v1.RestorePhaseFailedValidation:
-		fallthrough
-	case v1.RestorePhasePartiallyFailed:
+	case v1.RestorePhaseCompleted, v1.RestorePhaseFailed, v1.RestorePhaseFailedValidation, v1.RestorePhasePartiallyFailed:
 		completed = true
 	}
 	return completed

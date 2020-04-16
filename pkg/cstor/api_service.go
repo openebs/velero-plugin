@@ -109,7 +109,7 @@ func (p *Plugin) getMapiAddr() string {
 
 fetchip:
 	for _, s := range svclist.Items {
-		if len(s.Spec.ClusterIP) != 0 {
+		if s.Spec.ClusterIP != "" {
 			// update the namespace
 			p.namespace = s.Namespace
 			return "http://" + s.Spec.ClusterIP + ":" + strconv.FormatInt(int64(s.Spec.Ports[0].Port), 10)
@@ -206,7 +206,7 @@ func isEmptyRestResponse(data []byte) (bool, error) {
 	}
 
 	res, ok := obj.(string)
-	if ok && len(res) == 0 {
+	if ok && res == "" {
 		return true, nil
 	}
 

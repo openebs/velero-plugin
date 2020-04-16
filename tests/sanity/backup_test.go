@@ -83,7 +83,7 @@ var _ = Describe("Backup/Restore Test", func() {
 
 			backupName, status, err = velero.Client.CreateBackup(AppNs)
 			if ((err != nil) || status != v1.BackupPhaseCompleted) &&
-				len(backupName) != 0 {
+				backupName != "" {
 				_ = velero.Client.DumpBackupLogs(backupName)
 				_ = openebs.Client.DumpLogs()
 			}

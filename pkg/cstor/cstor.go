@@ -98,43 +98,43 @@ type Plugin struct {
 
 // Snapshot describes snapshot object information
 type Snapshot struct {
-	//Volume name on which snapshot should be taken
+	// Volume name on which snapshot should be taken
 	volID string
 
-	//backupName is name of a snapshot
+	// backupName is name of a snapshot
 	backupName string
 
-	//namespace is volume's namespace
+	// namespace is volume's namespace
 	namespace string
 }
 
 // Volume describes volume object information
 type Volume struct {
-	//volname is volume name
+	// volname is volume name
 	volname string
 
 	// srcVolname is source volume name in case of local restore
 	srcVolname string
 
-	//namespace is volume claim's namespace
+	// namespace is volume claim's namespace
 	namespace string
 
-	//backupName is snapshot name for given volume
+	// backupName is snapshot name for given volume
 	backupName string
 
-	//backupStatus is backup progress status for given volume
+	// backupStatus is backup progress status for given volume
 	backupStatus v1alpha1.CStorBackupStatus
 
-	//restoreStatus is restore progress status for given volume
+	// restoreStatus is restore progress status for given volume
 	restoreStatus v1alpha1.CStorRestoreStatus
 
-	//size is volume size in string
+	// size is volume size in string
 	size resource.Quantity
 
 	// snapshotTag is cloud snapshot file identifier.. It will be same as volume name from backup
 	snapshotTag string
 
-	//storageClass is volume's storageclass
+	// storageClass is volume's storageclass
 	storageClass string
 
 	iscsi v1.ISCSIPersistentVolumeSource
@@ -383,7 +383,7 @@ func (p *Plugin) getSnapInfo(snapshotID string) (*Snapshot, error) {
 		return nil, errors.Errorf("Error fetching volume{%s} : %s", volumeID, err.Error())
 	}
 
-	//TODO
+	// TODO
 	if pv.Spec.ClaimRef.Namespace == "" {
 		return nil, errors.Errorf("No namespace in pv.spec.claimref for PV{%s}", snapshotID)
 	}

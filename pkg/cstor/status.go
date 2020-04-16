@@ -127,7 +127,7 @@ func (p *Plugin) cleanupCompletedBackup(bkp v1alpha1.CStorBackup) error {
 	if isScheduledBackup(bkp) && isBackupSucceeded(bkp) {
 		// For incremental backup We are using PrevSnapName to send the differential snapshot
 		// Since Given backup is completed successfully We can delete the 2nd last completed backup
-		if len(bkp.Spec.PrevSnapName) == 0 {
+		if bkp.Spec.PrevSnapName == "" {
 			// PrevSnapName will be empty if the given backup is base backup
 			// clean-up is not required for base backup
 			return nil

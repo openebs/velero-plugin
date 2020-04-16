@@ -25,7 +25,7 @@ const (
 
 // ServerState defines resource used for Server state
 type ServerState struct {
-	//status defines server current transfer status
+	// status defines server current transfer status
 	status TransferStatus
 
 	// successCount defines number of client completed
@@ -84,25 +84,25 @@ type Client struct {
 }
 
 const (
-	//EPOLLET defines flag for edge-triggered
+	// EPOLLET defines flag for edge-triggered
 	EPOLLET = 1 << 31
 
-	//MaxEpollEvents defines max number of events returned by epoll_wait
+	// MaxEpollEvents defines max number of events returned by epoll_wait
 	MaxEpollEvents = 32
 
-	//MaxClient defines max number of connection a server can accept
+	// MaxClient defines max number of connection a server can accept
 	MaxClient = 10
 
-	//RecieverPort defines port number on which server should listen for new connection
+	// RecieverPort defines port number on which server should listen for new connection
 	RecieverPort = 9000
 
-	//ReadBufferLen defines max number of bytes should be read from wire
+	// ReadBufferLen defines max number of bytes should be read from wire
 	ReadBufferLen = 32 * 1024
 
-	//EPOLLTIMEOUT defines timeout for epoll_wait
+	// EPOLLTIMEOUT defines timeout for epoll_wait
 	EPOLLTIMEOUT = 5 * 1000 // 5 second
 
-	//OpBackup : backup operation
+	// OpBackup : backup operation
 	OpBackup ServerOperation = 1
 
 	// OpRestore : restore operation
@@ -191,7 +191,7 @@ func (s *Server) handleRead(event syscall.EpollEvent) error {
 				return errors.Errorf("write returned error : %s", err.Error())
 			}
 		} else {
-			return nil //connection closed
+			return nil // connection closed
 		}
 	}
 }

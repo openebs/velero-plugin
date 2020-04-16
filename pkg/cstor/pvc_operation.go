@@ -61,7 +61,7 @@ func (p *Plugin) backupPVC(volumeID string) error {
 
 	bkpPvc.ResourceVersion = ""
 	bkpPvc.SelfLink = ""
-	if bkpPvc.Spec.StorageClassName == nil || len(*bkpPvc.Spec.StorageClassName) == 0 {
+	if bkpPvc.Spec.StorageClassName == nil || *bkpPvc.Spec.StorageClassName == "" {
 		sc := bkpPvc.Annotations[v1.BetaStorageClassAnnotation]
 		bkpPvc.Spec.StorageClassName = &sc
 	}
