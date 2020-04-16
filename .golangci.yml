@@ -1,0 +1,61 @@
+linters-settings:
+  golint:
+    min-confidence: 0
+  govet:
+    check-shadowing: true
+  misspell:
+    locale: US
+  nakedret:
+    max-func-lines: 20
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - experimental
+      - opinionated
+      - performance
+      - style
+    disabled-checks:
+      - dupImport # https://github.com/go-critic/go-critic/issues/845
+      - ifElseChain
+      - octalLiteral
+      - whyNoLint
+      - wrapperFunc
+      - rangeValCopy
+      - unnamedResult
+      - hugeParam
+      - sloppyReassign
+linters:
+  disable-all: true
+  enable:
+    - deadcode
+    - errcheck
+    - gosimple
+    - gocritic
+    - goconst
+    - gofmt
+    - goimports
+    - golint
+    - gosec
+    - govet
+    - ineffassign
+    - lll
+    - misspell
+    - nakedret
+    - scopelint
+    - staticcheck
+    - structcheck
+    - stylecheck
+    - typecheck
+    - unconvert
+    - unparam
+    - unused
+    - varcheck
+    - whitespace
+
+run:
+  timeout: 10m
+
+  issues-exit-code: 10
+
+  skip-dirs:
+    - vendor
