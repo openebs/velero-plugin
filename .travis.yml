@@ -14,15 +14,11 @@ services:
 language: go
 
 go:
-  - 1.11.2
+  - 1.14.x
 
 addons:
   apt:
     update: true
-
-install:
-  - make bootstrap
-  - make format
 
 before_script:
   # 1. Install kubectl binary
@@ -39,8 +35,8 @@ before_script:
     fi
 
 script:
-  - make check
-  - make all-ci
+  - make lint-docker
+  - make ci
   - make container
   # In travis we use openebs operator from openebs/openebs:master only.
   - if [ "$TRAVIS_CPU_ARCH" == "amd64" ]; then
