@@ -47,10 +47,10 @@ ci:
 
 # Run linter using docker image
 lint-docker:
-	@docker run -i						\
-		--rm -v $$(pwd):/app -w /app 	\
-		golangci/golangci-lint:v1.24.0 	\
-		golangci-lint run 			\
+	@docker run -i							\
+		--rm -v $$(pwd):/app -w /app 		\
+		golangci/golangci-lint:v1.24.0 		\
+		bash -c "GOGC=75 golangci-lint run"
 
 # Run linter using local binary
 lint:
