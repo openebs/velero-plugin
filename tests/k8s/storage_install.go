@@ -39,8 +39,7 @@ type KubeClient struct {
 var Client *KubeClient
 
 var (
-	scName string
-	cfg    *rest.Config
+	cfg *rest.Config
 )
 
 func init() {
@@ -87,8 +86,6 @@ func (k *KubeClient) CreateStorageClass(scYAML string) error {
 	if err := yaml.Unmarshal([]byte(scYAML), &sc); err != nil {
 		return err
 	}
-
-	scName = sc.Name
 
 	_, err := k.StorageV1().StorageClasses().Create(&sc)
 	if err != nil {

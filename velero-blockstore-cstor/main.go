@@ -1,9 +1,9 @@
 package main
 
 import (
-	veleroplugin "github.com/heptio/velero/pkg/plugin/framework"
 	snap "github.com/openebs/velero-plugin/pkg/snapshot"
 	"github.com/sirupsen/logrus"
+	veleroplugin "github.com/vmware-tanzu/velero/pkg/plugin/framework"
 )
 
 func main() {

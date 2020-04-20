@@ -22,12 +22,11 @@ import (
 
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // GetPVCPhase return given PVC's phase
-func (k *KubeClient) GetPVCPhase(pvc, ns string) (v1.PersistentVolumeClaimPhase, error) {
+func (k *KubeClient) GetPVCPhase(pvc, ns string) (corev1.PersistentVolumeClaimPhase, error) {
 	o, err := k.CoreV1().
 		PersistentVolumeClaims(ns).
 		Get(pvc, metav1.GetOptions{})
@@ -38,18 +37,17 @@ func (k *KubeClient) GetPVCPhase(pvc, ns string) (v1.PersistentVolumeClaimPhase,
 	return o.Status.Phase, nil
 }
 
-func (k *KubeClient) waitForPVCBound(pvc, ns string) (v1.PersistentVolumeClaimPhase, error) {
+func (k *KubeClient) waitForPVCBound(pvc, ns string) (corev1.PersistentVolumeClaimPhase, error) {
 	for {
 		phase, err := k.GetPVCPhase(pvc, ns)
-		if err != nil || phase == v1.ClaimLost {
+		if err != nil || phase == corev1.ClaimLost {
 			return phase, errors.Errorf("PVC:%s/%s is in Lost state", ns, pvc)
 		}
-		if phase == v1.ClaimBound {
+		if phase == corev1.ClaimBound {
 			return phase, nil
 		}
 		time.Sleep(5 * time.Second)
 	}
-
 }
 
 // WaitForDeployment wait for deployment having given labelSelector and namespace to be ready
@@ -139,7 +137,6 @@ func (k *KubeClient) WaitForDeploymentCleanup(labelSelector, ns string) error {
 		dumpLog++
 		time.Sleep(5 * time.Second)
 	}
-
 }
 
 // GetPodList return list of pod for given label and namespace

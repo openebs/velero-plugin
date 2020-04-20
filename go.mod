@@ -17,9 +17,10 @@ require (
 	github.com/spf13/cobra v1.0.0 // indirect
 	github.com/vmware-tanzu/velero v1.3.2
 	gocloud.dev v0.19.0
+	golang.org/x/crypto v0.0.0-20200220183623-bac4c82f6975 // indirect
 	google.golang.org/api v0.21.0
 	k8s.io/api v0.17.4
 	k8s.io/apimachinery v0.17.4
-	k8s.io/client-go v0.17.4
+	k8s.io/client-go v0.15.12-beta.0
 	k8s.io/utils v0.0.0-20191218082557-f07c713de883 // indirect
 )

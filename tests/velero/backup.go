@@ -21,10 +21,10 @@ import (
 	"math/rand"
 	"time"
 
-	v1 "github.com/heptio/velero/pkg/apis/velero/v1"
-	clientset "github.com/heptio/velero/pkg/generated/clientset/versioned"
 	config "github.com/openebs/velero-plugin/tests/config"
 	"github.com/pkg/errors"
+	v1 "github.com/vmware-tanzu/velero/pkg/apis/velero/v1"
+	clientset "github.com/vmware-tanzu/velero/pkg/generated/clientset/versioned"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -67,7 +67,7 @@ func init() {
 }
 
 func generateRandomString(length int) string {
-	b := make([]byte, 8)
+	b := make([]byte, length)
 	for i := range b {
 		b[i] = charset[seededRand.Intn(len(charset))]
 	}
@@ -77,7 +77,7 @@ func generateRandomString(length int) string {
 func (c *ClientSet) generateBackupName() (string, error) {
 	for i := 0; i < 10; {
 		b := generateRandomString(8)
-		if len(b) == 0 {
+		if b == "" {
 			continue
 		}
 		_, err := c.VeleroV1().
@@ -87,7 +87,7 @@ func (c *ClientSet) generateBackupName() (string, error) {
 			return b, nil
 		}
 	}
-	return "", errors.New("Failed to generate unique backup name")
+	return "", errors.New("failed to generate unique backup name")
 }
 
 // CreateBackup creates the backup for given namespace

@@ -68,7 +68,7 @@ This command will add an init container to Velero deployment to install the Open
 ## Developer Guide
 #### To build the plugin binary
 ```
-make all-ci
+make build
 ```
 
 #### To build the docker image for velero-plugin

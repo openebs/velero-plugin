@@ -21,8 +21,8 @@ import (
 	"sort"
 	"time"
 
-	v1 "github.com/heptio/velero/pkg/apis/velero/v1"
 	"github.com/pkg/errors"
+	v1 "github.com/vmware-tanzu/velero/pkg/apis/velero/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -39,13 +39,12 @@ func (rc byCreationTimeStamp) Swap(i, j int) {
 
 func (rc byCreationTimeStamp) Less(i, j int) bool {
 	return rc[i].Name < rc[j].Name
-	//return rc[i].CreationTimestamp.Before(&rc[j].CreationTimestamp)
 }
 
 func (c *ClientSet) generateRestoreName(backup string) (string, error) {
 	for i := 0; i < 10; {
 		r := generateRandomString(8) + "-" + backup
-		if len(r) == 0 {
+		if r == "" {
 			continue
 		}
 		_, err := c.VeleroV1().
@@ -55,7 +54,7 @@ func (c *ClientSet) generateRestoreName(backup string) (string, error) {
 			return r, nil
 		}
 	}
-	return "", errors.New("Failed to generate unique restore name")
+	return "", errors.New("failed to generate unique restore name")
 }
 
 // GetScheduledBackups list out the generated backup for given schedule
@@ -166,8 +165,9 @@ func (c *ClientSet) GetRestoredSnapshotFromSchedule(scheduleName string) (map[st
 		Restores(VeleroNamespace).List(metav1.ListOptions{})
 	if err == nil {
 		for _, r := range restoreList.Items {
+			restore := r
 			for _, b := range bkplist {
-				if r.Spec.BackupName == b && isRestoreDone(&r) {
+				if r.Spec.BackupName == b && isRestoreDone(&restore) {
 					snapshotList[b] = r.Status.Phase
 				}
 			}

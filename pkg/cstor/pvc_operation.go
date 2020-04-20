@@ -43,12 +43,13 @@ func (p *Plugin) backupPVC(volumeID string) error {
 		List(metav1.ListOptions{})
 	if err != nil {
 		p.Log.Errorf("Error fetching PVC list : %s", err.Error())
-		return errors.New("Failed to fetch PVC list")
+		return errors.New("failed to fetch PVC list")
 	}
 
 	for _, pvc := range pvcs.Items {
 		if pvc.Spec.VolumeName == vol.volname {
-			bkpPvc = &pvc
+			fPVC := pvc
+			bkpPvc = &fPVC
 			break
 		}
 	}
@@ -60,7 +61,7 @@ func (p *Plugin) backupPVC(volumeID string) error {
 
 	bkpPvc.ResourceVersion = ""
 	bkpPvc.SelfLink = ""
-	if bkpPvc.Spec.StorageClassName == nil || len(*bkpPvc.Spec.StorageClassName) == 0 {
+	if bkpPvc.Spec.StorageClassName == nil || *bkpPvc.Spec.StorageClassName == "" {
 		sc := bkpPvc.Annotations[v1.BetaStorageClassAnnotation]
 		bkpPvc.Spec.StorageClassName = &sc
 	}
@@ -71,16 +72,16 @@ func (p *Plugin) backupPVC(volumeID string) error {
 
 	data, err := json.MarshalIndent(bkpPvc, "", "\t")
 	if err != nil {
-		return errors.New("Error doing json parsing")
+		return errors.New("error doing json parsing")
 	}
 
 	filename := p.cl.GenerateRemoteFilename(vol.volname, vol.backupName)
 	if filename == "" {
-		return errors.New("Error creating remote file name for pvc backup")
+		return errors.New("error creating remote file name for pvc backup")
 	}
 
 	if ok := p.cl.Write(data, filename+".pvc"); !ok {
-		return errors.New("Failed to upload PVC")
+		return errors.New("failed to upload PVC")
 	}
 
 	return nil
@@ -95,7 +96,7 @@ func (p *Plugin) createPVC(volumeID, snapName string) (*Volume, error) {
 
 	filename := p.cl.GenerateRemoteFilename(volumeID, snapName)
 	if filename == "" {
-		return nil, errors.New("Error creating remote file name for pvc backup")
+		return nil, errors.New("error creating remote file name for pvc backup")
 	}
 
 	if data, ok = p.cl.Read(filename + ".pvc"); !ok {
@@ -135,7 +136,7 @@ func (p *Plugin) createPVC(volumeID, snapName string) (*Volume, error) {
 			PersistentVolumeClaims(rpvc.Namespace).
 			Get(rpvc.Name, metav1.GetOptions{})
 		if err != nil || pvc.Status.Phase == v1.ClaimLost {
-			if err := p.K8sClient.
+			if err = p.K8sClient.
 				CoreV1().
 				PersistentVolumeClaims(pvc.Namespace).
 				Delete(rpvc.Name, nil); err != nil {
@@ -168,6 +169,7 @@ func (p *Plugin) createPVC(volumeID, snapName string) (*Volume, error) {
 	return vol, nil
 }
 
+// nolint: unused
 func (p *Plugin) getPVCInfo(volumeID, snapName string) (*Volume, error) {
 	pvc := &v1.PersistentVolumeClaim{}
 	var vol *Volume
@@ -176,15 +178,15 @@ func (p *Plugin) getPVCInfo(volumeID, snapName string) (*Volume, error) {
 
 	filename := p.cl.GenerateRemoteFilename(volumeID, snapName)
 	if filename == "" {
-		return nil, errors.New("Error creating remote file name for pvc backup")
+		return nil, errors.New("error creating remote file name for pvc backup")
 	}
 
 	if data, ok = p.cl.Read(filename + ".pvc"); !ok {
-		return nil, errors.New("Failed to download PVC")
+		return nil, errors.New("failed to download PVC")
 	}
 
 	if err := json.Unmarshal(data, pvc); err != nil {
-		return nil, errors.New("Failed to decode pvc")
+		return nil, errors.New("failed to decode pvc")
 	}
 
 	vol = &Volume{
@@ -196,9 +198,9 @@ func (p *Plugin) getPVCInfo(volumeID, snapName string) (*Volume, error) {
 	}
 	p.volumes[vol.volname] = vol
 	return vol, nil
-
 }
 
+// nolint: unused
 // getVolumeFromPVC returns volume info for given PVC if PVC is in bound state
 func (p *Plugin) getVolumeFromPVC(pvc v1.PersistentVolumeClaim) (*Volume, error) {
 	rpvc, err := p.K8sClient.

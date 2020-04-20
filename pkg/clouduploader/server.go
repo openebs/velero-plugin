@@ -25,7 +25,7 @@ const (
 
 // ServerState defines resource used for Server state
 type ServerState struct {
-	//status defines server current transfer status
+	// status defines server current transfer status
 	status TransferStatus
 
 	// successCount defines number of client completed
@@ -84,25 +84,25 @@ type Client struct {
 }
 
 const (
-	//EPOLLET defines flag for edge-triggered
+	// EPOLLET defines flag for edge-triggered
 	EPOLLET = 1 << 31
 
-	//MaxEpollEvents defines max number of events returned by epoll_wait
+	// MaxEpollEvents defines max number of events returned by epoll_wait
 	MaxEpollEvents = 32
 
-	//MaxClient defines max number of connection a server can accept
+	// MaxClient defines max number of connection a server can accept
 	MaxClient = 10
 
-	//RecieverPort defines port number on which server should listen for new connection
+	// RecieverPort defines port number on which server should listen for new connection
 	RecieverPort = 9000
 
-	//ReadBufferLen defines max number of bytes should be read from wire
+	// ReadBufferLen defines max number of bytes should be read from wire
 	ReadBufferLen = 32 * 1024
 
-	//EPOLLTIMEOUT defines timeout for epoll_wait
+	// EPOLLTIMEOUT defines timeout for epoll_wait
 	EPOLLTIMEOUT = 5 * 1000 // 5 second
 
-	//OpBackup : backup operation
+	// OpBackup : backup operation
 	OpBackup ServerOperation = 1
 
 	// OpRestore : restore operation
@@ -127,7 +127,7 @@ func (s *Server) acceptClient(fd, epfd int) (int, error) {
 	}
 
 	if err = syscall.SetNonblock(connFd, true); err != nil {
-		if err := syscall.Close(connFd); err != nil {
+		if err = syscall.Close(connFd); err != nil {
 			s.Log.Warnf("Failed to close cline {%v} : %s", connFd, err.Error())
 		}
 		s.Log.Errorf("Failed to set non-blocking mode for client {%v}, closing it : %s", connFd, err.Error())
@@ -144,7 +144,7 @@ func (s *Server) acceptClient(fd, epfd int) (int, error) {
 
 	if c.file == nil {
 		s.Log.Errorf("Failed to create file interface")
-		panic(errors.New("Failed to create file interface"))
+		panic(errors.New("failed to create file interface"))
 	}
 
 	event = new(syscall.EpollEvent)
@@ -161,7 +161,7 @@ func (s *Server) acceptClient(fd, epfd int) (int, error) {
 	s.addClientToEvent(c, event)
 	if err := syscall.EpollCtl(epfd, syscall.EPOLL_CTL_ADD, connFd, event); err != nil {
 		s.Log.Errorf("Failed to add client fd{%v} to epoll: %s", connFd, err.Error())
-		if err := syscall.Close(connFd); err != nil {
+		if err = syscall.Close(connFd); err != nil {
 			s.Log.Warnf("Failed to close fd{%v} : %s", connFd, err.Error())
 		}
 		s.Log.Errorf("Connection closed for fd{%v} due to errors", connFd)
@@ -176,7 +176,7 @@ func (s *Server) handleRead(event syscall.EpollEvent) error {
 	var writer *blob.Writer
 
 	if s.OpType != OpBackup {
-		return errors.New("Invalid backup operation")
+		return errors.New("invalid backup operation")
 	}
 
 	writer = (*blob.Writer)(c.file)
@@ -191,7 +191,7 @@ func (s *Server) handleRead(event syscall.EpollEvent) error {
 				return errors.Errorf("write returned error : %s", err.Error())
 			}
 		} else {
-			return nil //connection closed
+			return nil // connection closed
 		}
 	}
 }
@@ -201,7 +201,7 @@ func (s *Server) handleWrite(event syscall.EpollEvent) error {
 	var reader *blob.Reader
 
 	if s.OpType != OpRestore {
-		return errors.New("Invalid backup operation")
+		return errors.New("invalid backup operation")
 	}
 
 	reader = (*blob.Reader)(c.file)
@@ -218,7 +218,7 @@ func (s *Server) handleWrite(event syscall.EpollEvent) error {
 	} else {
 		s.updateClientStatus(c, TransferStatusFailed)
 		s.Log.Errorf("Error in downloading operation for client{%v} : %s", c.fd, e.Error())
-		return errors.New("Error in downloading operation")
+		return errors.New("error in downloading operation")
 	}
 	return nil
 }

@@ -33,7 +33,6 @@ func (k *KubeClient) DumpLogs(ns, podName, container string) error {
 		Resource("pods").
 		SubResource("log").
 		Param("container", container).
-		//Param("previous", "true").
 		Param("timestamps", "true")
 
 	readCloser, err := req.Stream()

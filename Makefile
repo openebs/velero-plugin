@@ -35,25 +35,29 @@ endif
 # Specify the date of build
 BUILD_DATE = $(shell date +'%Y%m%d%H%M%S')
 
-all: ci
+all: build
 
 container: all
 	@cp Dockerfile _output/Dockerfile
 	docker build -t $(IMAGE):$(IMAGE_TAG) --build-arg BUILD_DATE=${BUILD_DATE} -f _output/Dockerfile _output
 
-ci:
+build:
 	@mkdir -p _output
 	CGO_ENABLED=0 go build -v -o _output/$(BIN) ./$(BIN)
 
+gomod: ## Ensures fresh go.mod and go.sum.
+	@go mod tidy
+	@go mod verify
+
 # Run linter using docker image
-lint-docker:
-	@docker run -i								\
-		--rm -v $$(pwd):/app -w /app 			\
-		golangci/golangci-lint:v1.24.0 			\
+lint-docker: gomod
+	@docker run -i	\
+		--rm -v $$(pwd):/app -w /app	\
+		golangci/golangci-lint:v1.24.0	\
 		bash -c "GOGC=75 golangci-lint run"
 
 # Run linter using local binary
-lint:
+lint: gomod
 	@golangci-lint run
 
 test:
