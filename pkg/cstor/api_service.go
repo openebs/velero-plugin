@@ -47,7 +47,7 @@ func (p *Plugin) httpRestCall(url, reqtype string, data []byte) ([]byte, error) 
 	}
 
 	defer func() {
-		if err := resp.Body.Close(); err != nil {
+		if err = resp.Body.Close(); err != nil {
 			p.Log.Warnf("Failed to close response : %s", err.Error())
 		}
 	}()
@@ -109,7 +109,7 @@ func (p *Plugin) getMapiAddr() string {
 
 fetchip:
 	for _, s := range svclist.Items {
-		if len(s.Spec.ClusterIP) != 0 {
+		if s.Spec.ClusterIP != "" {
 			// update the namespace
 			p.namespace = s.Namespace
 			return "http://" + s.Spec.ClusterIP + ":" + strconv.FormatInt(int64(s.Spec.Ports[0].Port), 10)
@@ -206,7 +206,7 @@ func isEmptyRestResponse(data []byte) (bool, error) {
 	}
 
 	res, ok := obj.(string)
-	if ok && len(res) == 0 {
+	if ok && res == "" {
 		return true, nil
 	}
 
@@ -238,7 +238,7 @@ func (p *Plugin) sendDeleteRequest(backup, volume, namespace, schedule string) e
 	}
 
 	defer func() {
-		if err := resp.Body.Close(); err != nil {
+		if err = resp.Body.Close(); err != nil {
 			p.Log.Warnf("Failed to close response err=%s", err)
 		}
 	}()

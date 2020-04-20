@@ -37,7 +37,6 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
-	k8client "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 )
 
@@ -66,7 +65,7 @@ type Plugin struct {
 	Log logrus.FieldLogger
 
 	// K8sClient is used for kubernetes CR operation
-	K8sClient *k8client.Clientset
+	K8sClient *kubernetes.Clientset
 
 	// OpenEBSClient is used for openEBS CR operation
 	OpenEBSClient *openebs.Clientset
@@ -99,43 +98,43 @@ type Plugin struct {
 
 // Snapshot describes snapshot object information
 type Snapshot struct {
-	//Volume name on which snapshot should be taken
+	// Volume name on which snapshot should be taken
 	volID string
 
-	//backupName is name of a snapshot
+	// backupName is name of a snapshot
 	backupName string
 
-	//namespace is volume's namespace
+	// namespace is volume's namespace
 	namespace string
 }
 
 // Volume describes volume object information
 type Volume struct {
-	//volname is volume name
+	// volname is volume name
 	volname string
 
 	// srcVolname is source volume name in case of local restore
 	srcVolname string
 
-	//namespace is volume claim's namespace
+	// namespace is volume claim's namespace
 	namespace string
 
-	//backupName is snapshot name for given volume
+	// backupName is snapshot name for given volume
 	backupName string
 
-	//backupStatus is backup progress status for given volume
+	// backupStatus is backup progress status for given volume
 	backupStatus v1alpha1.CStorBackupStatus
 
-	//restoreStatus is restore progress status for given volume
+	// restoreStatus is restore progress status for given volume
 	restoreStatus v1alpha1.CStorRestoreStatus
 
-	//size is volume size in string
+	// size is volume size in string
 	size resource.Quantity
 
 	// snapshotTag is cloud snapshot file identifier.. It will be same as volume name from backup
 	snapshotTag string
 
-	//storageClass is volume's storageclass
+	// storageClass is volume's storageclass
 	storageClass string
 
 	iscsi v1.ISCSIPersistentVolumeSource
@@ -169,13 +168,13 @@ func (p *Plugin) Init(config map[string]string) error {
 	conf, err := rest.InClusterConfig()
 	if err != nil {
 		p.Log.Errorf("Failed to get cluster config : %s", err.Error())
-		return errors.New("Error fetching cluster config")
+		return errors.New("error fetching cluster config")
 	}
 
 	clientset, err := kubernetes.NewForConfig(conf)
 	if err != nil {
 		p.Log.Errorf("Error creating clientset : %s", err.Error())
-		return errors.New("Error creating k8s client")
+		return errors.New("error creating k8s client")
 	}
 
 	p.K8sClient = clientset
@@ -189,12 +188,12 @@ func (p *Plugin) Init(config map[string]string) error {
 
 	p.mayaAddr = p.getMapiAddr()
 	if p.mayaAddr == "" {
-		return errors.New("Error fetching OpenEBS rest client address")
+		return errors.New("error fetching OpenEBS rest client address")
 	}
 
 	p.cstorServerAddr = p.getServerAddress()
 	if p.cstorServerAddr == "" {
-		return errors.New("Error fetching cstorVeleroServer address")
+		return errors.New("error fetching cstorVeleroServer address")
 	}
 	p.config = config
 
@@ -242,7 +241,7 @@ func (p *Plugin) GetVolumeID(unstructuredPV runtime.Unstructured) (string, error
 
 	if pv.Status.Phase == v1.VolumeReleased ||
 		pv.Status.Phase == v1.VolumeFailed {
-		return "", errors.New("PV is in released state")
+		return "", errors.New("pv is in released state")
 	}
 
 	if _, exists := p.volumes[pv.Name]; !exists {
@@ -304,7 +303,7 @@ func (p *Plugin) DeleteSnapshot(snapshotID string) error {
 
 	ret := p.cl.Delete(filename)
 	if !ret {
-		return errors.New("Failed to remove snapshot")
+		return errors.New("failed to remove snapshot")
 	}
 
 	return nil
@@ -318,12 +317,12 @@ func (p *Plugin) CreateSnapshot(volumeID, volumeAZ string, tags map[string]strin
 
 	bkpname, ok := tags["velero.io/backup"]
 	if !ok {
-		return "", errors.New("Failed to get backup name")
+		return "", errors.New("failed to get backup name")
 	}
 
 	vol, ok := p.volumes[volumeID]
 	if !ok {
-		return "", errors.New("Volume not found")
+		return "", errors.New("volume not found")
 	}
 	vol.backupName = bkpname
 	size, ok := vol.size.AsInt64()
@@ -362,7 +361,7 @@ func (p *Plugin) CreateSnapshot(volumeID, volumeAZ string, tags map[string]strin
 
 	ok = p.cl.Upload(filename, size)
 	if !ok {
-		return "", errors.New("Failed to upload snapshot")
+		return "", errors.New("failed to upload snapshot")
 	}
 
 	if vol.backupStatus == v1alpha1.BKPCStorStatusDone {
@@ -384,10 +383,9 @@ func (p *Plugin) getSnapInfo(snapshotID string) (*Snapshot, error) {
 		return nil, errors.Errorf("Error fetching volume{%s} : %s", volumeID, err.Error())
 	}
 
-	//TODO
+	// TODO
 	if pv.Spec.ClaimRef.Namespace == "" {
 		return nil, errors.Errorf("No namespace in pv.spec.claimref for PV{%s}", snapshotID)
-
 	}
 	return &Snapshot{
 		volID:      volumeID,
@@ -436,7 +434,7 @@ func (p *Plugin) CreateVolumeFromSnapshot(snapshotID, volumeType, volumeAZ strin
 		return newVol.volname, nil
 	}
 
-	return "", errors.New("Failed to restore snapshot")
+	return "", errors.New("failed to restore snapshot")
 }
 
 // GetVolumeInfo return volume information for given volume name

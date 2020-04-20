@@ -50,11 +50,11 @@ func (p *Plugin) restoreVolumeFromCloud(vol *Volume) error {
 
 	ret := p.cl.Download(filename)
 	if !ret {
-		return errors.New("Failed to restore snapshot")
+		return errors.New("failed to restore snapshot")
 	}
 
 	if vol.restoreStatus != v1alpha1.RSTCStorStatusDone {
-		return errors.Errorf("Failed to restore.. status {%s}", vol.restoreStatus)
+		return errors.Errorf("failed to restore.. status {%s}", vol.restoreStatus)
 	}
 
 	return nil

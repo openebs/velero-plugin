@@ -110,7 +110,6 @@ func (c *Conn) Write(data []byte, file string) bool {
 	}
 	c.Log.Infof("successfully writtern object{%s} to {%s}", file, c.provider)
 	return true
-
 }
 
 // Read will return content of file from cloud blob storage
@@ -129,7 +128,7 @@ func (c *Conn) Read(file string) ([]byte, bool) {
 
 // GenerateRemoteFilename will create a file-name specific for given backup
 func (c *Conn) GenerateRemoteFilename(file, backup string) string {
-	if len(c.backupPathPrefix) == 0 {
+	if c.backupPathPrefix == "" {
 		return backupDir + "/" + backup + "/" + c.prefix + "-" + file + "-" + backup
 	}
 	return c.backupPathPrefix + "/" + backupDir + "/" + backup + "/" + c.prefix + "-" + file + "-" + backup

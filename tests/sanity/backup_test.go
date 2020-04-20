@@ -20,7 +20,6 @@ import (
 	"testing"
 	"time"
 
-	v1 "github.com/heptio/velero/pkg/apis/velero/v1"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
@@ -28,6 +27,7 @@ import (
 	k8s "github.com/openebs/velero-plugin/tests/k8s"
 	openebs "github.com/openebs/velero-plugin/tests/openebs"
 	velero "github.com/openebs/velero-plugin/tests/velero"
+	v1 "github.com/vmware-tanzu/velero/pkg/apis/velero/v1"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -72,6 +72,8 @@ var _ = Describe("Backup/Restore Test", func() {
 	Context("Non-scheduled Backup", func() {
 		It("Backup Test 1", func() {
 			var status v1.BackupPhase
+			var isExist bool
+
 			By("Creating a backup")
 
 			err = openebs.Client.WaitForHealthyCVR(openebs.AppPVC)
@@ -81,13 +83,13 @@ var _ = Describe("Backup/Restore Test", func() {
 
 			backupName, status, err = velero.Client.CreateBackup(AppNs)
 			if ((err != nil) || status != v1.BackupPhaseCompleted) &&
-				len(backupName) != 0 {
+				backupName != "" {
 				_ = velero.Client.DumpBackupLogs(backupName)
 				_ = openebs.Client.DumpLogs()
 			}
 			Expect(err).NotTo(HaveOccurred())
 			Expect(status).To(Equal(v1.BackupPhaseCompleted))
-			isExist, err := openebs.Client.IsBackupResourcesExist(backupName, app.PVCName, AppNs)
+			isExist, err = openebs.Client.IsBackupResourcesExist(backupName, app.PVCName, AppNs)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(isExist).To(BeFalse())
 		})
@@ -96,6 +98,7 @@ var _ = Describe("Backup/Restore Test", func() {
 	Context("Scheduled Backup", func() {
 		It("Backup Test 1", func() {
 			var status v1.BackupPhase
+			var isExist bool
 
 			By("Creating a scheduled backup")
 			scheduleName, status, err = velero.Client.CreateSchedule(AppNs, "*/2 * * * *", 3)
@@ -104,11 +107,11 @@ var _ = Describe("Backup/Restore Test", func() {
 			err = velero.Client.DeleteSchedule(scheduleName)
 			Expect(err).NotTo(HaveOccurred())
 
-			bkplist, err := velero.Client.GetScheduledBackups(scheduleName)
-			Expect(err).NotTo(HaveOccurred())
+			bkplist, serr := velero.Client.GetScheduledBackups(scheduleName)
+			Expect(serr).NotTo(HaveOccurred())
 
 			for _, bkp := range bkplist {
-				isExist, err := openebs.Client.IsBackupResourcesExist(bkp, app.PVCName, AppNs)
+				isExist, err = openebs.Client.IsBackupResourcesExist(bkp, app.PVCName, AppNs)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(isExist).To(BeFalse())
 			}
@@ -133,8 +136,8 @@ var _ = Describe("Backup/Restore Test", func() {
 			Expect(status).To(Equal(v1.RestorePhaseCompleted))
 
 			By("Checking if restored PVC is bound or not")
-			phase, err := k8s.Client.GetPVCPhase(app.PVCName, AppNs)
-			Expect(err).NotTo(HaveOccurred())
+			phase, perr := k8s.Client.GetPVCPhase(app.PVCName, AppNs)
+			Expect(perr).NotTo(HaveOccurred())
 			Expect(phase).To(Equal(corev1.ClaimBound))
 
 			By("Checking if restored CVR are in error state")

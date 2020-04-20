@@ -44,7 +44,7 @@ func getHomeDir() (string, error) {
 		return h, nil
 	}
 
-	return "", fmt.Errorf("Not able to locate home directory")
+	return "", fmt.Errorf("not able to locate home directory")
 }
 
 // GetConfigPath returns the filepath of kubeconfig file

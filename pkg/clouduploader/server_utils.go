@@ -41,7 +41,7 @@ func (s *Server) removeFromClientList(c *Client) {
 
 	if s.FirstClient == nil || s.state.runningCount == 0 {
 		s.Log.Errorf("ClientList is empty")
-		panic(errors.New("ClientList list is empty"))
+		panic(errors.New("clientList list is empty"))
 	} else if s.FirstClient == c {
 		s.FirstClient = c.next
 	} else {
@@ -127,11 +127,11 @@ func (s *Server) RecvData(c *Client) (int, error) {
 }
 
 // GetReadWriter will return interface for cloud blob storage file operation
-func (s *Server) GetReadWriter(bwriter *blob.Writer, breader *blob.Reader, OpType ServerOperation) (ReadWriter, error) {
-	if OpType != OpBackup && OpType != OpRestore {
-		return nil, errors.Errorf("Invalid server operation {%v}", OpType)
+func (s *Server) GetReadWriter(bwriter *blob.Writer, breader *blob.Reader, opType ServerOperation) (ReadWriter, error) {
+	if opType != OpBackup && opType != OpRestore {
+		return nil, errors.Errorf("Invalid server operation {%v}", opType)
 	}
-	if OpType == OpBackup {
+	if opType == OpBackup {
 		return ReadWriter(bwriter), nil
 	}
 	return ReadWriter(breader), nil
