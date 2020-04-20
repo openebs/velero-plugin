@@ -6,8 +6,10 @@ To do backup/restore of OpenEBS CStor volumes through Velero utility, you need t
 OpenEBS velero-plugin.
 
 [![Build Status](https://travis-ci.org/openebs/velero-plugin.svg?branch=master)](https://travis-ci.org/openebs/velero-plugin)
+[![Slack](https://img.shields.io/badge/chat!!!-slack-ff1493.svg?style=flat-square)](https://kubernetes.slack.com/messages/openebs)
 [![Go Report](https://goreportcard.com/badge/github.com/openebs/velero-plugin)](https://goreportcard.com/report/github.com/openebs/velero-plugin)
 [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fopenebs%2Fvelero-plugin.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fopenebs%2Fvelero-plugin?ref=badge_shield)
+[![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/3900/badge)](https://bestpractices.coreinfrastructure.org/projects/3900)
 
 ## Table of Contents
 - [Compatibility matrix](#compatibility-matrix)
