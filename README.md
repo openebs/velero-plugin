@@ -222,6 +222,8 @@ Once the backup is completed you should see the backup marked as `Completed`.
 - _If backup name ends with "-20190513104034" format then it is considered as part of scheduled backup_
 
 #### Creating a restore for remote backup
+Before restoring from remote backup, make sure that you have created the namespace in your destination cluster.
+
 To restore data from remote backup, run the following command:
 
 ```
@@ -285,6 +287,8 @@ During the first backup iteration of a schedule, full data of the volume will be
 - _If backup name ends with "-20190513104034" format then it is considered as part of scheduled backup_
 
 #### Creating a restore from scheduled remote backup
+Before restoring from remote backup, make sure that you have created the namespace in your destination cluster.
+
 Since backups taken are incremental for a schedule, the order of restoring data is very important. You need to restore data in the order of the backups created. 
 
 First restore must be created from the first completed backup of schedule.
