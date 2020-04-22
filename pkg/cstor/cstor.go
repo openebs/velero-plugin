@@ -30,6 +30,7 @@ import (
 	 */
 	v1alpha1 "github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
 	openebs "github.com/openebs/maya/pkg/client/generated/clientset/versioned"
+	velero "github.com/openebs/velero-plugin/pkg/velero"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -57,6 +58,9 @@ const (
 
 	// LocalSnapshot config key for local snapshot
 	LocalSnapshot = "local"
+
+	// SnapshotIDIdentifier is a word to generate snapshotID from volume name and backup name
+	SnapshotIDIdentifier = "-velero-bkp-"
 )
 
 // Plugin defines snapshot plugin for CStor volume
@@ -209,6 +213,10 @@ func (p *Plugin) Init(config map[string]string) error {
 		return nil
 	}
 
+	if err := velero.InitializeClientSet(conf); err != nil {
+		return errors.Wrapf(err, "failed to initialize velero clientSet")
+	}
+
 	p.cl = &cloud.Conn{Log: p.Log}
 	return p.cl.Init(config)
 }
@@ -349,7 +357,7 @@ func (p *Plugin) CreateSnapshot(volumeID, volumeAZ string, tags map[string]strin
 
 	if p.local {
 		// local snapshot
-		return volumeID + "-velero-bkp-" + bkpname, nil
+		return generateSnapshotID(volumeID, bkpname), nil
 	}
 
 	filename := p.cl.GenerateRemoteFilename(vol.snapshotTag, vol.backupName)
@@ -365,15 +373,14 @@ func (p *Plugin) CreateSnapshot(volumeID, volumeAZ string, tags map[string]strin
 	}
 
 	if vol.backupStatus == v1alpha1.BKPCStorStatusDone {
-		return volumeID + "-velero-bkp-" + bkpname, nil
+		return generateSnapshotID(volumeID, bkpname), nil
 	}
+
 	return "", errors.Errorf("Failed to upload snapshot, status:{%v}", vol.backupStatus)
 }
 
 func (p *Plugin) getSnapInfo(snapshotID string) (*Snapshot, error) {
-	s := strings.Split(snapshotID, "-velero-bkp-")
-	volumeID := s[0]
-	bkpName := s[1]
+	volumeID, bkpName := getInfoFromSnapshotID(snapshotID)
 
 	pv, err := p.K8sClient.
 		CoreV1().
@@ -397,32 +404,39 @@ func (p *Plugin) getSnapInfo(snapshotID string) (*Snapshot, error) {
 // CreateVolumeFromSnapshot create CStor volume for given
 // snapshotID and perform restore operation on it
 func (p *Plugin) CreateVolumeFromSnapshot(snapshotID, volumeType, volumeAZ string, iops *int64) (string, error) {
+	var (
+		newVol *Volume
+		err    error
+	)
+
 	if volumeType != "cstor-snapshot" {
 		return "", errors.Errorf("Invalid volume type{%s}", volumeType)
 	}
 
-	s := strings.Split(snapshotID, "-velero-bkp-")
-	volumeID := s[0]
-	snapName := s[1]
+	volumeID, snapName := getInfoFromSnapshotID(snapshotID)
 
 	snapType := "cloud"
 	if p.local {
 		snapType = "local"
 	}
 
-	p.Log.Infof("Restoring %s snapshot{%s} for volume:%s", snapType, snapName, volumeID)
+	p.Log.Infof("Restoring %s snapshot{%s} for volume:%s localBackup:%s", snapType, snapName, volumeID, p.local)
 
-	newVol, err := p.getVolInfo(volumeID, snapName)
-	if err != nil {
-		return "", errors.Wrapf(err, "Failed to read PVC for volumeID=%s snap=%s", volumeID, snapName)
-	}
-
-	fn := p.restoreVolumeFromCloud
 	if p.local {
-		fn = p.restoreVolumeFromLocal
-	}
+		newVol, err = p.getVolumeForLocalRestore(volumeID, snapName)
+		if err != nil {
+			return "", errors.Wrapf(err, "Failed to read PVC for volumeID=%s snap=%s", volumeID, snapName)
+		}
 
-	err = fn(newVol)
+		err = p.restoreVolumeFromLocal(newVol)
+	} else {
+		newVol, err = p.getVolumeForRemoteRestore(volumeID, snapName)
+		if err != nil {
+			return "", errors.Wrapf(err, "Failed to read PVC for volumeID=%s snap=%s", volumeID, snapName)
+		}
+
+		err = p.restoreVolumeFromCloud(newVol)
+	}
 
 	if err != nil {
 		p.Log.Errorf("Failed to restore volume : %s", err)
@@ -473,39 +487,6 @@ func (p *Plugin) SetVolumeID(unstructuredPV runtime.Unstructured, volumeID strin
 	return &unstructured.Unstructured{Object: res}, nil
 }
 
-func (p *Plugin) getVolInfo(volumeID, snapName string) (*Volume, error) {
-	// To support namespace re-mapping for cloud snapshot,
-	// change createPVC to getPVCInfo
-	fn := p.createPVC
-	if p.local {
-		fn = p.getPVInfo
-	}
-
-	vol, err := fn(volumeID, snapName)
-	if err != nil {
-		return nil, err
-	}
-
-	// To support namespace re-mapping for cloud-snapshot remove below check
-	if p.local {
-		// Let's rename PV if already created
-		// -- PV may exist in-case of namespace-remapping or stale PV
-		newVolName, err := p.generateRestorePVName(vol.volname)
-		if err != nil {
-			return nil, errors.Wrapf(err, "Failed to generate PV name")
-		}
-
-		delete(p.volumes, vol.volname)
-		vol.volname = newVolName
-	}
-
-	p.volumes[vol.volname] = vol
-
-	p.Log.Infof("Generated PV name is %s", vol.volname)
-
-	return vol, nil
-}
-
 // getScheduleName return the schedule name for the given backup
 // It will check if backup name have 'bkp-20060102150405' format
 func (p *Plugin) getScheduleName(backupName string) string {
@@ -523,4 +504,16 @@ func (p *Plugin) getScheduleName(backupName string) string {
 		scheduleOrBackupName = strings.Join(splitName[0:len(splitName)-1], "-")
 	}
 	return scheduleOrBackupName
+}
+
+// getInfoFromSnapshotID return backup name and volume id from the given snapshotID
+func getInfoFromSnapshotID(snapshotID string) (volumeID, backupName string) {
+	s := strings.Split(snapshotID, SnapshotIDIdentifier)
+	volumeID = s[0]
+	backupName = s[1]
+	return
+}
+
+func generateSnapshotID(volumeID, backupName string) string {
+	return volumeID + SnapshotIDIdentifier + backupName
 }
