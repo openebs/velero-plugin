@@ -1,5 +1,5 @@
 # Release Process
-velero-plugin follows a monthly release cadence. The scope of the release is determined by contributor availability. The scope is published in the [Release Tracker Projects](https://github.com/openebs/openebs/projects).
+velero-plugin follows a monthly release cadence. The scope of the release is determined by contributor availability. The scope is published in the [Release Tracker Projects](https://github.com/orgs/openebs/projects).
 
 ## Release Candidate Verification Checklist
 
