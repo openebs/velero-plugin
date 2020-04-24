@@ -114,7 +114,7 @@ func (p *Plugin) createPVC(volumeID, snapName string) (*Volume, error) {
 		return newVol, nil
 	}
 
-	p.Log.Infof("Creating PVC for volumeID:%s snapshot:%s", volumeID, snapName)
+	p.Log.Infof("Creating PVC for volumeID:%s snapshot:%s in namespace=%s", volumeID, snapName, targetedNs)
 
 	pvc.Annotations = make(map[string]string)
 	pvc.Annotations["openebs.io/created-through"] = "restore"

@@ -134,18 +134,22 @@ func (s *Server) acceptClient(fd, epfd int) (int, error) {
 		return (-1), err
 	}
 
+	readerWriter := s.cl.Create(s.OpType)
+	if readerWriter == nil {
+		s.Log.Errorf("Failed to create file interface")
+		if err = syscall.Close(connFd); err != nil {
+			s.Log.Warnf("Failed to close cline {%v} : %s", connFd, err.Error())
+		}
+		return (-1), errors.New("failed to create file interface")
+	}
+
 	c = new(Client)
 	c.fd = connFd
-	c.file = s.cl.Create(s.OpType)
+	c.file = readerWriter
 	c.bufferLen = ReadBufferLen
 	c.buffer = make([]byte, c.bufferLen)
 	c.status = TransferStatusInit
 	c.next = nil
-
-	if c.file == nil {
-		s.Log.Errorf("Failed to create file interface")
-		panic(errors.New("failed to create file interface"))
-	}
 
 	event = new(syscall.EpollEvent)
 	if s.OpType == OpBackup {
@@ -276,6 +280,11 @@ func (s *Server) Run(opType ServerOperation) error {
 	for {
 		nevents, err := syscall.EpollWait(epfd, events[:], EPOLLTIMEOUT)
 		if err != nil {
+			if isEINTR(err) {
+				s.Log.Warningf("Epoll wait failed : %s", err.Error())
+				continue
+			}
+
 			s.Log.Errorf("Epoll wait failed : %s", err.Error())
 			return err
 		}

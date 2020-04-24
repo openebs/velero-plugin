@@ -112,6 +112,7 @@ func (p *Plugin) getVolumeForLocalRestore(volumeID, snapName string) (*Volume, e
 func (p *Plugin) getVolumeForRemoteRestore(volumeID, snapName string) (*Volume, error) {
 	vol, err := p.createPVC(volumeID, snapName)
 	if err != nil {
+		p.Log.Errorf("CreatePVC returned error=%s", err)
 		return nil, err
 	}
 

@@ -40,16 +40,18 @@ func (s *Server) removeFromClientList(c *Client) {
 	var prevClient *Client
 
 	if s.FirstClient == nil || s.state.runningCount == 0 {
-		s.Log.Errorf("ClientList is empty")
-		panic(errors.New("clientList list is empty"))
+		// epoll may have returned multiple event for the same fd
+		s.Log.Warningf("ClientList is empty")
+		return
 	} else if s.FirstClient == c {
 		s.FirstClient = c.next
 	} else {
 		curClient := s.FirstClient
 		for curClient != c {
 			if curClient.next == nil {
-				s.Log.Errorf("entry{%v} not found in ClientList", c.fd)
-				panic(errors.Errorf("entry{%v} not found in ClientList", c.fd))
+				// epoll may have returned multiple event for the same fd
+				s.Log.Warningf("entry{%v} not found in ClientList", c.fd)
+				return
 			}
 
 			prevClient = curClient
@@ -192,4 +194,17 @@ func (s *Server) disconnectAllClient(efd int) {
 		s.removeFromClientList(curClient)
 		curClient = nextClient
 	}
+}
+
+// isEINTR check if given error is generated because of EINTR
+func isEINTR(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	errno, ok := err.(syscall.Errno)
+	if ok && errno == syscall.EINTR {
+		return true
+	}
+	return false
 }
