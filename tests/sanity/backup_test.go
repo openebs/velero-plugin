@@ -57,6 +57,9 @@ var _ = BeforeSuite(func() {
 	err = app.CreateNamespace(AppNs)
 	Expect(err).NotTo(HaveOccurred())
 
+	err = app.CreateNamespace(TargetedNs)
+	Expect(err).NotTo(HaveOccurred())
+
 	err = k8s.Client.CreateStorageClass(openebs.SCYaml)
 	Expect(err).NotTo(HaveOccurred())
 
