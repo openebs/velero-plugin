@@ -415,12 +415,12 @@ func (p *Plugin) CreateVolumeFromSnapshot(snapshotID, volumeType, volumeAZ strin
 
 	volumeID, snapName := getInfoFromSnapshotID(snapshotID)
 
-	snapType := "cloud"
+	snapType := "remote"
 	if p.local {
 		snapType = "local"
 	}
 
-	p.Log.Infof("Restoring %s snapshot{%s} for volume:%s localBackup:%s", snapType, snapName, volumeID, p.local)
+	p.Log.Infof("Restoring %s snapshot{%s} for volume:%s", snapType, snapName, volumeID)
 
 	if p.local {
 		newVol, err = p.getVolumeForLocalRestore(volumeID, snapName)
