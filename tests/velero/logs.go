@@ -17,11 +17,14 @@ limitations under the License.
 package velero
 
 import (
+	"fmt"
 	"os"
 	"time"
 
+	"github.com/openebs/velero-plugin/tests/k8s"
 	v1 "github.com/vmware-tanzu/velero/pkg/apis/velero/v1"
 	log "github.com/vmware-tanzu/velero/pkg/cmd/util/downloadrequest"
+	corev1 "k8s.io/api/core/v1"
 )
 
 // DumpBackupLogs dump logs of given backup on stdout
@@ -32,4 +35,39 @@ func (c *ClientSet) DumpBackupLogs(backupName string) error {
 		v1.DownloadTargetKindBackupLog,
 		os.Stdout,
 		time.Minute, false)
+}
+
+// DumpLogs dump logs of velero pod on stdout
+func (c *ClientSet) DumpLogs() {
+	veleroPod := c.getPodName()
+
+	for _, v := range veleroPod {
+		if err := k8s.Client.DumpLogs(VeleroNamespace, v[0], v[1]); err != nil {
+			fmt.Printf("Failed to dump velero logs, err=%s\n", err)
+		}
+	}
+}
+
+// getPodName return velero pod name and container name
+// {{"pod_1","container_1"},{"pod_2","container_2"},}
+func (c *ClientSet) getPodName() [][]string {
+	podList, err := k8s.Client.GetPodList(VeleroNamespace,
+		"deploy=velero",
+	)
+	if err != nil {
+		return [][]string{}
+	}
+	return getPodContainerList(podList)
+}
+
+// returns {{"pod1","container1"},{"pod2","container2"},}
+func getPodContainerList(podList *corev1.PodList) [][]string {
+	pod := make([][]string, 0)
+
+	for _, p := range podList.Items {
+		for _, c := range p.Spec.Containers {
+			pod = append(pod, []string{p.Name, c.Name})
+		}
+	}
+	return pod
 }

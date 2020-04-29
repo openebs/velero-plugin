@@ -32,7 +32,12 @@ import (
 )
 
 const (
-	AppNs            = "test"
+	// AppNs application namespace
+	AppNs = "test"
+
+	// TargetedNs namespace used for restore in different namespace
+	TargetedNs = "ns1"
+
 	BackupLocation   = "default"
 	SnapshotLocation = "default"
 )
@@ -50,6 +55,9 @@ var (
 
 var _ = BeforeSuite(func() {
 	err = app.CreateNamespace(AppNs)
+	Expect(err).NotTo(HaveOccurred())
+
+	err = app.CreateNamespace(TargetedNs)
 	Expect(err).NotTo(HaveOccurred())
 
 	err = k8s.Client.CreateStorageClass(openebs.SCYaml)
@@ -77,21 +85,21 @@ var _ = Describe("Backup/Restore Test", func() {
 			By("Creating a backup")
 
 			err = openebs.Client.WaitForHealthyCVR(openebs.AppPVC)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred(), "No healthy CVR for %s", openebs.AppPVC)
 			// There are chances that istgt is not updated, but replica is healthy
 			time.Sleep(30 * time.Second)
 
 			backupName, status, err = velero.Client.CreateBackup(AppNs)
-			if ((err != nil) || status != v1.BackupPhaseCompleted) &&
-				backupName != "" {
+			if (err != nil) || status != v1.BackupPhaseCompleted {
 				_ = velero.Client.DumpBackupLogs(backupName)
-				_ = openebs.Client.DumpLogs()
+				openebs.Client.DumpLogs()
 			}
-			Expect(err).NotTo(HaveOccurred())
-			Expect(status).To(Equal(v1.BackupPhaseCompleted))
+			Expect(err).NotTo(HaveOccurred(), "Failed to create backup=%s for namespace=%s", backupName, AppNs)
+			Expect(status).To(Equal(v1.BackupPhaseCompleted), "Backup=%s for namespace=%s failed", backupName, AppNs)
+
 			isExist, err = openebs.Client.IsBackupResourcesExist(backupName, app.PVCName, AppNs)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(isExist).To(BeFalse())
+			Expect(err).NotTo(HaveOccurred(), "Failed to verify snapshot cleanup for backup=%s", backupName)
+			Expect(isExist).To(BeFalse(), "Snapshot for backup=%s still exist", backupName)
 		})
 	})
 
@@ -102,18 +110,20 @@ var _ = Describe("Backup/Restore Test", func() {
 
 			By("Creating a scheduled backup")
 			scheduleName, status, err = velero.Client.CreateSchedule(AppNs, "*/2 * * * *", 3)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(status).To(Equal(v1.BackupPhaseCompleted))
+			Expect(err).NotTo(HaveOccurred(), "Failed create schedule:%s status=%s", scheduleName, status)
+			Expect(status).To(Equal(v1.BackupPhaseCompleted), "Schedule=%s failed", scheduleName)
+
 			err = velero.Client.DeleteSchedule(scheduleName)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred(), "Failed to delete schedule=%s", scheduleName)
 
 			bkplist, serr := velero.Client.GetScheduledBackups(scheduleName)
-			Expect(serr).NotTo(HaveOccurred())
+			Expect(serr).NotTo(HaveOccurred(), "Failed to get backup list for schedule=%s", scheduleName)
 
-			for _, bkp := range bkplist {
+			for i, bkp := range bkplist {
 				isExist, err = openebs.Client.IsBackupResourcesExist(bkp, app.PVCName, AppNs)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(isExist).To(BeFalse())
+				Expect(err).NotTo(HaveOccurred(),
+					"Failed to verify snapshot cleanup for backup=%s, with incremental count=%d", bkp, i)
+				Expect(isExist).To(BeFalse(), "Snapshot for backup=%s, with incremental count=%d, still exist", bkp, i)
 			}
 		})
 	})
@@ -122,64 +132,154 @@ var _ = Describe("Backup/Restore Test", func() {
 		BeforeEach(func() {
 			By("Destroying Application and Volume")
 			err = app.DestroyApplication(app.BusyboxYaml, AppNs)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred(), "Failed to destroy application in namespace=%s", AppNs)
 			err = openebs.Client.DeleteVolume(openebs.PVCYaml, AppNs)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred(), "Failed to delete volume for namespace=%s", AppNs)
 		})
 
-		It("Restore from non-scheduled backup Test 1", func() {
-			var status v1.RestorePhase
+		It("Restore from non-scheduled backup", func() {
+			var (
+				status v1.RestorePhase
+				phase  corev1.PersistentVolumeClaimPhase
+			)
 
 			By("Restoring from a non-scheduled backup")
-			status, err = velero.Client.CreateRestore(AppNs, backupName)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(status).To(Equal(v1.RestorePhaseCompleted))
+			status, err = velero.Client.CreateRestore(AppNs, AppNs, backupName)
+			if err != nil || status != v1.RestorePhaseCompleted {
+				dumpLogs()
+			}
+
+			Expect(err).NotTo(HaveOccurred(), "Failed to create a restore from backup=%s", backupName)
+			Expect(status).To(Equal(v1.RestorePhaseCompleted), "Restore from backup=%s failed", backupName)
 
 			By("Checking if restored PVC is bound or not")
 			phase, perr := k8s.Client.GetPVCPhase(app.PVCName, AppNs)
-			Expect(perr).NotTo(HaveOccurred())
-			Expect(phase).To(Equal(corev1.ClaimBound))
+			Expect(perr).NotTo(HaveOccurred(), "Failed to verify PVC=%s bound status for namespace=%s", app.PVCName, AppNs)
+			Expect(phase).To(Equal(corev1.ClaimBound), "PVC=%s not bound", app.PVCName)
 
 			By("Checking if restored CVR are in error state")
 			ok := openebs.Client.CheckCVRStatus(app.PVCName, AppNs, v1alpha1.CVRStatusError)
-			Expect(ok).To(BeTrue())
+			Expect(ok).To(BeTrue(), "CVR for PVC=%s are not in errored state", app.PVCName)
 		})
 
-		It("Restore from scheduled backup Test 1", func() {
+		It("Restore from scheduled backup without base-backup", func() {
 			var status v1.RestorePhase
 
 			By("Restoring from a scheduled backup")
-			status, err = velero.Client.CreateRestoreFromSchedule(AppNs, scheduleName, 1)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(status).To(Equal(v1.RestorePhasePartiallyFailed))
+			status, err = velero.Client.CreateRestoreFromSchedule(AppNs, AppNs, scheduleName, 1)
+			if err != nil || status != v1.RestorePhasePartiallyFailed {
+				dumpLogs()
+			}
+
+			Expect(err).NotTo(HaveOccurred(), "Failed to create a restore from schedule=%s", scheduleName)
+			Expect(status).To(Equal(v1.RestorePhasePartiallyFailed), "Restore for schedule=%s should have failed", scheduleName)
 
 		})
 
-		It("Restore from scheduled backup Test 2", func() {
-			var status v1.RestorePhase
+		It("Restore from scheduled backup using base-backup", func() {
+			var (
+				status v1.RestorePhase
+				phase  corev1.PersistentVolumeClaimPhase
+			)
 
 			By("Restoring from a scheduled backup")
-			status, err = velero.Client.CreateRestoreFromSchedule(AppNs, scheduleName, 0)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(status).To(Equal(v1.RestorePhaseCompleted))
+			status, err = velero.Client.CreateRestoreFromSchedule(AppNs, AppNs, scheduleName, 0)
+			if err != nil || status != v1.RestorePhaseCompleted {
+				dumpLogs()
+			}
+			Expect(err).NotTo(HaveOccurred(), "Failed to create a restore from schedule=%s", scheduleName)
+			Expect(status).To(Equal(v1.RestorePhaseCompleted), "Restore from schedule=%s failed", scheduleName)
 
 			By("Checking if restored PVC is bound or not")
-			phase, err := k8s.Client.GetPVCPhase(app.PVCName, AppNs)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(phase).To(Equal(corev1.ClaimBound))
+			phase, err = k8s.Client.GetPVCPhase(app.PVCName, AppNs)
+			Expect(err).NotTo(HaveOccurred(), "Failed to verify PVC=%s bound status for namespace=%s", app.PVCName, AppNs)
+			Expect(phase).To(Equal(corev1.ClaimBound), "PVC=%s not bound", app.PVCName)
 
 			By("Checking if restored CVR are in error state")
 			ok := openebs.Client.CheckCVRStatus(app.PVCName, AppNs, v1alpha1.CVRStatusError)
-			Expect(ok).To(BeTrue())
+			Expect(ok).To(BeTrue(), "CVR for PVC=%s are not in errored state", app.PVCName)
 
-			By("Checking if restore has created Snapshot or not")
+			By("Checking if restore has created snapshot or not")
+			snapshotList, serr := velero.Client.GetRestoredSnapshotFromSchedule(scheduleName)
+			Expect(serr).NotTo(HaveOccurred())
+			for snapshot := range snapshotList {
+				ok, err = openebs.Client.CheckSnapshot(app.PVCName, AppNs, snapshot)
+				if err != nil {
+					dumpLogs()
+				}
+				Expect(err).NotTo(HaveOccurred(), "Failed to verify restored snapshot from schedule=%s", scheduleName)
+				Expect(ok).Should(BeTrue(), "Snapshots are not restored from schedule=%s", scheduleName)
+			}
+		})
+	})
+
+	Context("Restore Test in different namespace", func() {
+		AfterEach(func() {
+			By("Destroying Application and Volume")
+			err = app.DestroyApplication(app.BusyboxYaml, TargetedNs)
+			Expect(err).NotTo(HaveOccurred(), "Failed to destroy application in namespace=%s", TargetedNs)
+			err = openebs.Client.DeleteVolume(openebs.PVCYaml, TargetedNs)
+			Expect(err).NotTo(HaveOccurred(), "Failed to delete volume for namespace=%s", TargetedNs)
+		})
+
+		It("Restore from non-scheduled backup to different Namespace", func() {
+			var status v1.RestorePhase
+
+			By("Restoring from a non-scheduled backup to a different namespace")
+			status, err = velero.Client.CreateRestore(AppNs, TargetedNs, backupName)
+			if err != nil || status != v1.RestorePhaseCompleted {
+				dumpLogs()
+			}
+
+			Expect(err).NotTo(HaveOccurred(), "Failed to create a restore from backup=%s", backupName)
+			Expect(status).To(Equal(v1.RestorePhaseCompleted), "Restore from backup=%s failed", backupName)
+
+			By("Checking if restored PVC is bound or not")
+			phase, perr := k8s.Client.GetPVCPhase(app.PVCName, TargetedNs)
+			Expect(perr).NotTo(HaveOccurred(), "Failed to verify PVC=%s bound status for namespace=%s", app.PVCName, TargetedNs)
+			Expect(phase).To(Equal(corev1.ClaimBound), "PVC=%s not bound", app.PVCName)
+
+			By("Checking if restored CVR are in error state")
+			ok := openebs.Client.CheckCVRStatus(app.PVCName, TargetedNs, v1alpha1.CVRStatusError)
+			Expect(ok).To(BeTrue(), "CVR for PVC=%s is not in errored state", app.PVCName)
+		})
+
+		It("Restore from scheduled backup to different Namespace", func() {
+			var status v1.RestorePhase
+
+			By("Restoring from a scheduled backup to a different namespace")
+			status, err = velero.Client.CreateRestoreFromSchedule(AppNs, TargetedNs, scheduleName, 0)
+			if err != nil || status != v1.RestorePhaseCompleted {
+				dumpLogs()
+			}
+			Expect(err).NotTo(HaveOccurred(), "Failed to create a restore from schedule=%s", scheduleName)
+			Expect(status).To(Equal(v1.RestorePhaseCompleted), "Restore from schedule=%s failed", scheduleName)
+
+			By("Checking if restored PVC is bound or not")
+			phase, err := k8s.Client.GetPVCPhase(app.PVCName, TargetedNs)
+			Expect(err).NotTo(HaveOccurred(), "Failed to verify PVC=%s bound status for namespace=%s", app.PVCName, TargetedNs)
+			Expect(phase).To(Equal(corev1.ClaimBound), "PVC=%s not bound", app.PVCName)
+
+			By("Checking if restored CVR are in error state")
+			ok := openebs.Client.CheckCVRStatus(app.PVCName, TargetedNs, v1alpha1.CVRStatusError)
+			Expect(ok).To(BeTrue(), "CVR for PVC=%s is not in errored state", app.PVCName)
+
+			By("Checking if restore has created snapshot or not")
 			snapshotList, err := velero.Client.GetRestoredSnapshotFromSchedule(scheduleName)
 			Expect(err).NotTo(HaveOccurred())
 			for snapshot := range snapshotList {
-				ok, err := openebs.Client.CheckSnapshot(app.PVCName, AppNs, snapshot)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(ok).Should(BeTrue())
+				ok, err := openebs.Client.CheckSnapshot(app.PVCName, TargetedNs, snapshot)
+				if err != nil {
+					dumpLogs()
+				}
+				Expect(err).NotTo(HaveOccurred(), "Failed to verify restored snapshot from schedule=%s", scheduleName)
+				Expect(ok).Should(BeTrue(), "Snapshots are not restored from schedule=%s", scheduleName)
 			}
 		})
 	})
 })
+
+func dumpLogs() {
+	velero.Client.DumpLogs()
+	openebs.Client.DumpLogs()
+}

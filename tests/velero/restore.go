@@ -79,7 +79,7 @@ func (c *ClientSet) GetScheduledBackups(schedule string) ([]string, error) {
 }
 
 // CreateRestoreFromSchedule restore from given schedule's n'th backup for ns Namespace
-func (c *ClientSet) CreateRestoreFromSchedule(ns, schedule string, n int) (v1.RestorePhase, error) {
+func (c *ClientSet) CreateRestoreFromSchedule(ns, targetedNs, schedule string, n int) (v1.RestorePhase, error) {
 	var status v1.RestorePhase
 	var err error
 
@@ -89,17 +89,22 @@ func (c *ClientSet) CreateRestoreFromSchedule(ns, schedule string, n int) (v1.Re
 	}
 	bkplist = bkplist[n:]
 	for _, bkp := range bkplist {
-		if status, err = c.CreateRestore(ns, bkp); status != v1.RestorePhaseCompleted {
+		if status, err = c.CreateRestore(ns, targetedNs, bkp); status != v1.RestorePhaseCompleted {
 			break
 		}
 	}
 	return status, err
 }
 
-// CreateRestore create restore from given backup for ns Namespace
-func (c *ClientSet) CreateRestore(ns, backup string) (v1.RestorePhase, error) {
+// CreateRestore create restore from given backup for ns Namespace to targetedNs
+func (c *ClientSet) CreateRestore(ns, targetedNs, backup string) (v1.RestorePhase, error) {
 	var status v1.RestorePhase
 	snapVolume := true
+	nsMapping := make(map[string]string)
+
+	if targetedNs != "" && ns != targetedNs {
+		nsMapping[ns] = targetedNs
+	}
 
 	restoreName, err := c.generateRestoreName(backup)
 	if err != nil {
@@ -115,6 +120,7 @@ func (c *ClientSet) CreateRestore(ns, backup string) (v1.RestorePhase, error) {
 			IncludedNamespaces: []string{ns},
 			RestorePVs:         &snapVolume,
 			BackupName:         backup,
+			NamespaceMapping:   nsMapping,
 		},
 	}
 	o, err := c.VeleroV1().

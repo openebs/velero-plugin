@@ -48,7 +48,7 @@ func (c *Conn) Upload(file string, fileSize int64) bool {
 	if err != nil {
 		c.Log.Errorf("Failed to upload snapshot to bucket: %s", err.Error())
 		if c.bucket.Delete(c.ctx, file) != nil {
-			c.Log.Errorf("Failed to remove snapshot{%s} from cloud", file)
+			c.Log.Errorf("Failed to delete uncompleted snapshot{%s} from cloud", file)
 		}
 		return false
 	}

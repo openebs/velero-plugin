@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
-	"github.com/pkg/errors"
 )
 
 // checkBackupStatus queries MayaAPI server for given backup status
@@ -34,13 +33,17 @@ func (p *Plugin) checkBackupStatus(bkp *v1alpha1.CStorBackup) {
 	bkpvolume, exists := p.volumes[bkp.Spec.VolumeName]
 	if !exists {
 		p.Log.Errorf("Failed to fetch volume info for {%s}", bkp.Spec.VolumeName)
-		panic(errors.Errorf("Failed to fetch volume info for {%s}", bkp.Spec.VolumeName))
+		p.cl.ExitServer = true
+		bkpvolume.backupStatus = v1alpha1.BKPCStorStatusInvalid
+		return
 	}
 
 	bkpData, err := json.Marshal(bkp)
 	if err != nil {
 		p.Log.Errorf("JSON marshal failed : %s", err.Error())
-		panic(errors.Errorf("JSON marshal failed : %s", err.Error()))
+		p.cl.ExitServer = true
+		bkpvolume.backupStatus = v1alpha1.BKPCStorStatusInvalid
+		return
 	}
 
 	for !bkpDone {
@@ -82,7 +85,8 @@ func (p *Plugin) checkRestoreStatus(rst *v1alpha1.CStorRestore, vol *Volume) {
 	rstData, err := json.Marshal(rst)
 	if err != nil {
 		p.Log.Errorf("JSON marshal failed : %s", err.Error())
-		panic(errors.Errorf("JSON marshal failed : %s", err.Error()))
+		vol.restoreStatus = v1alpha1.RSTCStorStatusInvalid
+		p.cl.ExitServer = true
 	}
 
 	for !rstDone {

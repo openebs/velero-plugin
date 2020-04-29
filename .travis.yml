@@ -42,7 +42,7 @@ script:
       kubectl cluster-info;
       export VELERO_RELEASE=v1.0.0;
       export OPENEBS_RELEASE=master;
-      ./script/install-openebs.sh && ./script/install-velero.sh && travis_wait make test || travis_terminate 1;
+      ./script/install-openebs.sh && ./script/install-velero.sh && travis_wait 30 make test || travis_terminate 1;
     fi
 
 after_success:

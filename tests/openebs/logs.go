@@ -17,6 +17,8 @@ limitations under the License.
 package openebs
 
 import (
+	"fmt"
+
 	k8s "github.com/openebs/velero-plugin/tests/k8s"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -28,22 +30,26 @@ const (
 )
 
 // DumpLogs will dump openebs logs
-func (c *ClientSet) DumpLogs() error {
+func (c *ClientSet) DumpLogs() {
 	mayaPod := c.getMayaAPIServerPodName()
 	spcPod := c.getSPCPodName()
 	pvcPod := c.getPVCPodName()
 
 	for _, v := range mayaPod {
-		_ = k8s.Client.DumpLogs(OpenEBSNs, v[0], v[1])
+		if err := k8s.Client.DumpLogs(OpenEBSNs, v[0], v[1]); err != nil {
+			fmt.Printf("Failed to dump maya-apiserver logs err=%s\n", err)
+		}
 	}
 	for _, v := range spcPod {
-		_ = k8s.Client.DumpLogs(OpenEBSNs, v[0], v[1])
+		if err := k8s.Client.DumpLogs(OpenEBSNs, v[0], v[1]); err != nil {
+			fmt.Printf("Failed to dump cstor pod logs err=%s\n", err)
+		}
 	}
 	for _, v := range pvcPod {
-		_ = k8s.Client.DumpLogs(OpenEBSNs, v[0], v[1])
+		if err := k8s.Client.DumpLogs(OpenEBSNs, v[0], v[1]); err != nil {
+			fmt.Printf("Failed to dump target pod logs err=%s\n", err)
+		}
 	}
-
-	return nil
 }
 
 // getMayaAPIServerPodName return Maya-API server pod name and container

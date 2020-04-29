@@ -7,8 +7,12 @@ import (
 	v1alpha1 "github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
-	apierror "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+const (
+	// PvClonePrefix  prefix for clone volume in case restore from local backup
+	PvClonePrefix = "cstor-clone-"
 )
 
 func (p *Plugin) updateVolCASInfo(data []byte, volumeID string) error {
@@ -60,46 +64,11 @@ func (p *Plugin) restoreVolumeFromCloud(vol *Volume) error {
 	return nil
 }
 
-func (p *Plugin) generateRestorePVName(volumeID string) (string, error) {
-	_, err := p.K8sClient.
+func (p *Plugin) getPV(volumeID string) (*v1.PersistentVolume, error) {
+	return p.K8sClient.
 		CoreV1().
 		PersistentVolumes().
 		Get(volumeID, metav1.GetOptions{})
-	if err != nil {
-		if apierror.IsNotFound(err) {
-			return volumeID, nil
-		}
-		return "", errors.Wrapf(err, "Error checking if PV with same name exist")
-	}
-
-	nuuid, err := uuid.NewV4()
-	if err != nil {
-		return "", errors.Wrapf(err, "Error generating uuid for PV rename")
-	}
-
-	oldVolumeID, volumeID := volumeID, "cstor-clone-"+nuuid.String()
-	p.Log.Infof("Renaming PV %s to %s", oldVolumeID, volumeID)
-	return volumeID, nil
-}
-
-func (p *Plugin) getPVInfo(volumeID, snapName string) (*Volume, error) {
-	pv, err := p.K8sClient.
-		CoreV1().
-		PersistentVolumes().
-		Get(volumeID, metav1.GetOptions{})
-	if err != nil {
-		return nil, errors.Errorf("Error fetching volume{%s} : %s", volumeID, err.Error())
-	}
-
-	vol := &Volume{
-		volname:      volumeID,
-		srcVolname:   volumeID,
-		backupName:   snapName,
-		storageClass: pv.Spec.StorageClassName,
-		size:         pv.Spec.Capacity[v1.ResourceStorage],
-	}
-	p.volumes[vol.volname] = vol
-	return vol, nil
 }
 
 func (p *Plugin) restoreVolumeFromLocal(vol *Volume) error {
@@ -109,4 +78,57 @@ func (p *Plugin) restoreVolumeFromLocal(vol *Volume) error {
 	}
 	vol.restoreStatus = v1alpha1.RSTCStorStatusDone
 	return nil
+}
+
+// getVolumeForLocalRestore return volume information to restore locally for the given volumeID and snapName
+// volumeID : pv name from backup
+// snapName : snapshot name from where new volume will be created
+func (p *Plugin) getVolumeForLocalRestore(volumeID, snapName string) (*Volume, error) {
+	pv, err := p.getPV(volumeID)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error fetching PV=%s", volumeID)
+	}
+
+	clonePvName, err := generateClonePVName()
+	if err != nil {
+		return nil, err
+	}
+	p.Log.Infof("Renaming PV %s to %s", pv.Name, clonePvName)
+
+	vol := &Volume{
+		volname:      clonePvName,
+		srcVolname:   pv.Name,
+		backupName:   snapName,
+		storageClass: pv.Spec.StorageClassName,
+		size:         pv.Spec.Capacity[v1.ResourceStorage],
+	}
+	p.volumes[vol.volname] = vol
+	return vol, nil
+}
+
+// getVolumeForRemoteRestore return volume information to restore from remote backup for the given volumeID and snapName
+// volumeID : pv name from backup
+// snapName : snapshot name from where new volume will be created
+func (p *Plugin) getVolumeForRemoteRestore(volumeID, snapName string) (*Volume, error) {
+	vol, err := p.createPVC(volumeID, snapName)
+	if err != nil {
+		p.Log.Errorf("CreatePVC returned error=%s", err)
+		return nil, err
+	}
+
+	p.volumes[vol.volname] = vol
+
+	p.Log.Infof("Generated PV name is %s", vol.volname)
+
+	return vol, nil
+}
+
+// generateClonePVName return new name for clone pv for the given pv
+func generateClonePVName() (string, error) {
+	nuuid, err := uuid.NewV4()
+	if err != nil {
+		return "", errors.Wrapf(err, "Error generating uuid for PV rename")
+	}
+
+	return PvClonePrefix + nuuid.String(), nil
 }

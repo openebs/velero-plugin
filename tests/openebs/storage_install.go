@@ -51,8 +51,8 @@ const (
 	// OpenEBSNs openebs Namespace
 	OpenEBSNs = "openebs"
 
-	// PVCDeploymentLabel for target pod Deployment
-	PVCDeploymentLabel = "openebs.io/persistent-volume-claim"
+	// PVDeploymentLabel for target pod Deployment
+	PVDeploymentLabel = "openebs.io/persistent-volume"
 )
 
 func init() {
@@ -123,12 +123,17 @@ func (c *ClientSet) DeleteVolume(pvcYAML, pvcNs string) error {
 		return err
 	}
 
+	pv, err := c.getPVCVolumeName(pvc.Name, pvcNs)
+	if err != nil {
+		return err
+	}
+
 	pvc.Namespace = pvcNs
 	if err := k8s.Client.DeletePVC(pvc); err != nil {
 		return err
 	}
 
 	return k8s.Client.WaitForDeploymentCleanup(
-		PVCDeploymentLabel+"="+pvc.Name,
+		PVDeploymentLabel+"="+pv,
 		OpenEBSNs)
 }

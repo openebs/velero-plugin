@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"time"
 
+	velero "github.com/openebs/velero-plugin/pkg/velero"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -89,36 +90,31 @@ func (p *Plugin) backupPVC(volumeID string) error {
 
 // createPVC create PVC for given volume name
 func (p *Plugin) createPVC(volumeID, snapName string) (*Volume, error) {
-	pvc := &v1.PersistentVolumeClaim{}
 	var vol *Volume
-	var data []byte
-	var ok bool
 
-	filename := p.cl.GenerateRemoteFilename(volumeID, snapName)
-	if filename == "" {
-		return nil, errors.New("error creating remote file name for pvc backup")
+	pvc, err := p.downloadPVC(volumeID, snapName)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to download pvc")
 	}
 
-	if data, ok = p.cl.Read(filename + ".pvc"); !ok {
-		return nil, errors.Errorf("Failed to download PVC file=%s", filename+".pvc")
+	targetedNs, err := velero.GetRestoreNamespace(pvc.Namespace, snapName, p.Log)
+	if err != nil {
+		return nil, err
 	}
-
-	if err := json.Unmarshal(data, pvc); err != nil {
-		return nil, errors.Errorf("Failed to decode pvc file=%s", filename+".pvc")
-	}
+	pvc.Namespace = targetedNs
 
 	newVol, err := p.getVolumeFromPVC(*pvc)
+	if err != nil {
+		return nil, err
+	}
+
 	if newVol != nil {
 		newVol.backupName = snapName
 		newVol.snapshotTag = volumeID
 		return newVol, nil
 	}
 
-	if err != nil {
-		return nil, err
-	}
-
-	p.Log.Infof("Creating PVC for volumeID:%s snapshot:%s", volumeID, snapName)
+	p.Log.Infof("Creating PVC for volumeID:%s snapshot:%s in namespace=%s", volumeID, snapName, targetedNs)
 
 	pvc.Annotations = make(map[string]string)
 	pvc.Annotations["openebs.io/created-through"] = "restore"
@@ -200,7 +196,6 @@ func (p *Plugin) getPVCInfo(volumeID, snapName string) (*Volume, error) {
 	return vol, nil
 }
 
-// nolint: unused
 // getVolumeFromPVC returns volume info for given PVC if PVC is in bound state
 func (p *Plugin) getVolumeFromPVC(pvc v1.PersistentVolumeClaim) (*Volume, error) {
 	rpvc, err := p.K8sClient.
@@ -230,4 +225,21 @@ func (p *Plugin) getVolumeFromPVC(pvc v1.PersistentVolumeClaim) (*Volume, error)
 		return nil, errors.Wrapf(err, "cvr not ready")
 	}
 	return vol, nil
+}
+
+func (p *Plugin) downloadPVC(volumeID, snapName string) (*v1.PersistentVolumeClaim, error) {
+	pvc := &v1.PersistentVolumeClaim{}
+
+	filename := p.cl.GenerateRemoteFilename(volumeID, snapName)
+
+	data, ok := p.cl.Read(filename + ".pvc")
+	if !ok {
+		return nil, errors.Errorf("failed to download PVC file=%s", filename+".pvc")
+	}
+
+	if err := json.Unmarshal(data, pvc); err != nil {
+		return nil, errors.Errorf("failed to decode pvc file=%s", filename+".pvc")
+	}
+
+	return pvc, nil
 }

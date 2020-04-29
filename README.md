@@ -246,6 +246,13 @@ defaultbackup-20190513113453   defaultbackup   Completed   0          0         
 
 Once the restore is completed you should see the restore marked as `Completed`.
 
+
+To restore in different namespace, run the following command:
+
+```
+velero restore create --from-backup backup_name --restore-volumes=true --namespace-mappings source_ns:destination_ns
+```
+
 *Note: After restore for remote backup is completed, you need to set target-ip for the volume in pool pod. If restore is from local snapshot then you don't need to update target-ip*
 *Steps to get target-ip*
 1. kubectl get svc -n openebs <PV_NAME> -ojsonpath='{.spec.clusterIP}'
@@ -254,9 +261,6 @@ Once the restore is completed you should see the restore marked as `Completed`.
 1. kubectl exec -it <POOL_POD> -c cstor-pool -n openebs -- bash
 2. zfs set io.openebs:targetip=<TARGET_IP> <POOL_NAME/VOLUME_NAME>
 ```
-
-*Limitation:*
-- _Restore of remote/cloud-backup in different namespace(--namespace-remapping) is not supported_
 
 ### Creating a scheduled remote backup
 OpenEBS velero-plugin provides incremental remote backup support for CStor persistent volumes.
@@ -307,6 +311,9 @@ velero restore create --from-backup sched-20190513103034 --restore-volumes=true
 velero restore create --from-backup sched-20190513103534 --restore-volumes=true
 velero restore create --from-backup sched-20190513104034 --restore-volumes=true
 ```
+
+You can restore scheduled remote backup to different namespace using `--namespace-mappings` argument [while creating a restore](#creating-a-restore-for-remote-backup).
+
 *Note: Velero clean-up the backups according to retain policy. By default retain policy is 30days. So you need to set retain policy for scheduled remote/cloud-backup accordingly.*
 
 ## License
