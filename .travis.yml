@@ -21,6 +21,7 @@ addons:
     update: true
 
 before_script:
+  - make check-license || travis_terminate 1;
   # 1. Install kubectl binary
   # 2. Install minikube
   # 3. Initialize minukube and kubernetes config directory
