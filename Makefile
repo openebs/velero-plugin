@@ -38,19 +38,23 @@ BUILD_DATE = $(shell date +'%Y%m%d%H%M%S')
 all: build
 
 container: all
+	@echo ">> building container"
 	@cp Dockerfile _output/Dockerfile
 	docker build -t $(IMAGE):$(IMAGE_TAG) --build-arg BUILD_DATE=${BUILD_DATE} -f _output/Dockerfile _output
 
 build:
+	@echo ">> building binary"
 	@mkdir -p _output
 	CGO_ENABLED=0 go build -v -o _output/$(BIN) ./$(BIN)
 
 gomod: ## Ensures fresh go.mod and go.sum.
+	@echo ">> verifying go modules"
 	@go mod tidy
 	@go mod verify
 
 # Run linter using docker image
 lint-docker: gomod
+	@echo ">> running golangci-lint"
 	@docker run -i	\
 		--rm -v $$(pwd):/app -w /app	\
 		golangci/golangci-lint:v1.24.0	\
@@ -58,6 +62,7 @@ lint-docker: gomod
 
 # Run linter using local binary
 lint: gomod
+	@echo ">> running golangci-lint"
 	@golangci-lint run
 
 test:
@@ -68,3 +73,15 @@ deploy-image:
 
 clean:
 	rm -rf .go _output
+
+
+.PHONY: check-license
+check-license:
+	@echo ">> checking license header"
+	@licRes=$$(for file in $$(find . -type f -iname '*.go' ! -path './vendor/*' ! -path './pkg/debug/*' ) ; do \
+				awk 'NR<=3' $$file | grep -Eq "(Copyright|generated|GENERATED)" || echo $$file; \
+				done); \
+			if [ -n "$${licRes}" ]; then \
+				echo "license header checking failed:"; echo "$${licRes}"; \
+				exit 1; \
+			fi
