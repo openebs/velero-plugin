@@ -18,10 +18,8 @@ package clouduploader
 
 import (
 	"context"
-	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/pkg/errors"
@@ -35,11 +33,11 @@ import (
 )
 
 const (
-	// AWSCredentialsFile defines AWS crediential file env variable name
-	AWSCredentialsFile = "AWS_SHARED_CREDENTIALS_FILE"
-
 	// DefaultProfile default profile provider
 	DefaultProfile = "default"
+
+	// S3Profile profile for s3 base remote storage
+	S3Profile = "profile"
 
 	// PROVIDER provider key
 	PROVIDER = "provider"
@@ -143,21 +141,20 @@ func (c *Conn) setupGCP(ctx context.Context, bucket string, config map[string]st
 
 // setupAWS creates a connection to AWS's blob storage
 func (c *Conn) setupAWS(ctx context.Context, bucketName string, config map[string]string) (*blob.Bucket, error) {
-	var awscred string
+	var profile string
 
 	region, ok := config[REGION]
 	if !ok {
 		return nil, errors.New("no region provided for AWS")
 	}
 
-	if awscred = os.Getenv(AWSCredentialsFile); awscred == "" {
-		return nil, errors.New("error fetching aws credentials")
+	// get the s3 profile from config, if not mentioned, use profile `default`
+	if profile, ok = config[S3Profile]; !ok {
+		profile = DefaultProfile
 	}
 
-	cred := credentials.NewSharedCredentials(awscred, DefaultProfile)
 	awsconfig := aws.NewConfig().
-		WithRegion(region).
-		WithCredentials(cred)
+		WithRegion(region)
 
 	if url, ok := config[AWSUrl]; ok {
 		awsconfig = awsconfig.WithEndpoint(url)
@@ -182,7 +179,15 @@ func (c *Conn) setupAWS(ctx context.Context, bucketName string, config map[strin
 	// if partSize is 0 then it will be calculated from file size
 	c.partSize = pSize
 
-	s := session.Must(session.NewSession(awsconfig))
+	opts := session.Options{
+		Config:  *awsconfig,
+		Profile: profile,
+	}
+
+	s := session.Must(session.NewSessionWithOptions(opts))
+	if _, err := s.Config.Credentials.Get(); err != nil {
+		return nil, errors.Wrapf(err, "failed to get credentials value")
+	}
 	return s3blob.OpenBucket(ctx, s, bucketName, nil)
 }
 
