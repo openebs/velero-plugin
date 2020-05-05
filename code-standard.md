@@ -22,3 +22,13 @@ If PR is about adding a new feature or bug fix then the Author of the PR is expe
 velero-plugin/changelogs/unreleased   <- folder
     12-github_user_name            <- file
 ```
+
+For example, if `xyz` user has raised a PR `16` to add support for s3 base storage for remote backup then
+channgelog file name will be
+```sh
+velero-plugin/changelogs/unreleased/15-xyz
+```
+and  content of the file will be
+```sh
+adding support for s3 base storage for remote backup
+```

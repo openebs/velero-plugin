@@ -10,6 +10,8 @@ OpenEBS velero-plugin.
 [![Go Report](https://goreportcard.com/badge/github.com/openebs/velero-plugin)](https://goreportcard.com/report/github.com/openebs/velero-plugin)
 [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fopenebs%2Fvelero-plugin.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fopenebs%2Fvelero-plugin?ref=badge_shield)
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/3900/badge)](https://bestpractices.coreinfrastructure.org/projects/3900)
+[![Releases](https://img.shields.io/github/v/release/openebs/velero-plugin.svg?include_prereleases&style=flat-square)](https://github.com/openebs/velero-plugin/releases)
+[![LICENSE](https://img.shields.io/github/license/openebs/velero-plugin.svg?style=flat-square)](https://github.com/openebs/velero-plugin/blob/master/LICENSE)
 
 ## Table of Contents
 - [Compatibility matrix](#compatibility-matrix)
@@ -51,7 +53,11 @@ _OpenEBS version **< 0.9** is not supported for velero-plugin._
 
 _If you want to use plugin image from development branch(`master`), use **ci** tag._
 
-Plugin images are available at [quay.io](http://quay.io/openebs/velero-plugin) and [hub.docker.com](https://hub.docker.com/r/openebs/velero-plugin/tags).
+Plugin images are available at:
+
+For AMD64: [quay.io](http://quay.io/openebs/velero-plugin) and [hub.docker.com](https://hub.docker.com/r/openebs/velero-plugin/tags).
+
+For ARM64: [quay.io](https://quay.io/repository/openebs/velero-plugin-arm64?tab=tags) and [hub.docker.com](https://hub.docker.com/r/openebs/velero-plugin-arm64/tags).
 
 ## Prerequisite for velero-plugin
 A Specific version of Velero needs to be installed as per the [compatibility matrix](#Compatibility-matrix) with OpenEBS versions.
@@ -64,6 +70,8 @@ For installation steps of OpenEBS, visit https://github.com/openebs/openebs/rele
 Run the following command to install development image of OpenEBS velero-plugin
 
 `velero plugin add openebs/velero-plugin:1.9.0`
+
+For ARM64, change image name to `openebs/velero-plugin-arm64`.
 
 This command will add an init container to Velero deployment to install the OpenEBS velero-plugin.
 
