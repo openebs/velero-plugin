@@ -10,6 +10,8 @@ OpenEBS velero-plugin.
 [![Go Report](https://goreportcard.com/badge/github.com/openebs/velero-plugin)](https://goreportcard.com/report/github.com/openebs/velero-plugin)
 [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fopenebs%2Fvelero-plugin.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fopenebs%2Fvelero-plugin?ref=badge_shield)
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/3900/badge)](https://bestpractices.coreinfrastructure.org/projects/3900)
+[![Releases](https://img.shields.io/github/v/release/openebs/velero-plugin.svg?include_prereleases&style=flat-square)](https://github.com/openebs/velero-plugin/releases)
+[![LICENSE](https://img.shields.io/github/license/openebs/velero-plugin.svg?style=flat-square)](https://github.com/openebs/velero-plugin/blob/master/LICENSE)
 
 ## Table of Contents
 - [Compatibility matrix](#compatibility-matrix)
