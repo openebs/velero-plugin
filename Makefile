@@ -51,6 +51,7 @@ gomod: ## Ensures fresh go.mod and go.sum.
 	@echo ">> verifying go modules"
 	@go mod tidy
 	@go mod verify
+	@git diff --exit-code -- go.sum go.mod
 
 # Run linter using docker image
 lint-docker: gomod

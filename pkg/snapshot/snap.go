@@ -17,9 +17,9 @@ limitations under the License.
 package snapshot
 
 import (
-	"github.com/heptio/velero/pkg/plugin/velero"
 	"github.com/openebs/velero-plugin/pkg/cstor"
 	"github.com/sirupsen/logrus"
+	"github.com/vmware-tanzu/velero/pkg/plugin/velero"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
