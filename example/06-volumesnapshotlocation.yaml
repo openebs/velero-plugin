@@ -76,6 +76,9 @@ spec:
 #     # The region where the server is located.
 #     region: minio
 #
+#     # profile for credential, if not mentioned then plugin will use profile=default
+#     profile: user1
+#
 #     # Whether to use path-style addressing instead of virtual hosted bucket addressing.
 #     # Set to "true"
 #     s3ForcePathStyle: "true"
@@ -108,6 +111,9 @@ spec:
 #
 #     # The AWS region where the bucket is located.
 #     region: ap-south-1
+#
+#     # profile for credential, if not mentioned then plugin will use profile=default
+#     profile: user1
 #
 #     # You can specify the multipart_chunksize  here for explicitness.
 #     # multiPartChunkSize can be from 5Mi(5*1024*1024 Bytes) to 5Gi
