@@ -103,6 +103,9 @@ All submissions, including submissions by project members, require review. We us
 
 * If PR is for bug-fix and release branch(like v1.9.x) is created then cherry-pick for the same PR needs to be created against the release branch. Maintainer of the Project needs to make sure that all the bug fixes after RC release are cherry-picked to release branch and their changelog files are created under `changelogs/v1.9.x` instead of `changelogs/unreleased`, if release branch is `v1.10.x` then this folder will be `changelogs/v1.10.x`
 
+## Design document
+Detailed design document for velero-plugin is available at [Google Doc](https://docs.google.com/document/d/1-4WsM0AjLORb3lTCUUGyYOY_LNdTOATFesi7kTAr7SA).
+
 ### For maintainers
 * We are using labeling for PR to track it more effectively. The following are valid labels for the PR.
    - **Bug** - if PR is a **bug to existing feature**
