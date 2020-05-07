@@ -270,6 +270,11 @@ func (p *Plugin) DeleteSnapshot(snapshotID string) error {
 	var snapInfo *Snapshot
 	var err error
 
+	if snapshotID == "" {
+		p.Log.Warning("Empty snapshotID")
+		return nil
+	}
+
 	p.Log.Infof("Deleting snapshot %v", snapshotID)
 	if _, exists := p.snapshots[snapshotID]; !exists {
 		snapInfo, err = p.getSnapInfo(snapshotID)
@@ -380,7 +385,10 @@ func (p *Plugin) CreateSnapshot(volumeID, volumeAZ string, tags map[string]strin
 }
 
 func (p *Plugin) getSnapInfo(snapshotID string) (*Snapshot, error) {
-	volumeID, bkpName := getInfoFromSnapshotID(snapshotID)
+	volumeID, bkpName, err := getInfoFromSnapshotID(snapshotID)
+	if err != nil {
+		return nil, err
+	}
 
 	pv, err := p.K8sClient.
 		CoreV1().
@@ -413,7 +421,10 @@ func (p *Plugin) CreateVolumeFromSnapshot(snapshotID, volumeType, volumeAZ strin
 		return "", errors.Errorf("Invalid volume type{%s}", volumeType)
 	}
 
-	volumeID, snapName := getInfoFromSnapshotID(snapshotID)
+	volumeID, snapName, err := getInfoFromSnapshotID(snapshotID)
+	if err != nil {
+		return "", err
+	}
 
 	snapType := "remote"
 	if p.local {
@@ -507,10 +518,19 @@ func (p *Plugin) getScheduleName(backupName string) string {
 }
 
 // getInfoFromSnapshotID return backup name and volume id from the given snapshotID
-func getInfoFromSnapshotID(snapshotID string) (volumeID, backupName string) {
+func getInfoFromSnapshotID(snapshotID string) (volumeID, backupName string, err error) {
 	s := strings.Split(snapshotID, SnapshotIDIdentifier)
+	if len(s) != 2 {
+		err = errors.New("invalid snapshot id")
+		return
+	}
+
 	volumeID = s[0]
 	backupName = s[1]
+
+	if volumeID == "" || backupName == "" {
+		err = errors.Errorf("invalid volumeID=%s backupName=%s", volumeID, backupName)
+	}
 	return
 }
 
