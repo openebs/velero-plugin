@@ -1,4 +1,19 @@
 #!/bin/bash
+
+# Copyright 2020 The OpenEBS Authors. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 set -e
 
 if [ -z ${DIMAGE} ];
@@ -42,7 +57,10 @@ function TagAndPushImage() {
   REPO="$1"
   TAG="$2"
 
-  IMAGE_URI="${REPO}:${TAG}";
+  #Add an option to specify a custom TAG_SUFFIX
+  #via environment variable. Default is no tag.
+  #Example suffix could be "-debug" of "-dev"
+  IMAGE_URI="${REPO}:${TAG}${TAG_SUFFIX}";
   sudo docker tag ${IMAGEID} ${IMAGE_URI};
   echo " push ${IMAGE_URI}";
   sudo docker push ${IMAGE_URI};
@@ -65,7 +83,11 @@ then
     # Push with different tags if tagged as a release
     # When github is tagged with a release, then Travis will
     # set the release tag in env TRAVIS_TAG
-    TagAndPushImage "${DIMAGE}" "${TRAVIS_TAG}"
+    # Trim the `v` from the TRAVIS_TAG if it exists
+    # Example: v1.10.0 maps to 1.10.0
+    # Example: 1.10.0 maps to 1.10.0
+    # Example: v1.10.0-custom maps to 1.10.0-custom
+    TagAndPushImage "${DIMAGE}" "${TRAVIS_TAG#v}"
     TagAndPushImage "${DIMAGE}" "latest"
   fi;
 else
@@ -85,7 +107,8 @@ then
     # Push with different tags if tagged as a release
     # When github is tagged with a release, then Travis will
     # set the release tag in env TRAVIS_TAG
-    TagAndPushImage "quay.io/${DIMAGE}" "${TRAVIS_TAG}"
+    # Trim the `v` from the TRAVIS_TAG if it exists
+    TagAndPushImage "quay.io/${DIMAGE}" "${TRAVIS_TAG#v}"
     TagAndPushImage "quay.io/${DIMAGE}" "latest"
   fi;
 else
