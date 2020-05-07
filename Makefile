@@ -20,11 +20,51 @@ PACKAGES = $(shell go list ./... | grep -v 'vendor')
 
 ARCH ?= $(shell go env GOARCH)
 
-IMAGE = openebs/velero-plugin
+
+# The images can be pushed to any docker/image registeries
+# like docker hub, quay. The registries are specified in
+# the `./push` script.
+#
+# The images of a project or company can then be grouped
+# or hosted under a unique organization key like `openebs`
+#
+# Each component (container) will be pushed to a unique
+# repository under an organization.
+# Putting all this together, an unique uri for a given
+# image comprises of:
+#   <registry url>/<image org>/<image repo>:<image-tag>
+#
+# IMAGE_ORG can be used to customize the organization
+# under which images should be pushed.
+# By default the organization name is `openebs`.
+
+ifeq (${IMAGE_ORG}, )
+  IMAGE_ORG="openebs"
+  export IMAGE_ORG
+endif
+
+# Specify the date of build
+DBUILD_DATE=$(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
+
+# Specify the docker arg for repository url
+ifeq (${DBUILD_REPO_URL}, )
+  DBUILD_REPO_URL="https://github.com/openebs/velero-plugin"
+  export DBUILD_REPO_URL
+endif
+
+# Specify the docker arg for website url
+ifeq (${DBUILD_SITE_URL}, )
+  DBUILD_SITE_URL="https://openebs.io"
+  export DBUILD_SITE_URL
+endif
+
+export DBUILD_ARGS=--build-arg DBUILD_DATE=${DBUILD_DATE} --build-arg DBUILD_REPO_URL=${DBUILD_REPO_URL} --build-arg DBUILD_SITE_URL=${DBUILD_SITE_URL} --build-arg ARCH=${ARCH}
+
+IMAGE = ${IMAGE_ORG}/velero-plugin
 
 # if the architecture is arm64, image name will have arm64 suffix
 ifeq (${ARCH}, arm64)
-	IMAGE = openebs/velero-plugin-arm64
+	IMAGE = ${IMAGE_ORG}/velero-plugin-arm64
 endif
 
 ifeq (${IMAGE_TAG}, )
@@ -40,7 +80,7 @@ all: build
 container: all
 	@echo ">> building container"
 	@cp Dockerfile _output/Dockerfile
-	docker build -t $(IMAGE):$(IMAGE_TAG) --build-arg BUILD_DATE=${BUILD_DATE} -f _output/Dockerfile _output
+	docker build -t $(IMAGE):$(IMAGE_TAG) ${DBUILD_ARGS} -f _output/Dockerfile _output
 
 build:
 	@echo ">> building binary"
