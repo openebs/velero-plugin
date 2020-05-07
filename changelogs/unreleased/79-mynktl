@@ -1,0 +1,1 @@
+Fixed panic, created because of empty snapshotID, while deleting failed backup
