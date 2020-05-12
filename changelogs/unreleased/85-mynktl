@@ -1,0 +1,1 @@
+Fixing failure restic backup of cstor volumes, restored by velero-plugin [issue:84](https://github.com/openebs/velero-plugin/issues/84)
