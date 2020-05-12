@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"time"
 
+	v1alpha1 "github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
 	velero "github.com/openebs/velero-plugin/pkg/velero"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
@@ -117,7 +118,9 @@ func (p *Plugin) createPVC(volumeID, snapName string) (*Volume, error) {
 	p.Log.Infof("Creating PVC for volumeID:%s snapshot:%s in namespace=%s", volumeID, snapName, targetedNs)
 
 	pvc.Annotations = make(map[string]string)
-	pvc.Annotations["openebs.io/created-through"] = "restore"
+	// Add annotation PVCreatedByKey, with value 'restore' to PVC
+	// So that Maya-APIServer skip updating target IPAddress in CVR
+	pvc.Annotations[v1alpha1.PVCreatedByKey] = "restore"
 	rpvc, err := p.K8sClient.
 		CoreV1().
 		PersistentVolumeClaims(pvc.Namespace).
@@ -161,6 +164,15 @@ func (p *Plugin) createPVC(volumeID, snapName string) (*Volume, error) {
 
 	if err = p.waitForAllCVR(vol); err != nil {
 		return nil, err
+	}
+
+	// CVRs are created and updated, now we can remove the annotation 'PVCreatedByKey' from PVC
+	if err = p.removePVCAnnotationKey(pvc, v1alpha1.PVCreatedByKey); err != nil {
+		p.Log.Warningf("Failed to remove restore annotation from PVC=%s/%s err=%s", pvc.Namespace, pvc.Name, err)
+		return nil, errors.Wrapf(err,
+			"failed to clear restore-annotation=%s from PVC=%s/%s",
+			v1alpha1.PVCreatedByKey, pvc.Namespace, pvc.Name,
+		)
 	}
 	return vol, nil
 }
@@ -242,4 +254,21 @@ func (p *Plugin) downloadPVC(volumeID, snapName string) (*v1.PersistentVolumeCla
 	}
 
 	return pvc, nil
+}
+
+// removePVCAnnotationKey remove the given annotation key from the PVC and update it
+func (p *Plugin) removePVCAnnotationKey(pvc *v1.PersistentVolumeClaim, annotationKey string) error {
+	var err error
+
+	if pvc.Annotations == nil {
+		return nil
+	}
+
+	delete(pvc.Annotations, annotationKey)
+
+	_, err = p.K8sClient.
+		CoreV1().
+		PersistentVolumeClaims(pvc.Namespace).
+		Update(pvc)
+	return err
 }
