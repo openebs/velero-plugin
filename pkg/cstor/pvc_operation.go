@@ -236,6 +236,17 @@ func (p *Plugin) getVolumeFromPVC(pvc v1.PersistentVolumeClaim) (*Volume, error)
 	if err = p.waitForAllCVR(vol); err != nil {
 		return nil, errors.Wrapf(err, "cvr not ready")
 	}
+
+	// remove the annotation 'PVCreatedByKey' from PVC
+	// There might be chances of stale PVCreatedByKey annotation in PVC
+	if err = p.removePVCAnnotationKey(rpvc, v1alpha1.PVCreatedByKey); err != nil {
+		p.Log.Warningf("Failed to remove restore annotation from PVC=%s/%s err=%s", rpvc.Namespace, rpvc.Name, err)
+		return nil, errors.Wrapf(err,
+			"failed to clear restore-annotation=%s from PVC=%s/%s",
+			v1alpha1.PVCreatedByKey, rpvc.Namespace, rpvc.Name,
+		)
+	}
+
 	return vol, nil
 }
 
