@@ -5,6 +5,8 @@ jobs:
   include:
     - os: linux
       arch: amd64
+      env:
+        - CREATE_CHANGELOG=1
     - os: linux
       arch: arm64
 
@@ -48,6 +50,10 @@ script:
 
 after_success:
   - make deploy-image
+  # create changelog for release/rc tag
+  - if [ ! -z $TRAVIS_TAG ] && [ $CREATE_CHANGELOG -eq 1 ] && [ "$TRAVIS_REPO_SLUG" == "openebs/velero-plugin" ]; then
+      ./script/create_changelog "$TRAVIS_REPO_SLUG" "$TRAVIS_TAG" "master";
+    fi
 
 notifications:
   email:
