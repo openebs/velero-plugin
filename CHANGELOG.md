@@ -1,3 +1,8 @@
+v1.10.0-RC2 / 2020-05-13
+========================
+* Fixing failure in restoring restic backup of cstor volumes, created by velero-plugin restore [issue:84](https://github.com/openebs/velero-plugin/issues/84) ([#85](https://github.com/openebs/velero-plugin/pull/85),[@mynktl](https://github.com/mynktl))
+
+
 v1.10.0-RC1 / 2020-05-08
 ========================
 * Adding support to restore remote backup in different namespace ([#72](https://github.com/openebs/velero-plugin/pull/72),[@mynktl](https://github.com/mynktl))
