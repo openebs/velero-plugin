@@ -1,3 +1,11 @@
+v1.10.0 / 2020-05-15
+========================
+* Fixing failure in restoring restic backup of cstor volumes, created by velero-plugin restore [issue:84](https://github.com/openebs/velero-plugin/issues/84) ([#85](https://github.com/openebs/velero-plugin/pull/85),[@mynktl](https://github.com/mynktl))
+* Adding support to restore remote backup in different namespace ([#72](https://github.com/openebs/velero-plugin/pull/72),[@mynktl](https://github.com/mynktl))
+* Adding support for multiple s3 profile to backup cstor volumes to different s3 location ([#76](https://github.com/openebs/velero-plugin/pull/76),[@mynktl](https://github.com/mynktl))
+* Fixed panic, created because of empty snapshotID, while deleting failed backup ([#79](https://github.com/openebs/velero-plugin/pull/79),[@mynktl](https://github.com/mynktl))
+
+
 v1.10.0-RC2 / 2020-05-13
 ========================
 * Fixing failure in restoring restic backup of cstor volumes, created by velero-plugin restore [issue:84](https://github.com/openebs/velero-plugin/issues/84) ([#85](https://github.com/openebs/velero-plugin/pull/85),[@mynktl](https://github.com/mynktl))
