@@ -1,80 +1,89 @@
 #!/bin/bash
 set -e
 
-if [ $# -ne 3 ]; then
-	echo "Insufficient arguments"
-	echo "Usage: $0 github-org/repo-name tag-name production-branch"
-	echo "Example: $0 openebs/velero-plugin v1.1.1 master"
-	echo ""
-	echo -e "\033[1mThis script expects following environment variable\033[0m"
-	echo -e "- \033[1mUSERNAME\033[0m"
-	echo -e "   This is your github username, configured through \033[3mgit config --global user.name\033[0m"
-	echo "   This script doesn't print your USERNAME on output"
-	echo ""
-	echo -e "- \033[1mTOKEN\033[0m"
-	echo "   This is github token. This script doesn't print your TOKEN on output."
-	echo "   To create a new token,"
-	echo "   refer https://help.github.com/en/github/authenticating-to-github/creating-a-personal-access-token-for-the-command-line"
-	echo ""
-	echo -e "- \033[1mEMAIL\033[0m"
-	echo -e "   This is your email id, configured through \033[3mgit config --global user.email\033[0m, to sign the commit"
-	echo "   This script doesn't print your EMAIL on output"
-	echo ""
-	echo -e "\033[1mHow this script works?\033[0m"
-	echo -e "- \033[3mGenerating changelog\033[0m"
-	echo -e "   Script will use files from directory \033[2mchangelogs/unreleased\033[0m to create a changelog"
-	echo -e "   It will create a new directory, named \033[4mtag-name\033[0m, under directory \033[2mchangelogs/released\033[0m"
-	echo -e "   and move all the files from directory \033[2mchangelogs/unreleased\033[0m to new directory."
-	echo "   Once all the files are moved to new directory, it will create a temporary file "
-	echo -e "   in \033[2m/tmp/\033[0m directory and copy the content of all files, under new directory to a"
-	echo "   temporary file."
-	echo -e "   If tag is release tag, like \033[2mv1.1.0\033[0m, and there are existing directory for rc release,"
-	echo -e "   like \033[2mv1.1.0-RC1\033[0m, then script will copy the contents of all files, under this rc release "
-	echo "   directory, to a temporary file."
-	echo "   After this, script will add the content of temporary file to root changelog file "
-	echo "   and delete the temporary file"
-	echo ""
-	echo -e "- \033[3mCreating a branch\033[0m"
-	echo -e "  Script creates a new branch named \033[2mchangelog-timestamp\033[0m, like \033[2mchangelog-20200512164456\033[0m"
-	echo ""
-	echo -e "- \033[3mCreating a commit\033[0m"
-	echo -e "   Script will create commit with following files using your \033[1mUSERNAME\033[0m and \033[1mEMAIL\033[0m"
-	echo -e "   - \033[2mrepo-name/CHANGELOG.md\033[0m (\033[3mmodified\033[0m)"
-	echo -e "   - \033[2mrepo-name/changelogs/unreleased/*\033[0m (\033[3mdeleted\033[0m)"
-	echo -e "   - \033[2mrepo-name/changelogs/released/tag-name\033[0m (\033[3mnew directory\033[0m)"
-	echo ""
-	echo -e "- \033[3mPushing branch to repo\033[0m"
-	echo -e "   To push the changes to github, script will add new remote, named \033[2mupstream\033[0m, "
-	echo -e "   using your \033[1mUSERNAME\033[0m and \033[1mTOKEN\033[0m"
-	echo ""
-	echo -e "- \033[3mCreating a pull request\033[0m"
-	echo -e "   Script uses github API to create a pull request, using your \033[1mUSERNAME\033[0m and \033[1mTOKEN\033[0m."
-	echo "   Refer https://developer.github.com/v3/pulls/#create-a-pull-request for API"
-	exit 1
-fi
+#print_help print the help message
+print_help() {
+cat << EOF
+Usage:
+	$0 <options> TAG-NAME
 
-if [ -z $USERNAME ] || [ -z $TOKEN ] || [ -z $EMAIL ]; then
-	echo "No crendentials provided for github"
-	exit 1
-fi
+Example:
+	$0 v1.1.0-RC1
 
-BRANCH=changelog-$(date +'%Y%m%d%H%M%S')
-GIT_URL="https://api.github.com/repos/${1}/pulls"
-GIT_REPO=$1
-TAG=$2
-GIT_PRODUCTION_BRANCH=$3
-CHANGELOG_DIR=changelogs
-UNRELEASED_CHANGELOG_DIR=changelogs/unreleased
-RELEASED_CHANGELOG_DIR=changelogs/released
-ROOT_CHANGELOG=CHANGELOG.md
+TAG-NAME is required to execute this script.
 
-#PR title
-CHANGELOG_COMMIT_MSG="docs(changelog): changelog for ${TAG}"
+Supported options are as below. Mandatory arguments to long options are mandatory for short options too:
+  -h, --help				Show this message and exit
+  -r, --repo REPO			Github repo, in org/repo format.
+					To raise a PR, this option is mandatory.
+					If mentioned PR will be created in this repo.
+					Example:
+					  -r openebs/plugin
+					  --repo openebs/plugin
+  -p, --production-branch BRANCH  	name of production branch.
+					Option -r|--repo is required to use this option.
+					PR for changelog will be created against this mentioned branch
+					If options -p|--production-branch and -c|--release-branch, both are
+					mentioned then two PR will be raised.
+					Example:
+					  -p master
+					  --production-branch master
+  -c, --release-branch RELEASEBRANCH	name of release branch.
+					Option -r|--repo is required to use this option.
+					PR for changelog will be created against this mentioned branch
+					If options -p|--production-branch and -c|--release-branch, both are
+					mentioned then two PR will be raised.
+					Example:
+					  -c v1.10.x
+					  --release-branch v1.10.x
 
-#PR description
-pr_msg_file=$(mktemp)
 
-HEAD="$USERNAME:$BRANCH"
+This script expects following environment variable
+- USERNAME
+   This is your github username, configured through git config --global user.name
+   This script doesn't print your USERNAME on output
+
+- TOKEN
+   This is github token. This script doesn't print your TOKEN on output.
+   To create a new token,
+   refer https://help.github.com/en/github/authenticating-to-github/creating-a-personal-access-token-for-the-command-line
+
+- EMAIL
+   This is your email id, configured through git config --global user.email, to sign the commit
+   This script doesn't print your EMAIL on output
+
+How this script works?
+- Generating changelog
+   Script will use files from directory changelogs/unreleased to create a changelog
+   It will create a new directory, named tag-name, under directory changelogs/released
+   and move all the files from directory changelogs/unreleased to new directory.
+   Once all the files are moved to new directory, it will create a temporary file
+   in /tmp/ directory and copy the content of all files, under new directory to a
+   temporary file.
+   If tag is release tag, like v1.1.0, and there are existing directory for rc release,
+   like v1.1.0-RC1, then script will copy the contents of all files, under this rc release
+   directory, to a temporary file.
+   After this, script will add the content of temporary file to root changelog file
+   and delete the temporary file
+
+- Creating a branch
+  Script creates a new branch named changelog-timestamp, like changelog-20200512164456
+
+- Creating a commit
+   Script will create commit with following files using your USERNAME and EMAIL
+   - repo-name/CHANGELOG.md (modified)
+   - repo-name/changelogs/unreleased/* (deleted)
+   - repo-name/changelogs/released/tag-name (new directory)
+
+- Pushing branch to repo
+   To push the changes to github, script will add new remote, named upstream,
+   using your USERNAME and TOKEN
+
+- Creating a pull request
+   Script uses github API to create a pull request, using your USERNAME and TOKEN.
+   Refer https://developer.github.com/v3/pulls/#create-a-pull-request for API
+EOF
+}
 
 #is_stable_tag check if given tag=$1 is stable tag or not
 #if tag is v1.1.0 then it will return 0
@@ -133,13 +142,15 @@ add_changelog() {
 	done
 }
 
-#create_changelog_commit update the changelog and create a commit for the same
-create_changelog_commit() {
+#generate_changelog create the tag directory under $RELEASED_CHANGELOG_DIR
+#and move all files from $UNRELEASED_CHANGELOG_DIR to new tag directory
+#It also updates the $ROOT_CHANGELOG with tag changelog
+generate_changelog() {
 	echo "Generating Changelog for $TAG"
 	local dest=$RELEASED_CHANGELOG_DIR/$TAG
 
 	[[ -d $CHANGELOG_DIR ]] || return 3
-	[[ -d $UNRELEASED_CHANGELOG_DIR ]] || return 3
+	[[ -d $UNRELEASED_CHANGELOG_DIR ]] || mkdir $UNRELEASED_CHANGELOG_DIR
 	[[ -d $RELEASED_CHANGELOG_DIR ]] || mkdir $RELEASED_CHANGELOG_DIR
 	[[ -d $dest ]] || mkdir $dest
 
@@ -162,89 +173,230 @@ create_changelog_commit() {
 		done
 	fi
 	temp_file=$(mktemp)
-	[[ -f $ROOT_CHANGELOG ]] && echo -e "\n\n" >> $cl || touch $ROOT_CHANGELOG
+	[[ -f $ROOT_CHANGELOG ]] && echo -e "\n" >> $cl || touch $ROOT_CHANGELOG
 	cat <(cat $cl) $ROOT_CHANGELOG  > $temp_file && mv $temp_file $ROOT_CHANGELOG
 	ls $UNRELEASED_CHANGELOG_DIR/* > /dev/null  2>&1 && rm $UNRELEASED_CHANGELOG_DIR/*
-	git add $CHANGELOG_DIR
-	git add $ROOT_CHANGELOG
-	git commit -s -m "Updating changelog for $TAG"
 	rm -rf ${cl} ${temp_file} > /dev/null 2>&1
 }
 
-# update_branch adds new remote and create/checkout branch=$BRANCH
-update_branch() {
+#create_changelog_commit creates new commit with updated $CHANGELOG_DIR and
+#$ROOT_CHANGELOG
+create_changelog_commit() {
+	git add $CHANGELOG_DIR || return 1
+	git add $ROOT_CHANGELOG || return 1
+	git commit -s -m "Updating changelog for $TAG" || return 1
+}
+
+# update_git_remote adds new remote and configure git config
+update_git_remote() {
 	echo "Creating branch $BRANCH"
 	git config --global user.name ${USERNAME}
 	git config --global user.email ${EMAIL}
 	local repo_name=$(echo $GIT_REPO | cut -d '/' -f2)
-	git remote add upstream https://${USERNAME}:${TOKEN}@github.com/$USERNAME/$repo_name.git > /dev/null 2>&1
-	git branch $BRANCH && git checkout $BRANCH
-	return $?
+	git remote add upstream https://${USERNAME}:${TOKEN}@github.com/$USERNAME/$repo_name.git > /dev/null 2>&1 || return $?
 }
 
-#push_branch push upstream to github
+#push_branch push the given branch to remote upstream
 push_branch() {
-	echo "Pushing commit to github"
-	git push upstream $BRANCH
+	local target_branch=$1
+
+	[[ ! -z target_branch ]] || return 2
+
+	echo "Pushing branch=$target_branch to upstream"
+	git push upstream $target_branch || return 2
 }
 
-#cherry_pick will add commit to production branch and create branch=$BRANCH from production branch
-#This is required because release branch and production branch may have different commits
+#cherry_pick will checkout to base branch=$1 and cherry-pick the commit=$COMMIT_ID
+#and create new branch=$target_branch from given base branch=$1
 cherry_pick() {
-	echo "Cherry-picking commit"
-	local commit_id=$(git rev-parse HEAD)
-	git checkout ${GIT_PRODUCTION_BRANCH} || return 1
-	git cherry-pick $commit_id || return 1
-	git branch -D $BRANCH  && git branch $BRANCH && git checkout $BRANCH
+	local base_branch=$1
+	local target_branch=$2
+	[[ ! -z $base_branch ]] || return 1
+	[[ ! -z $target_branch ]] || return 1
+	[[ ! -z $COMMIT_ID ]] || return 1
+
+	echo "Cherry-picking commit to branch=$base_branch"
+	git checkout ${base_branch} || return 1
+	git branch $target_branch || return 1
+	git checkout $target_branch || return 1
+	git cherry-pick $COMMIT_ID || return 1
 	return $?
 }
 
-update_branch && create_changelog_commit && cherry_pick && push_branch
-rc=$?
-if [ $rc -eq 3 ]; then
-	echo "Changelog folder doesn't exist"
-	exit 0
-fi
+#raise_pr creates a PR to repo=$GIT_REPO against the given branch=$1
+# from user branch=$2
+raise_pr() {
+	local target_branch=$1
+	local from_branch=$2
 
-if [ $rc -ne 0 ]; then
-	echo "Failed to create changelog commit"
+	[[ ! -z $target_branch ]] || return 1
+	[[ ! -z $from_branch ]] || return 1
+
+	# file to store curl output
+	local ofile=$(mktemp)
+	local rc=0
+	local head="$USERNAME:$from_branch"
+	local _title_msg="$CHANGELOG_COMMIT_MSG in $target_branch"
+	local pr_create_data='{
+		"title": "'${_title_msg}'",
+		"body": "'${CHANGELOG_PR_BODY}'",
+		"head": "'${head}'",
+		"base": "'${target_branch}'"
+	}'
+
+	res=$(curl -u ${USERNAME}:${TOKEN} --silent \
+		-w "%{http_code}" \
+		--output ${ofile} \
+		--url ${GIT_URL} \
+		--request POST --header 'content-type: application/json' \
+		--data "$pr_create_data"
+	)
+
+	# if response value is 201 then PR is created successfully
+	# Refer https://developer.github.com/v3/pulls/#response-2
+	if [ $res != "201" ]; then
+		echo "Error: Unable to create a PR for changelog.. REST API output is as below"
+		cat ${ofile}
+		rc=1
+	else
+		echo "Successfully raised a PR for changelog"
+	fi
+
+	rm -rf ${ofile}
+
+	return $rc
+}
+
+
+#options followed by ':' needs an argument
+# see `man getopt`
+shortOpts=hr:p:c:
+longOpts=help,repo,production-branch,release-branch
+
+#store the output of getopt so that we can assign it to "$@" using set command
+#since we are using "--options" in getopt, arguments are passed via -- "$@"
+PARSED=$(getopt --options ${shortOpts} --longoptions ${longOpts} --name "$0" -- "$@")
+if [[ $? -ne 0 ]]; then
+	echo "invalid arguments"
+	exit 1
+fi
+#assign arguments to "$@"
+eval set -- "${PARSED}"
+
+while [[ $# -gt 0 ]]
+do
+    case "$1" in
+        -h|--help)
+		print_help
+		exit 0
+		;;
+        -r|--repo)
+		shift
+		GIT_REPO=$1
+		;;
+	-p|--production-branch)
+		shift
+		GIT_PRODUCTION_BRANCH=$1
+		;;
+	-c|--release-branch)
+		shift
+		GIT_RELEASE_BRANCH=$1
+		;;
+        ## argument without options is mentioned after '--'
+        --)
+                shift
+                TAG=$1
+                break
+    esac
+    shift                       # Expose the next argument
+done
+
+
+BRANCH=changelog-$(date +'%Y%m%d%H%M%S')
+CHANGELOG_DIR=changelogs
+UNRELEASED_CHANGELOG_DIR=changelogs/unreleased
+RELEASED_CHANGELOG_DIR=changelogs/released
+ROOT_CHANGELOG=CHANGELOG.md
+COMMIT_ID=
+
+if [[ -z $TAG ]]; then
+	print_help
 	exit 1
 fi
 
-CHANGELOG_PR_BODY="List of the PR added in changelog:\r\n`cat $pr_msg_file`"
-
-# file to store curl output
-RESP_FILE=$(mktemp)
-EXIT_CODE=0
-
-PR_CREATE_DATA='{
-	"title": "'${CHANGELOG_COMMIT_MSG}'",
-	"body": "'${CHANGELOG_PR_BODY}'",
-	"head": "'${HEAD}'",
-	"base": "'${GIT_PRODUCTION_BRANCH}'"
-}'
-
-res=$(curl -u ${USERNAME}:${TOKEN} --silent \
-	-w "%{http_code}" \
-	--output ${RESP_FILE} \
-	--url ${GIT_URL} \
-	--request POST --header 'content-type: application/json' \
-	--data "$PR_CREATE_DATA"
-)
-
-rm -rf ${pr_msg_file}
-
-# if response value is 201 then PR is created successfully
-# Refer https://developer.github.com/v3/pulls/#response-2
-if [ $res != "201" ]; then
-	echo "Error: Unable to create a PR for changelog.. REST API output is as below"
-	cat ${RESP_FILE}
-	EXIT_CODE=1
-else
-	echo "Successfully raised a PR for changelog"
+#below condition is to check if both,repo and branch, are mentioned or not
+if [[ (-z $GIT_REPO) && !(-z $GIT_PRODUCTION_BRANCH && -z $GIT_RELEASE_BRANCH) ]] ||
+	[[ (! -z $GIT_REPO) && (-z $GIT_PRODUCTION_BRANCH && -z $GIT_RELEASE_BRANCH) ]]; then
+	print_help
+	exit 1
 fi
 
-rm -rf ${RESP_FILE}
+#if repo is mentioned then environment variable should be set
+if [[ ! -z $GIT_REPO ]] && [[ (-z $USERNAME) || (-z $TOKEN) || (-z $EMAIL) ]]; then
+        print_help
+	exit 1
+fi
 
-exit ${EXIT_CODE}
+git branch $BRANCH && git checkout $BRANCH
+#pr_msg_file to store the list of PR added for changelog
+pr_msg_file=$(mktemp)
+rc=0
+generate_changelog || rc=$?
+if [[ $rc -eq 3 ]]; then
+	echo "Failed to generate changelog"
+	exit 1
+fi
 
+if [ -z $GIT_REPO ]; then
+	echo "Changelog generated in branch $BRANCH"
+	echo -e "\nFollowing PR added for changelog"
+	echo -e `cat $pr_msg_file`
+	rm -rf $pr_msg_file
+	exit 0
+fi
+
+echo "Changelog generated in branch $BRANCH, will raise a PR now"
+
+update_git_remote || rc=$?
+if [[ $? -ne 0 ]] && [[ $? -ne 128 ]] ; then
+	echo "Failed to set git config to raise a PR"
+	exit 1
+fi
+
+#PR title
+CHANGELOG_COMMIT_MSG="docs(changelog): changelog for ${TAG}"
+GIT_URL="https://api.github.com/repos/${GIT_REPO}/pulls"
+
+#PR description
+CHANGELOG_PR_BODY="List of the PR added in changelog:\r\n`cat $pr_msg_file`"
+
+create_changelog_commit || rc=$?
+if [[ $rc -eq 1 ]]; then
+	echo "Failed to create commit"
+	exit 1
+fi
+
+COMMIT_ID=$(git rev-parse HEAD)
+for target_branch in $GIT_PRODUCTION_BRANCH $GIT_RELEASE_BRANCH; do
+	#Since we need to raise a PR in specific branch
+	#we need to make sure that there are no any other changes
+	#then this changelog commit
+	#to do that, we will create new branch from GIT_ branch and cherry-pick
+	#the changelog commit and push it to remote
+
+	new_branch=$BRANCH-$target_branch
+	cherry_pick $target_branch $new_branch && push_branch $new_branch || rc=$?
+	case "$rc" in
+		1)
+			echo "Failed to cherry-pick changelog commit for branch=$new_branch, target-branch=$target_branch"
+			exit 1
+			;;
+		2)
+			echo "Failed to push branch=$new_branch"
+			exit 1
+			;;
+	esac
+	raise_pr $target_branch $new_branch || exit 1
+done
+
+rm -rf $pr_msg_file
