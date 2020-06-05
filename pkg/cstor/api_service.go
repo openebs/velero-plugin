@@ -26,6 +26,7 @@ import (
 
 	v1alpha1 "github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
 	"github.com/pkg/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -65,7 +66,7 @@ func (p *Plugin) httpRestCall(url, reqtype string, data []byte) ([]byte, error) 
 }
 
 // getMapiAddr return maya API server's ip address
-func (p *Plugin) getMapiAddr() string {
+func (p *Plugin) getMapiAddr() (string, error) {
 	var openebsNs string
 
 	// check if user has provided openebs namespace
@@ -85,8 +86,11 @@ func (p *Plugin) getMapiAddr() string {
 		)
 
 	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			return "", nil
+		}
 		p.Log.Errorf("Error getting maya-apiservice : %v", err.Error())
-		return ""
+		return "", err
 	}
 
 	if len(svclist.Items) != 0 {
@@ -103,8 +107,11 @@ func (p *Plugin) getMapiAddr() string {
 				FieldSelector: "metadata.name=" + mayaAPIServiceName,
 			})
 	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			return "", nil
+		}
 		p.Log.Errorf("Error getting IP Address for service{%s} : %v", mayaAPIServiceName, err.Error())
-		return ""
+		return "", err
 	}
 
 fetchip:
@@ -112,14 +119,59 @@ fetchip:
 		if s.Spec.ClusterIP != "" {
 			// update the namespace
 			p.namespace = s.Namespace
-			return "http://" + s.Spec.ClusterIP + ":" + strconv.FormatInt(int64(s.Spec.Ports[0].Port), 10)
+			return "http://" + s.Spec.ClusterIP + ":" + strconv.FormatInt(int64(s.Spec.Ports[0].Port), 10), nil
 		}
 	}
 
-	return ""
+	return "", nil
+}
+
+// getCVCAddr return CVC server's ip address
+func (p *Plugin) getCVCAddr() (string, error) {
+	var openebsNs string
+
+	// check if user has provided openebs namespace
+	if p.namespace != "" {
+		openebsNs = p.namespace
+	} else {
+		openebsNs = metav1.NamespaceAll
+	}
+
+	svclist, err := p.K8sClient.
+		CoreV1().
+		Services(openebsNs).
+		List(
+			metav1.ListOptions{
+				LabelSelector: cvcAPIServiceLabel,
+			},
+		)
+
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			return "", nil
+		}
+		p.Log.Errorf("Error getting cvc service: %v", err.Error())
+		return "", err
+	}
+
+	if len(svclist.Items) == 0 {
+		return "", nil
+	}
+
+	for _, s := range svclist.Items {
+		if s.Spec.ClusterIP != "" {
+			// update the namespace
+			p.namespace = s.Namespace
+			return "http://" + s.Spec.ClusterIP + ":" + strconv.FormatInt(int64(s.Spec.Ports[0].Port), 10), nil
+		}
+	}
+
+	return "", nil
 }
 
 func (p *Plugin) sendBackupRequest(vol *Volume) (*v1alpha1.CStorBackup, error) {
+	var url string
+
 	scheduleName := p.getScheduleName(vol.backupName) // This will be backup/schedule name
 
 	bkpSpec := &v1alpha1.CStorBackupSpec{
@@ -137,7 +189,11 @@ func (p *Plugin) sendBackupRequest(vol *Volume) (*v1alpha1.CStorBackup, error) {
 		Spec: *bkpSpec,
 	}
 
-	url := p.mayaAddr + backupEndpoint
+	if p.isCSIVolume {
+		url = p.cvcAddr + backupEndpoint
+	} else {
+		url = p.mayaAddr + backupEndpoint
+	}
 
 	bkpData, err := json.Marshal(bkp)
 	if err != nil {
@@ -153,6 +209,8 @@ func (p *Plugin) sendBackupRequest(vol *Volume) (*v1alpha1.CStorBackup, error) {
 }
 
 func (p *Plugin) sendRestoreRequest(vol *Volume) (*v1alpha1.CStorRestore, error) {
+	var url string
+
 	restoreSrc := p.cstorServerAddr
 	if p.local {
 		restoreSrc = vol.srcVolname
@@ -172,7 +230,11 @@ func (p *Plugin) sendRestoreRequest(vol *Volume) (*v1alpha1.CStorRestore, error)
 		},
 	}
 
-	url := p.mayaAddr + restorePath
+	if p.isCSIVolume {
+		url = p.cvcAddr + restorePath
+	} else {
+		url = p.mayaAddr + restorePath
+	}
 
 	restoreData, err := json.Marshal(restore)
 	if err != nil {
@@ -214,7 +276,13 @@ func isEmptyRestResponse(data []byte) (bool, error) {
 }
 
 func (p *Plugin) sendDeleteRequest(backup, volume, namespace, schedule string) error {
-	url := p.mayaAddr + backupEndpoint + backup
+	var url string
+
+	if p.isCSIVolume {
+		url = p.cvcAddr + backupEndpoint + backup
+	} else {
+		url = p.mayaAddr + backupEndpoint + backup
+	}
 
 	req, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
