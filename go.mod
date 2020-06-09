@@ -9,6 +9,7 @@ require (
 	github.com/hashicorp/go-plugin v1.0.1-0.20190610192547-a1bc61569a26 // indirect
 	github.com/onsi/ginkgo v1.10.1
 	github.com/onsi/gomega v1.7.0
+	github.com/openebs/api v1.10.0-RC1.0.20200608150240-08b494f77b77
 	github.com/openebs/maya v0.0.0-20200411140727-1c81f9e017b0
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.5.1 // indirect
@@ -20,6 +21,6 @@ require (
 	google.golang.org/api v0.21.0
 	k8s.io/api v0.17.4
 	k8s.io/apimachinery v0.17.4
-	k8s.io/client-go v0.15.12-beta.0
+	k8s.io/client-go v0.17.3
 	k8s.io/utils v0.0.0-20191218082557-f07c713de883 // indirect
 )
