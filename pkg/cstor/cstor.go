@@ -28,6 +28,7 @@ import (
 	/* Due to dependency conflict, please ensure openebs
 	 * dependency manually instead of using dep
 	 */
+	openebsapis "github.com/openebs/api/pkg/client/clientset/versioned"
 	v1alpha1 "github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
 	openebs "github.com/openebs/maya/pkg/client/generated/clientset/versioned"
 	velero "github.com/openebs/velero-plugin/pkg/velero"
@@ -75,6 +76,17 @@ type Plugin struct {
 
 	// OpenEBSClient is used for openEBS CR operation
 	OpenEBSClient *openebs.Clientset
+
+	// OpenEBSAPIsClient clientset for OpenEBS CR operations
+	/*
+	   Note: This client comes from openebs/api ( github repo )
+	   and this client has the latest cstor v1 APIs.
+	   For compatibility this client has also some (not all) v1alpha1 APIs
+	   that is present in above OpenEBSClient(this client comes
+	   from openebs/maya github repo)
+	   Finally, we will migrate to client based on openebs/api.
+	*/
+	OpenEBSAPIsClient openebsapis.Interface
 
 	// config to store parameters from velero server
 	config map[string]string
@@ -198,6 +210,12 @@ func (p *Plugin) Init(config map[string]string) error {
 	}
 	p.OpenEBSClient = openEBSClient
 
+	// Set client from openebs apis
+	err = p.SetOpenEBSAPIClient(conf)
+	if err != nil {
+		return err
+	}
+
 	p.mayaAddr, err = p.getMapiAddr()
 	if err != nil {
 		return errors.Wrapf(err, "error fetching Maya-ApiServer rest client address")
@@ -240,6 +258,16 @@ func (p *Plugin) Init(config map[string]string) error {
 
 	p.cl = &cloud.Conn{Log: p.Log}
 	return p.cl.Init(config)
+}
+
+func (p *Plugin) SetOpenEBSAPIClient(c *rest.Config) error {
+	OpenEBSAPIClient, err := openebsapis.NewForConfig(c)
+	if err != nil {
+		p.Log.Errorf("Failed to create OpenEBS client from openebs apis. %s", err)
+		return err
+	}
+	p.OpenEBSAPIsClient = OpenEBSAPIClient
+	return nil
 }
 
 // GetVolumeID return volume name for given PV

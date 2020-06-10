@@ -20,10 +20,10 @@ import (
 	"encoding/json"
 	"time"
 
-	v1alpha1 "github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
-	velero "github.com/openebs/velero-plugin/pkg/velero"
+	"github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
+	"github.com/openebs/velero-plugin/pkg/velero"
 	"github.com/pkg/errors"
-	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -162,7 +162,7 @@ func (p *Plugin) createPVC(volumeID, snapName string) (*Volume, error) {
 		return nil, errors.Errorf("PVC{%s/%s} is not bounded!", rpvc.Namespace, rpvc.Name)
 	}
 
-	if err = p.waitForAllCVR(vol); err != nil {
+	if err = p.waitForAllCVRs(vol); err != nil {
 		return nil, err
 	}
 
@@ -233,7 +233,7 @@ func (p *Plugin) getVolumeFromPVC(pvc v1.PersistentVolumeClaim) (*Volume, error)
 	}
 	p.volumes[vol.volname] = vol
 
-	if err = p.waitForAllCVR(vol); err != nil {
+	if err = p.waitForAllCVRs(vol); err != nil {
 		return nil, errors.Wrapf(err, "cvr not ready")
 	}
 
