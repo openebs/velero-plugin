@@ -26,9 +26,16 @@ import (
 // checkBackupStatus queries MayaAPI server for given backup status
 // and wait until backup completes
 func (p *Plugin) checkBackupStatus(bkp *v1alpha1.CStorBackup) {
-	var bkpDone bool
+	var (
+		bkpDone bool
+		url     string
+	)
 
-	url := p.mayaAddr + backupEndpoint
+	if p.isCSIVolume {
+		url = p.cvcAddr + backupEndpoint
+	} else {
+		url = p.mayaAddr + backupEndpoint
+	}
 
 	bkpvolume, exists := p.volumes[bkp.Spec.VolumeName]
 	if !exists {
@@ -78,9 +85,16 @@ func (p *Plugin) checkBackupStatus(bkp *v1alpha1.CStorBackup) {
 // checkRestoreStatus queries MayaAPI server for given restore status
 // and wait until restore completes
 func (p *Plugin) checkRestoreStatus(rst *v1alpha1.CStorRestore, vol *Volume) {
-	var rstDone bool
+	var (
+		rstDone bool
+		url     string
+	)
 
-	url := p.mayaAddr + restorePath
+	if p.isCSIVolume {
+		url = p.cvcAddr + restorePath
+	} else {
+		url = p.mayaAddr + restorePath
+	}
 
 	rstData, err := json.Marshal(rst)
 	if err != nil {
