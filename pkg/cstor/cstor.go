@@ -44,12 +44,14 @@ import (
 const (
 	mayaAPIServiceName    = "maya-apiserver-service"
 	mayaAPIServiceLabel   = "openebs.io/component-name=maya-apiserver-svc"
+	cvcAPIServiceLabel    = "openebs.io/component-name=cvc-operator-svc"
 	backupEndpoint        = "/latest/backups/"
 	restorePath           = "/latest/restore/"
 	casTypeCStor          = "cstor"
 	backupStatusInterval  = 5
 	restoreStatusInterval = 5
 	openebsVolumeLabel    = "openebs.io/cas-type"
+	openebsCSIName        = "cstor.csi.openebs.io"
 )
 
 const (
@@ -86,6 +88,9 @@ type Plugin struct {
 	// mayaAddr is maya API server address
 	mayaAddr string
 
+	// cvcAddr is cvc API server address
+	cvcAddr string
+
 	// cstorServerAddr is network address used for CStor volume operation
 	// on this address cloud server will perform data operation(backup/restore)
 	cstorServerAddr string
@@ -98,6 +103,9 @@ type Plugin struct {
 
 	// if only local snapshot enabled
 	local bool
+
+	// if cstor-csi is enabled
+	isCSIVolume bool
 }
 
 // Snapshot describes snapshot object information
@@ -190,9 +198,22 @@ func (p *Plugin) Init(config map[string]string) error {
 	}
 	p.OpenEBSClient = openEBSClient
 
-	p.mayaAddr = p.getMapiAddr()
-	if p.mayaAddr == "" {
-		return errors.New("error fetching OpenEBS rest client address")
+	p.mayaAddr, err = p.getMapiAddr()
+	if err != nil {
+		return errors.Wrapf(err, "error fetching Maya-ApiServer rest client address")
+	}
+
+	p.cvcAddr, err = p.getCVCAddr()
+	if err != nil {
+		return errors.Wrapf(err, "error fetching CVC rest client address")
+	}
+
+	if p.mayaAddr == "" && p.cvcAddr == "" {
+		return errors.New("faile to get address for maya-apiserver/cvc-server service")
+	}
+
+	if p.cvcAddr != "" {
+		p.isCSIVolume = true
 	}
 
 	p.cstorServerAddr = p.getServerAddress()
@@ -233,18 +254,22 @@ func (p *Plugin) GetVolumeID(unstructuredPV runtime.Unstructured) (string, error
 	// then we will return empty volumeId and error as nil.
 	if pv.Name == "" ||
 		pv.Spec.StorageClassName == "" ||
-		(pv.Spec.ClaimRef != nil && pv.Spec.ClaimRef.Namespace == "") ||
-		len(pv.Labels) == 0 {
+		(pv.Spec.ClaimRef != nil && pv.Spec.ClaimRef.Namespace == "") {
 		return "", nil
 	}
 
 	volType, ok := pv.Labels[openebsVolumeLabel]
-	if !ok {
-		return "", nil
-	}
-
-	if volType != casTypeCStor {
-		return "", nil
+	if ok {
+		if volType != casTypeCStor {
+			return "", nil
+		}
+	} else {
+		// check if PV is created by CSI driver
+		if !(pv.Spec.CSI != nil &&
+			pv.Spec.CSI.Driver == openebsCSIName) {
+			return "", nil
+		}
+		p.isCSIVolume = true
 	}
 
 	if pv.Status.Phase == v1.VolumeReleased ||
