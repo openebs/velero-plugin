@@ -28,9 +28,10 @@ import (
 	/* Due to dependency conflict, please ensure openebs
 	 * dependency manually instead of using dep
 	 */
-	v1alpha1 "github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
+	openebsapis "github.com/openebs/api/pkg/client/clientset/versioned"
+	"github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
 	openebs "github.com/openebs/maya/pkg/client/generated/clientset/versioned"
-	velero "github.com/openebs/velero-plugin/pkg/velero"
+	"github.com/openebs/velero-plugin/pkg/velero"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -76,6 +77,17 @@ type Plugin struct {
 	// OpenEBSClient is used for openEBS CR operation
 	OpenEBSClient *openebs.Clientset
 
+	// OpenEBSAPIsClient clientset for OpenEBS CR operations
+	/*
+	   Note: This client comes from openebs/api ( github repo )
+	   and this client has the latest cstor v1 APIs.
+	   For compatibility this client has also some (not all) v1alpha1 APIs
+	   that is present in above OpenEBSClient(this client comes
+	   from openebs/maya github repo)
+	   Finally, we will migrate to client based on openebs/api.
+	*/
+	OpenEBSAPIsClient openebsapis.Interface
+
 	// config to store parameters from velero server
 	config map[string]string
 
@@ -103,9 +115,6 @@ type Plugin struct {
 
 	// if only local snapshot enabled
 	local bool
-
-	// if cstor-csi is enabled
-	isCSIVolume bool
 }
 
 // Snapshot describes snapshot object information
@@ -118,6 +127,9 @@ type Snapshot struct {
 
 	// namespace is volume's namespace
 	namespace string
+
+	// isCSIVolume is true for cStor based CSI volume
+	isCSIVolume bool
 }
 
 // Volume describes volume object information
@@ -150,6 +162,9 @@ type Volume struct {
 	storageClass string
 
 	iscsi v1.ISCSIPersistentVolumeSource
+
+	// isCSIVolume is true for cStor based CSI volume
+	isCSIVolume bool
 }
 
 func (p *Plugin) getServerAddress() string {
@@ -198,6 +213,12 @@ func (p *Plugin) Init(config map[string]string) error {
 	}
 	p.OpenEBSClient = openEBSClient
 
+	// Set client from openebs apis
+	err = p.SetOpenEBSAPIClient(conf)
+	if err != nil {
+		return err
+	}
+
 	p.mayaAddr, err = p.getMapiAddr()
 	if err != nil {
 		return errors.Wrapf(err, "error fetching Maya-ApiServer rest client address")
@@ -210,10 +231,6 @@ func (p *Plugin) Init(config map[string]string) error {
 
 	if p.mayaAddr == "" && p.cvcAddr == "" {
 		return errors.New("faile to get address for maya-apiserver/cvc-server service")
-	}
-
-	if p.cvcAddr != "" {
-		p.isCSIVolume = true
 	}
 
 	p.cstorServerAddr = p.getServerAddress()
@@ -242,8 +259,21 @@ func (p *Plugin) Init(config map[string]string) error {
 	return p.cl.Init(config)
 }
 
+// SetOpenEBSAPIClient sets openebs client from openebs/apis
+// Ref: https://github.com/openebs/api/tree/master/pkg/apis
+func (p *Plugin) SetOpenEBSAPIClient(c *rest.Config) error {
+	OpenEBSAPIClient, err := openebsapis.NewForConfig(c)
+	if err != nil {
+		p.Log.Errorf("Failed to create OpenEBS client from openebs apis. %s", err)
+		return err
+	}
+	p.OpenEBSAPIsClient = OpenEBSAPIClient
+	return nil
+}
+
 // GetVolumeID return volume name for given PV
 func (p *Plugin) GetVolumeID(unstructuredPV runtime.Unstructured) (string, error) {
+	var isCSIVolume bool
 	pv := new(v1.PersistentVolume)
 
 	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(unstructuredPV.UnstructuredContent(), pv); err != nil {
@@ -265,11 +295,9 @@ func (p *Plugin) GetVolumeID(unstructuredPV runtime.Unstructured) (string, error
 		}
 	} else {
 		// check if PV is created by CSI driver
-		if !(pv.Spec.CSI != nil &&
-			pv.Spec.CSI.Driver == openebsCSIName) {
+		if isCSIVolume = isCSIPv(*pv); !isCSIVolume {
 			return "", nil
 		}
-		p.isCSIVolume = true
 	}
 
 	if pv.Status.Phase == v1.VolumeReleased ||
@@ -284,6 +312,7 @@ func (p *Plugin) GetVolumeID(unstructuredPV runtime.Unstructured) (string, error
 			storageClass: pv.Spec.StorageClassName,
 			namespace:    pv.Spec.ClaimRef.Namespace,
 			size:         pv.Spec.Capacity[v1.ResourceStorage],
+			isCSIVolume:  isCSIVolume,
 		}
 	}
 
@@ -324,7 +353,7 @@ func (p *Plugin) DeleteSnapshot(snapshotID string) error {
 	err = p.sendDeleteRequest(snapInfo.backupName,
 		snapInfo.volID,
 		snapInfo.namespace,
-		scheduleName)
+		scheduleName, snapInfo.isCSIVolume)
 	if err != nil {
 		return errors.Wrapf(err, "failed to execute maya-apiserver DELETE API")
 	}
@@ -395,7 +424,7 @@ func (p *Plugin) CreateSnapshot(volumeID, volumeAZ string, tags map[string]strin
 		return "", errors.Errorf("Error creating remote file name for backup")
 	}
 
-	go p.checkBackupStatus(bkp)
+	go p.checkBackupStatus(bkp, vol.isCSIVolume)
 
 	ok = p.cl.Upload(filename, size)
 	if !ok {
@@ -427,10 +456,12 @@ func (p *Plugin) getSnapInfo(snapshotID string) (*Snapshot, error) {
 	if pv.Spec.ClaimRef.Namespace == "" {
 		return nil, errors.Errorf("No namespace in pv.spec.claimref for PV{%s}", snapshotID)
 	}
+	isCSIVolume := isCSIPv(*pv)
 	return &Snapshot{
-		volID:      volumeID,
-		backupName: bkpName,
-		namespace:  pv.Spec.ClaimRef.Namespace,
+		volID:       volumeID,
+		backupName:  bkpName,
+		namespace:   pv.Spec.ClaimRef.Namespace,
+		isCSIVolume: isCSIVolume,
 	}, nil
 }
 

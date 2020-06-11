@@ -25,13 +25,13 @@ import (
 
 // checkBackupStatus queries MayaAPI server for given backup status
 // and wait until backup completes
-func (p *Plugin) checkBackupStatus(bkp *v1alpha1.CStorBackup) {
+func (p *Plugin) checkBackupStatus(bkp *v1alpha1.CStorBackup, isCSIVolume bool) {
 	var (
 		bkpDone bool
 		url     string
 	)
 
-	if p.isCSIVolume {
+	if isCSIVolume {
 		url = p.cvcAddr + backupEndpoint
 	} else {
 		url = p.mayaAddr + backupEndpoint
@@ -75,7 +75,7 @@ func (p *Plugin) checkBackupStatus(bkp *v1alpha1.CStorBackup) {
 		case v1alpha1.BKPCStorStatusDone, v1alpha1.BKPCStorStatusFailed, v1alpha1.BKPCStorStatusInvalid:
 			bkpDone = true
 			p.cl.ExitServer = true
-			if err = p.cleanupCompletedBackup(bs); err != nil {
+			if err = p.cleanupCompletedBackup(bs, isCSIVolume); err != nil {
 				p.Log.Warningf("failed to execute clean-up request for backup=%s err=%s", bs.Name, err)
 			}
 		}
@@ -90,7 +90,7 @@ func (p *Plugin) checkRestoreStatus(rst *v1alpha1.CStorRestore, vol *Volume) {
 		url     string
 	)
 
-	if p.isCSIVolume {
+	if vol.isCSIVolume {
 		url = p.cvcAddr + restorePath
 	} else {
 		url = p.mayaAddr + restorePath
@@ -137,7 +137,7 @@ func (p *Plugin) checkRestoreStatus(rst *v1alpha1.CStorRestore, vol *Volume) {
 //		- if current backup is incremental backup and failed one then it will delete that(current) backup
 //		- if current backup is incremental backup and completed successfully then
 //		  it will delete the last completed or previous backup
-func (p *Plugin) cleanupCompletedBackup(bkp v1alpha1.CStorBackup) error {
+func (p *Plugin) cleanupCompletedBackup(bkp v1alpha1.CStorBackup, isCSIVolume bool) error {
 	targetedSnapName := bkp.Spec.SnapName
 
 	// In case of scheduled backup we are using the last completed backup to send
@@ -163,7 +163,8 @@ func (p *Plugin) cleanupCompletedBackup(bkp v1alpha1.CStorBackup) error {
 	return p.sendDeleteRequest(targetedSnapName,
 		bkp.Spec.VolumeName,
 		bkp.Namespace,
-		bkp.Spec.BackupName)
+		bkp.Spec.BackupName,
+		isCSIVolume)
 }
 
 // return true if given backup is part of schedule
