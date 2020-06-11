@@ -189,7 +189,7 @@ func (p *Plugin) sendBackupRequest(vol *Volume) (*v1alpha1.CStorBackup, error) {
 		Spec: *bkpSpec,
 	}
 
-	if p.isCSIVolume {
+	if vol.isCSIVolume {
 		url = p.cvcAddr + backupEndpoint
 	} else {
 		url = p.mayaAddr + backupEndpoint
@@ -230,7 +230,7 @@ func (p *Plugin) sendRestoreRequest(vol *Volume) (*v1alpha1.CStorRestore, error)
 		},
 	}
 
-	if p.isCSIVolume {
+	if vol.isCSIVolume {
 		url = p.cvcAddr + restorePath
 	} else {
 		url = p.mayaAddr + restorePath
@@ -249,6 +249,7 @@ func (p *Plugin) sendRestoreRequest(vol *Volume) (*v1alpha1.CStorRestore, error)
 	// if apiserver is having version <=1.8 then it will return empty response
 	ok, err := isEmptyRestResponse(data)
 	if !ok && err == nil {
+		// TODO: for CSI base volume response type may be different
 		err = p.updateVolCASInfo(data, vol.volname)
 		if err != nil {
 			err = errors.Wrapf(err, "Error parsing restore API response")
@@ -275,10 +276,10 @@ func isEmptyRestResponse(data []byte) (bool, error) {
 	return false, nil
 }
 
-func (p *Plugin) sendDeleteRequest(backup, volume, namespace, schedule string) error {
+func (p *Plugin) sendDeleteRequest(backup, volume, namespace, schedule string, isCSIVolume bool) error {
 	var url string
 
-	if p.isCSIVolume {
+	if isCSIVolume {
 		url = p.cvcAddr + backupEndpoint + backup
 	} else {
 		url = p.mayaAddr + backupEndpoint + backup
