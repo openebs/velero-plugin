@@ -17,11 +17,12 @@ limitations under the License.
 package cstor
 
 import (
+	"time"
+
 	cstorv1 "github.com/openebs/api/pkg/apis/cstor/v1"
 	"github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
 	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"time"
 )
 
 // CVRWaitCount control time limit for waitForAllCVR
@@ -40,9 +41,8 @@ func (p *Plugin) waitForAllCVRs(vol *Volume) error {
 
 	if p.isCSIVolume {
 		return p.waitForCSIBasedCVRs(vol, replicaCount)
-	} else {
-		return p.waitFoNonCSIBasedCVRs(vol, replicaCount)
 	}
+	return p.waitFoNonCSIBasedCVRs(vol, replicaCount)
 }
 
 // waitFoNonCSIBasedCVRs will ensure that all CVRs related to
@@ -128,17 +128,15 @@ func (p *Plugin) getCVRCount(volname string) int {
 		}
 
 		return obj.Spec.ReplicationFactor
-	} else {
-		// For non CSI based volume, CVR of v1alpha1 is used.
-		obj, err := p.OpenEBSClient.
-			OpenebsV1alpha1().
-			CStorVolumes(p.namespace).
-			Get(volname, metav1.GetOptions{})
-		if err != nil {
-			p.Log.Errorf("Failed to fetch cstorVolume.. %s", err)
-			return -1
-		}
-
-		return obj.Spec.ReplicationFactor
 	}
+	// For non CSI based volume, CVR of v1alpha1 is used.
+	obj, err := p.OpenEBSClient.
+		OpenebsV1alpha1().
+		CStorVolumes(p.namespace).
+		Get(volname, metav1.GetOptions{})
+	if err != nil {
+		p.Log.Errorf("Failed to fetch cstorVolume.. %s", err)
+		return -1
+	}
+	return obj.Spec.ReplicationFactor
 }
