@@ -111,12 +111,15 @@ func (p *Plugin) getVolumeForLocalRestore(volumeID, snapName string) (*Volume, e
 	}
 	p.Log.Infof("Renaming PV %s to %s", pv.Name, clonePvName)
 
+	isCSIVolume := isCSIPv(*pv)
+
 	vol := &Volume{
 		volname:      clonePvName,
 		srcVolname:   pv.Name,
 		backupName:   snapName,
 		storageClass: pv.Spec.StorageClassName,
 		size:         pv.Spec.Capacity[v1.ResourceStorage],
+		isCSIVolume:  isCSIVolume,
 	}
 	p.volumes[vol.volname] = vol
 	return vol, nil
@@ -132,8 +135,6 @@ func (p *Plugin) getVolumeForRemoteRestore(volumeID, snapName string) (*Volume, 
 		return nil, err
 	}
 
-	p.volumes[vol.volname] = vol
-
 	p.Log.Infof("Generated PV name is %s", vol.volname)
 
 	return vol, nil
@@ -147,4 +148,13 @@ func generateClonePVName() (string, error) {
 	}
 
 	return PvClonePrefix + nuuid.String(), nil
+}
+
+// isCSIPv returns true if given PV is created by cstor CSI driver
+func isCSIPv(pv v1.PersistentVolume) bool {
+	if pv.Spec.CSI != nil &&
+		pv.Spec.CSI.Driver == openebsCSIName {
+		return true
+	}
+	return false
 }
