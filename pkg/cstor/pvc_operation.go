@@ -162,6 +162,15 @@ func (p *Plugin) createPVC(volumeID, snapName string) (*Volume, error) {
 		return nil, errors.Errorf("PVC{%s/%s} is not bounded!", rpvc.Namespace, rpvc.Name)
 	}
 
+	// check for created volume type
+	pv, err := p.getPV(vol.volname)
+
+	if err != nil {
+		p.Log.Errorf("Failed to get PV{%s}", vol.volname)
+		return nil, errors.Wrapf(err, "failed to get pv=%s", vol.volname)
+	}
+
+	vol.isCSIVolume = isCSIPv(*pv)
 	if err = p.waitForAllCVRs(vol); err != nil {
 		return nil, err
 	}
@@ -225,11 +234,19 @@ func (p *Plugin) getVolumeFromPVC(pvc v1.PersistentVolumeClaim) (*Volume, error)
 		p.Log.Errorf("PVC{%s} is not bound yet!", rpvc.Name)
 		return nil, errors.Errorf("pvc{%s} is not bound", rpvc.Name)
 	}
+	// check for created volume type
+	pv, err := p.getPV(rpvc.Spec.VolumeName)
+	if err != nil {
+		p.Log.Errorf("Failed to get PV{%s}", rpvc.Spec.VolumeName)
+		return nil, errors.Wrapf(err, "failed to get pv=%s", rpvc.Spec.VolumeName)
+	}
+	isCSIVolume := isCSIPv(*pv)
 	vol := &Volume{
 		volname:      rpvc.Spec.VolumeName,
 		snapshotTag:  rpvc.Spec.VolumeName,
 		namespace:    rpvc.Namespace,
 		storageClass: *rpvc.Spec.StorageClassName,
+		isCSIVolume:  isCSIVolume,
 	}
 	p.volumes[vol.volname] = vol
 

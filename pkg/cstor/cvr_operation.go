@@ -34,12 +34,12 @@ var CVRCheckInterval = 5 * time.Second
 // waitForAllCVRs will ensure that all CVR related to
 // the given volume is created
 func (p *Plugin) waitForAllCVRs(vol *Volume) error {
-	replicaCount := p.getCVRCount(vol.volname)
+	replicaCount := p.getCVRCount(vol.volname, vol.isCSIVolume)
 	if replicaCount == -1 {
 		return errors.Errorf("Failed to fetch replicaCount for volume{%s}", vol.volname)
 	}
 
-	if p.isCSIVolume {
+	if vol.isCSIVolume {
 		return p.waitForCSIBasedCVRs(vol, replicaCount)
 	}
 	return p.waitFoNonCSIBasedCVRs(vol, replicaCount)
@@ -114,9 +114,9 @@ func (p *Plugin) waitForCSIBasedCVRs(vol *Volume, replicaCount int) error {
 }
 
 // getCVRCount returns the number of CVR for a given volume
-func (p *Plugin) getCVRCount(volname string) int {
+func (p *Plugin) getCVRCount(volname string, isCSIVolume bool) int {
 	// For CSI based volume, CVR of v1 is used.
-	if p.isCSIVolume {
+	if isCSIVolume {
 		// If the volume is CSI based, then CVR V1 is used.
 		obj, err := p.OpenEBSAPIsClient.
 			CstorV1().
