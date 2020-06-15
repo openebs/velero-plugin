@@ -1,3 +1,17 @@
+v1.11.0 / 2020-06-12
+========================
+* add restore support for cStor CSI based volumes ([#93](https://github.com/openebs/velero-plugin/pull/93),[@sonasingh46](https://github.com/sonasingh46))
+
+
+v1.11.0-RC2 / 2020-06-11
+========================
+* add restore support for cStor CSI based volumes ([#93](https://github.com/openebs/velero-plugin/pull/93),[@sonasingh46](https://github.com/sonasingh46))
+
+
+v1.11.0-RC1 / 2020-06-10
+========================
+
+
 v1.10.0 / 2020-05-15
 ========================
 * Fixing failure in restoring restic backup of cstor volumes, created by velero-plugin restore [issue:84](https://github.com/openebs/velero-plugin/issues/84) ([#85](https://github.com/openebs/velero-plugin/pull/85),[@mynktl](https://github.com/mynktl))
