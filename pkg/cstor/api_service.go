@@ -55,7 +55,9 @@ func (p *Plugin) httpRestCall(url, reqtype string, data []byte) ([]byte, error) 
 
 	respdata, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, errors.Errorf("Unable to read response from maya-apiserver, err=%s data=%s", err.Error(), string(respdata))
+		return nil, errors.Errorf(
+			"Unable to read response from maya-apiserver, err=%s data=%s",
+			err.Error(), string(respdata))
 	}
 
 	code := resp.StatusCode
