@@ -55,12 +55,14 @@ func (p *Plugin) httpRestCall(url, reqtype string, data []byte) ([]byte, error) 
 
 	respdata, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, errors.Errorf("Unable to read response from maya-apiserver : %s", err.Error())
+		return nil, errors.Errorf(
+			"Unable to read response from maya-apiserver, err=%s data=%s",
+			err.Error(), string(respdata))
 	}
 
 	code := resp.StatusCode
 	if code != http.StatusOK {
-		return nil, errors.Errorf("Status error{%v}", http.StatusText(code))
+		return nil, errors.Errorf("Status error{%v}, response=%s", http.StatusText(code), string(respdata))
 	}
 	return respdata, nil
 }
@@ -312,14 +314,14 @@ func (p *Plugin) sendDeleteRequest(backup, volume, namespace, schedule string, i
 		}
 	}()
 
-	_, err = ioutil.ReadAll(resp.Body)
+	respdata, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return errors.Wrapf(err, "failed to read response from maya-apiserver")
+		return errors.Wrapf(err, "failed to read response from maya-apiserver, response=%s", string(respdata))
 	}
 
 	code := resp.StatusCode
 	if code != http.StatusOK {
-		return errors.Errorf("HTTP Status error{%v} from maya-apiserver", code)
+		return errors.Errorf("HTTP Status error{%v} from maya-apiserver, response=%s", code, string(respdata))
 	}
 
 	return nil
