@@ -46,10 +46,14 @@ OpenEBS velero-plugin.
 |	1.7.0-velero_1.0.0  	|	>= 1.0.0              |	>= v1.0.0        	|	v1.7.x           	  |
 |	1.8.0-velero_1.0.0  	|	>= 1.0.0              |	>= v1.0.0        	|	v1.8.x	            |
 |	1.9.0                	|	>= 1.0.0             	|	>= v1.0.0        	|	v1.9.x	            |
+|	1.10.0                |	>= 1.0.0             	|	>= v1.0.0        	|	v1.10.x	            |
+|	1.11.0                |	>= 1.0.0             	|	>= v1.0.0        	|	v1.11.x	            |
 
 *Note:*
 
 _OpenEBS version **< 0.9** is not supported for velero-plugin._
+
+_Velero-plugin version **< 1.11.0** is not supported for cstor v1 volumes._
 
 _If you want to use plugin image from development branch(`master`), use **ci** tag._
 
