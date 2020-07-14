@@ -1,3 +1,7 @@
+v1.12.0 / 2020-07-14
+========================
+
+
 v1.11.0 / 2020-06-12
 ========================
 * add restore support for cStor CSI based volumes ([#93](https://github.com/openebs/velero-plugin/pull/93),[@sonasingh46](https://github.com/sonasingh46))
