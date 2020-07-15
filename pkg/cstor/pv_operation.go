@@ -18,12 +18,16 @@ package cstor
 
 import (
 	"encoding/json"
+	"sort"
+	"strings"
 
 	uuid "github.com/gofrs/uuid"
 	v1alpha1 "github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/openebs/velero-plugin/pkg/clouduploader"
 )
 
 const (
@@ -53,7 +57,43 @@ func (p *Plugin) updateVolCASInfo(data []byte, volumeID string) error {
 	return nil
 }
 
+// restoreVolumeFromCloud restore remote snapshot for the given volume
+// Note: cstor snapshots are incremental in nature, so restore will be executed
+// from base snapshot to incremental snapshot 'vol.backupName'.
 func (p *Plugin) restoreVolumeFromCloud(vol *Volume) error {
+	// Since we are supporting incremental backups for volume
+	// We need to restore all the snapshots from base backup to the target backup
+	targetBackupName := vol.backupName
+
+	snapshotList, err := p.getSnapListFromCloud(vol)
+	if err != nil {
+		return err
+	}
+
+	// snapshots are created using timestamp, we need to sort it in ascending order
+	sort.Strings(snapshotList)
+
+	for _, snap := range snapshotList {
+		p.Log.Infof("Restoring snapshot=%s", snap)
+
+		vol.backupName = snap
+
+		err := p.restoreSnapshotFromCloud(vol)
+		if err != nil {
+			return errors.Wrapf(err, "failed to restor snapshot=%s", snap)
+		}
+		p.Log.Infof("Restore of snapshot=%s completed", snap)
+
+		if snap == targetBackupName {
+			// we restored till the targetBackupName, no need to restore next snapshot
+			break
+		}
+	}
+	return nil
+}
+
+// restoreSnapshotFromCloud restore snapshot 'vol.backupName` to volume 'vol.volname'
+func (p *Plugin) restoreSnapshotFromCloud(vol *Volume) error {
 	p.cl.ExitServer = false
 
 	restore, err := p.sendRestoreRequest(vol)
@@ -157,4 +197,36 @@ func isCSIPv(pv v1.PersistentVolume) bool {
 		return true
 	}
 	return false
+}
+
+// getSnapListFromCloud returns list of all the snapshots(base and incremental) associated with given volume from cloud
+func (p *Plugin) getSnapListFromCloud(vol *Volume) ([]string, error) {
+	var snapList []string
+
+	scheduleName := p.getScheduleName(vol.backupName)
+
+	// list directory having schedule/backup name as prefix
+	dirs, err := p.cl.ListKeys(p.cl.BackupPathPrefix(scheduleName), clouduploader.KeyDirectory)
+	if err != nil {
+		return snapList, errors.Wrapf(err, "failed to get list of directory")
+	}
+
+	for _, dir := range dirs {
+		// list files for dir having volume name as prefix
+		files, err := p.cl.ListKeys(dir+p.cl.FilePathPrefix(vol.snapshotTag), clouduploader.KeyFile)
+		if err != nil {
+			return snapList, errors.Wrapf(err, "failed to get list of snapshot file at path=%v", dir)
+		}
+
+		if len(files) != 0 {
+			// snapshot exist in the backup directory
+
+			// add backup name from dir path to snapList
+			s := strings.Split(dir, "/")
+
+			// dir will contain path with trailing '/', example: 'backups/b-0/'
+			snapList = append(snapList, s[len(s)-2])
+		}
+	}
+	return snapList, nil
 }

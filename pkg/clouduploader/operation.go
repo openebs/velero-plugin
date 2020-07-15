@@ -16,11 +16,29 @@ limitations under the License.
 
 package clouduploader
 
-import "github.com/aws/aws-sdk-go/service/s3/s3manager"
+import (
+	"io"
+
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"gocloud.dev/blob"
+)
 
 const (
 	// backupDir is remote storage-bucket directory
 	backupDir = "backups"
+)
+
+const (
+	// Type of Key, used while listing keys
+
+	// KeyFile - if key is a file
+	KeyFile int = 1 << iota
+
+	// KeyDirectory - if key is a directory
+	KeyDirectory
+
+	// KeyBoth - if key is a file or directory
+	KeyBoth
 )
 
 // Upload will perform upload operation for given file.
@@ -132,4 +150,58 @@ func (c *Conn) GenerateRemoteFilename(file, backup string) string {
 		return backupDir + "/" + backup + "/" + c.prefix + "-" + file + "-" + backup
 	}
 	return c.backupPathPrefix + "/" + backupDir + "/" + backup + "/" + c.prefix + "-" + file + "-" + backup
+}
+
+// ListKeys return list of Keys -- files/directories
+// Note:
+// - List may contain incomplete list of keys, check for error before using list
+// - ListKeys uses '/' as delimiter.
+func (c *Conn) ListKeys(prefix string, keyType int) ([]string, error) {
+	keys := []string{}
+
+	lister := c.bucket.List(&blob.ListOptions{
+		Delimiter: "/",
+		Prefix:    prefix,
+	})
+	for {
+		obj, err := lister.Next(c.ctx)
+		if err == io.EOF {
+			break
+		}
+
+		if err != nil {
+			c.Log.Errorf("Failed to get next blob err=%v", err)
+			return keys, err
+		}
+
+		switch keyType {
+		case KeyBoth:
+		case KeyFile:
+			if obj.IsDir {
+				continue
+			}
+		case KeyDirectory:
+			if !obj.IsDir {
+				continue
+			}
+		default:
+			c.Log.Warningf("Invalid keyType=%d, Ignored", keyType)
+		}
+
+		keys = append(keys, obj.Key)
+	}
+	return keys, nil
+}
+
+// BackupPathPrefix return 'prefix path' for the given 'backup name prefix'
+func (c *Conn) BackupPathPrefix(backupPrefix string) string {
+	if c.backupPathPrefix == "" {
+		return backupDir + "/" + backupPrefix
+	}
+	return c.backupPathPrefix + "/" + backupDir + "/" + backupPrefix
+}
+
+// FilePathPrefix generate prefix for the given file name prefix using 'configured file prefix'
+func (c *Conn) FilePathPrefix(filePrefix string) string {
+	return c.prefix + "-" + filePrefix
 }
