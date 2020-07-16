@@ -102,7 +102,6 @@ func (c *ClientSet) CreateRestore(ns, targetedNs, backup, schedule string) (v1.R
 		restoreName, err = c.generateRestoreName(backup)
 	} else {
 		restoreName, err = c.generateRestoreName(schedule)
-
 	}
 
 	if err != nil {
