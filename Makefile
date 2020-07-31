@@ -23,7 +23,7 @@ ARCH ?= $(shell go env GOARCH)
 
 # The images can be pushed to any docker/image registeries
 # like docker hub, quay. The registries are specified in
-# the `./push` script.
+# the script https://raw.githubusercontent.com/openebs/charts/gh-pages/scripts/release/buildscripts/push.
 #
 # The images of a project or company can then be grouped
 # or hosted under a unique organization key like `openebs`
@@ -110,6 +110,8 @@ test:
 	@CGO_ENABLED=0 go test -v ${PACKAGES} -timeout 20m
 
 deploy-image:
+	@curl --fail --show-error -s  https://raw.githubusercontent.com/openebs/charts/gh-pages/scripts/release/buildscripts/push > ./push
+	@chmod +x ./push
 	@DIMAGE=${IMAGE} ./push
 
 clean:
