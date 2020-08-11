@@ -76,7 +76,7 @@ endif
 BUILD_DATE = $(shell date +'%Y%m%d%H%M%S')
 
 #List of linters used by docker lint and local lint
-LINTERS ?= "deadcode,goconst,gofmt,goimports,gosec,scopelint,unparam,unused"
+LINTERS ?= "goconst,gofmt,goimports,gosec,unparam"
 
 all: build
 
