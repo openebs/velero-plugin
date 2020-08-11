@@ -26,31 +26,6 @@ linters-settings:
       - sloppyReassign
 linters:
   disable-all: true
-  enable:
-    - deadcode
-    - errcheck
-    - gosimple
-    - gocritic
-    - goconst
-    - gofmt
-    - goimports
-    - golint
-    - gosec
-    - govet
-    - ineffassign
-    - lll
-    - misspell
-    - nakedret
-    - scopelint
-    - staticcheck
-    - structcheck
-    - stylecheck
-    - typecheck
-    - unconvert
-    - unparam
-    - unused
-    - varcheck
-    - whitespace
 
 run:
   timeout: 10m

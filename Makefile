@@ -75,6 +75,9 @@ endif
 # Specify the date of build
 BUILD_DATE = $(shell date +'%Y%m%d%H%M%S')
 
+#List of linters used by docker lint and local lint
+LINTERS ?= "deadcode,goconst,gofmt,goimports,gosec,scopelint,unparam,unused"
+
 all: build
 
 container: all
@@ -99,12 +102,12 @@ lint-docker: gomod
 	@docker run -i	\
 		--rm -v $$(pwd):/app -w /app	\
 		golangci/golangci-lint:v1.24.0	\
-		bash -c "GOGC=75 golangci-lint run"
+		bash -c "GOGC=75 golangci-lint run -E $(LINTERS)"
 
 # Run linter using local binary
 lint: gomod
 	@echo ">> running golangci-lint"
-	@golangci-lint run
+	@golangci-lint run -E $(LINTERS)
 
 test:
 	@CGO_ENABLED=0 go test -v ${PACKAGES} -timeout 20m
