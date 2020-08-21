@@ -33,23 +33,33 @@ const (
 
 func (p *Plugin) updateVolCASInfo(data []byte, volumeID string) error {
 	var cas v1alpha1.CASVolume
-
-	err := json.Unmarshal(data, &cas)
-	if err != nil {
-		return err
-	}
+	var iscsiPVSource v1.ISCSIPersistentVolumeSource
 
 	vol := p.volumes[volumeID]
 	if vol == nil {
 		return errors.Errorf("Volume{%s} not found in volume list", volumeID)
 	}
-	vol.iscsi = v1.ISCSIPersistentVolumeSource{
-		TargetPortal: cas.Spec.TargetPortal,
-		IQN:          cas.Spec.Iqn,
-		Lun:          cas.Spec.Lun,
-		FSType:       cas.Spec.FSType,
-		ReadOnly:     false,
+
+	if !vol.isCSIVolume {
+		err := json.Unmarshal(data, &cas)
+		if err != nil {
+			return err
+		}
+
+		vol.iscsi = v1.ISCSIPersistentVolumeSource{
+			TargetPortal: cas.Spec.TargetPortal,
+			IQN:          cas.Spec.Iqn,
+			Lun:          cas.Spec.Lun,
+			FSType:       cas.Spec.FSType,
+			ReadOnly:     false,
+		}
+		return nil
 	}
+	err := json.Unmarshal(data, &iscsiPVSource)
+	if err != nil {
+		return err
+	}
+	vol.iscsi = iscsiPVSource
 	return nil
 }
 

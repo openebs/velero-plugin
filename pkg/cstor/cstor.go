@@ -534,14 +534,15 @@ func (p *Plugin) SetVolumeID(unstructuredPV runtime.Unstructured, volumeID strin
 	vol := p.volumes[volumeID]
 
 	if p.local {
-		fsType := pv.Spec.PersistentVolumeSource.ISCSI.FSType
-		if isCSIVolume := isCSIPv(*pv); !isCSIVolume {
+		if !vol.isCSIVolume {
+			fsType := pv.Spec.PersistentVolumeSource.ISCSI.FSType
 			pv.Spec.PersistentVolumeSource = v1.PersistentVolumeSource{
 				ISCSI: &vol.iscsi,
 			}
 			// Set Old PV fsType
 			pv.Spec.PersistentVolumeSource.ISCSI.FSType = fsType
 		} else {
+			fsType := pv.Spec.PersistentVolumeSource.CSI.FSType
 			pv.Spec.PersistentVolumeSource.CSI.VolumeHandle = vol.volname
 			// Set Old PV fsType
 			pv.Spec.PersistentVolumeSource.CSI.FSType = fsType
