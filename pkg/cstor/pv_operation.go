@@ -55,11 +55,7 @@ func (p *Plugin) updateVolCASInfo(data []byte, volumeID string) error {
 		}
 		return nil
 	}
-	err := json.Unmarshal(data, &iscsiPVSource)
-	if err != nil {
-		return err
-	}
-	vol.iscsi = iscsiPVSource
+	//NOTE: As of now no need to handle restore response for cStor CSI volumes
 	return nil
 }
 
