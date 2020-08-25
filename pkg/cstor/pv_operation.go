@@ -33,7 +33,6 @@ const (
 
 func (p *Plugin) updateVolCASInfo(data []byte, volumeID string) error {
 	var cas v1alpha1.CASVolume
-	var iscsiPVSource v1.ISCSIPersistentVolumeSource
 
 	vol := p.volumes[volumeID]
 	if vol == nil {
