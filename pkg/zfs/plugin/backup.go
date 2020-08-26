@@ -1,5 +1,5 @@
 /*
-Copyright 2020 the Velero contributors.
+Copyright 2020 The OpenEBS Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -101,11 +101,11 @@ func (p *Plugin) getPrevSnap(volname, schdname string) (string, error) {
 	return "", nil
 }
 
-func (p *Plugin) createBackup(vol *apis.ZFSVolume, schdname string, snapname string) (string, error) {
+func (p *Plugin) createBackup(vol *apis.ZFSVolume, schdname, snapname string) (string, error) {
 
 	bkpname := utils.GenerateSnapshotID(vol.Name, snapname)
 
-	p.Log.Infof("zfs: creating ZFSBackup vol = %s bkp = %s schd = %s", vol.Name, bkpname, schdname)
+	p.Log.Debugf("zfs: creating ZFSBackup vol = %s bkp = %s schd = %s", vol.Name, bkpname, schdname)
 
 	var err error
 	labels := map[string]string{}
@@ -227,7 +227,7 @@ func (p *Plugin) doBackup(volumeID string, snapname string, schdname string) (st
 
 	go p.checkBackupStatus(bkpname)
 
-	p.Log.Infof("zfs: uploading Snapshot %s file %s", snapname, filename)
+	p.Log.Debugf("zfs: uploading Snapshot %s file %s", snapname, filename)
 	ok := p.cl.Upload(filename, size)
 	if !ok {
 		p.deleteBackup(bkpname)

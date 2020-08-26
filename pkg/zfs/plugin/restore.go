@@ -1,5 +1,5 @@
 /*
-Copyright 2020 the Velero contributors.
+Copyright 2020 The OpenEBS Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -39,7 +39,7 @@ func (p *Plugin) createVolume(pvname string, bkpname string, bkpZV *apis.ZFSVolu
 	ns, err := velero.GetRestoreNamespace(bkpZV.Labels[VeleroNsKey], bkpname, p.Log)
 
 	if err != nil {
-		p.Log.Errorf("zfs: failed to get target ns pv %s bkpname %s err: %v", pvname, bkpname, err)
+		p.Log.Errorf("zfs: failed to get target ns for pv=%s, bkpname=%s err: %v", pvname, bkpname, err)
 		return nil, false, err
 	}
 
@@ -65,7 +65,7 @@ func (p *Plugin) createVolume(pvname string, bkpname string, bkpZV *apis.ZFSVolu
 			return vol, false, errors.Errorf("zfs: pv %s is already restored bkpname %s", pvname, bkpname)
 		}
 
-		p.Log.Infof("zfs: got existing volume %s for restore vol %s snap %s",  vol.Name, pvname, bkpname)
+		p.Log.Debugf("zfs: got existing volume %s for restore vol %s snap %s",  vol.Name, pvname, bkpname)
 	}
 
 	if vol == nil {
@@ -277,7 +277,7 @@ func (p *Plugin) doRestore(snapshotID string) (string, error) {
 
 	if needRestore == false {
 		// volume has already been restored
-		p.Log.Infof("zfs: pv already restored vol %s => %s snap %s", volname, newvol, snapshotID)
+		p.Log.Debugf("zfs: pv already restored vol %s => %s snap %s", volname, newvol, snapshotID)
 		return newvol, nil
 	}
 
@@ -293,6 +293,6 @@ func (p *Plugin) doRestore(snapshotID string) (string, error) {
 		return "", err
 	}
 
-	p.Log.Infof("zfs: restore done vol %s => %s snap %s", volname, newvol, snapshotID)
+	p.Log.Debugf("zfs: restore done vol %s => %s snap %s", volname, newvol, snapshotID)
 	return newvol, nil
 }

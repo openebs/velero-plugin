@@ -1,5 +1,5 @@
 /*
-Copyright 2020 the Velero contributors.
+Copyright 2020 The OpenEBS Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -30,10 +30,15 @@ import (
 )
 
 const (
-	// ZFSPV_NAMESPACE config key for OpenEBS namespace
-	ZFSPV_NAMESPACE = "namespace"
-	// ZFSPV_BACKUP config key for backup type full or incremental
-	ZFSPV_BACKUP = "backup"
+	// ZfsPvNamespace config key for OpenEBS namespace
+	ZfsPvNamespace = "namespace"
+
+	// ZfsPvBackup config key for backup type full or incremental
+	ZfsPvBackup = "backup"
+
+	// zfs csi driver name
+	ZfsDriverName = "zfs.csi.openebs.io"
+
 	backupStatusInterval  = 5
 )
 
@@ -64,7 +69,7 @@ type Plugin struct {
 // configuration key-value pairs. It returns an error if the VolumeSnapshotter
 // cannot be initialized from the provided config. Note that after v0.10.0, this will happen multiple times.
 func (p *Plugin) Init(config map[string]string) error {
-	p.Log.Infof("zfs: Init called %v", config)
+	p.Log.Debugf("zfs: Init called %v", config)
 	p.config = config
 
 	p.remoteAddr, _  = utils.GetServerAddress()
@@ -72,13 +77,13 @@ func (p *Plugin) Init(config map[string]string) error {
 		return errors.New("zfs: error fetching Server address")
 	}
 
-	if ns, ok := config[ZFSPV_NAMESPACE]; ok {
+	if ns, ok := config[ZfsPvNamespace]; ok {
 		p.namespace = ns
 	} else {
-		p.namespace = "openebs" // default namespace
+		return errors.New("zfs: namespace not provided for ZFS-LocalPV")
 	}
 
-	if bkptype, ok := config[ZFSPV_BACKUP]; ok && bkptype == "incremental" {
+	if bkptype, ok := config[ZfsPvBackup]; ok && bkptype == "incremental" {
 		p.incremental = true
 	}
 
@@ -106,7 +111,7 @@ func (p *Plugin) Init(config map[string]string) error {
 
 // CreateVolumeFromSnapshot creates a new volume from the specified snapshot
 func (p *Plugin) CreateVolumeFromSnapshot(snapshotID, volumeType, volumeAZ string, iops *int64) (string, error) {
-	p.Log.Infof("zfs: CreateVolumeFromSnapshot called snap %s", snapshotID)
+	p.Log.Debugf("zfs: CreateVolumeFromSnapshot called snap %s", snapshotID)
 
 	volumeID, err := p.doRestore(snapshotID)
 
@@ -122,13 +127,13 @@ func (p *Plugin) CreateVolumeFromSnapshot(snapshotID, volumeType, volumeAZ strin
 // GetVolumeInfo returns the type and IOPS (if using provisioned IOPS) for
 // the specified volume in the given availability zone.
 func (p *Plugin) GetVolumeInfo(volumeID, volumeAZ string) (string, *int64, error) {
-	p.Log.Infof("zfs: GetVolumeInfo called", volumeID, volumeAZ)
+	p.Log.Debugf("zfs: GetVolumeInfo called", volumeID, volumeAZ)
 	return "zfs-localpv", nil, nil
 }
 
 // IsVolumeReady Check if the volume is ready.
 func (p *Plugin) IsVolumeReady(volumeID, volumeAZ string) (ready bool, err error) {
-	p.Log.Infof("zfs: IsVolumeReady called", volumeID, volumeAZ)
+	p.Log.Debugf("zfs: IsVolumeReady called", volumeID, volumeAZ)
 
 	return p.isVolumeReady(volumeID)
 }
@@ -136,14 +141,14 @@ func (p *Plugin) IsVolumeReady(volumeID, volumeAZ string) (ready bool, err error
 // CreateSnapshot creates a snapshot of the specified volume, and applies any provided
 // set of tags to the snapshot.
 func (p *Plugin) CreateSnapshot(volumeID, volumeAZ string, tags map[string]string) (string, error) {
-	p.Log.Infof("zfs: CreateSnapshot called", volumeID, volumeAZ, tags)
+	p.Log.Debugf("zfs: CreateSnapshot called", volumeID, volumeAZ, tags)
 
 	bkpname, ok := tags[VeleroBkpKey]
 	if !ok {
 		return "", errors.New("zfs: error get backup name")
 	}
 
-	schdname, ok := tags[VeleroSchdKey]
+	schdname, _ := tags[VeleroSchdKey]
 
 	snapshotID, err := p.doBackup(volumeID, bkpname, schdname)
 
@@ -158,7 +163,7 @@ func (p *Plugin) CreateSnapshot(volumeID, volumeAZ string, tags map[string]strin
 
 // DeleteSnapshot deletes the specified volume snapshot.
 func (p *Plugin) DeleteSnapshot(snapshotID string) error {
-	p.Log.Infof("zfs: DeleteSnapshot called %s", snapshotID)
+	p.Log.Debugf("zfs: DeleteSnapshot called %s", snapshotID)
 	if snapshotID == "" {
 		p.Log.Warning("zfs: Empty snapshotID")
 		return nil
@@ -169,11 +174,31 @@ func (p *Plugin) DeleteSnapshot(snapshotID string) error {
 
 // GetVolumeID returns the specific identifier for the PersistentVolume.
 func (p *Plugin) GetVolumeID(unstructuredPV runtime.Unstructured) (string, error) {
-	p.Log.Infof("zfs: GetVolumeID called %v", unstructuredPV)
+	p.Log.Debugf("zfs: GetVolumeID called %v", unstructuredPV)
 
 	pv := new(v1.PersistentVolume)
 	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(unstructuredPV.UnstructuredContent(), pv); err != nil {
 		return "", errors.WithStack(err)
+	}
+
+	// If PV doesn't have sufficient info to consider as ZFS-LocalPV Volume
+	// then we will return empty volumeId and error as nil.
+	if pv.Name == "" ||
+		pv.Spec.StorageClassName == "" ||
+		(pv.Spec.ClaimRef != nil && pv.Spec.ClaimRef.Namespace == "") {
+		return "", nil
+	}
+
+	// check if PV is created by ZFS driver
+
+	if pv.Spec.CSI == nil ||
+		pv.Spec.CSI.Driver != ZfsDriverName {
+		return "", nil
+	}
+
+	if pv.Status.Phase == v1.VolumeReleased ||
+		pv.Status.Phase == v1.VolumeFailed {
+		return "", errors.New("pv is in released state")
 	}
 
 	return pv.Name, nil
@@ -181,7 +206,7 @@ func (p *Plugin) GetVolumeID(unstructuredPV runtime.Unstructured) (string, error
 
 // SetVolumeID sets the specific identifier for the PersistentVolume.
 func (p *Plugin) SetVolumeID(unstructuredPV runtime.Unstructured, volumeID string) (runtime.Unstructured, error) {
-	p.Log.Infof("zfs: SetVolumeID called %v %s", unstructuredPV, volumeID)
+	p.Log.Debugf("zfs: SetVolumeID called %v %s", unstructuredPV, volumeID)
 
 	pv := new(v1.PersistentVolume)
 	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(unstructuredPV.UnstructuredContent(), pv); err != nil {
