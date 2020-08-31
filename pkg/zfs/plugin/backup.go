@@ -102,7 +102,6 @@ func (p *Plugin) getPrevSnap(volname, schdname string) (string, error) {
 }
 
 func (p *Plugin) createBackup(vol *apis.ZFSVolume, schdname, snapname string) (string, error) {
-
 	bkpname := utils.GenerateSnapshotID(vol.Name, snapname)
 
 	p.Log.Debugf("zfs: creating ZFSBackup vol = %s bkp = %s schd = %s", vol.Name, bkpname, schdname)
@@ -171,7 +170,6 @@ func (p *Plugin) checkBackupStatus(bkpname string) {
 }
 
 func (p *Plugin) doBackup(volumeID string, snapname string, schdname string) (string, error) {
-
 	pv, err := p.getPV(volumeID)
 	if err != nil {
 		p.Log.Errorf("zfs: Failed to get pv %s snap %s schd %s err %v", volumeID, snapname, schdname, err)

@@ -34,7 +34,6 @@ const (
 )
 
 func (p *Plugin) createVolume(pvname string, bkpname string, bkpZV *apis.ZFSVolume) (*apis.ZFSVolume, error) {
-
 	// get the target namespace
 	ns, err := velero.GetRestoreNamespace(bkpZV.Labels[VeleroNsKey], bkpname, p.Log)
 
@@ -56,7 +55,7 @@ func (p *Plugin) createVolume(pvname string, bkpname string, bkpZV *apis.ZFSVolu
 	var vol *apis.ZFSVolume = nil
 
 	if len (volList.Items) > 1 {
-		return nil, errors.Errorf("zfs: error can not have more than one source volume %s", pvname, bkpname)
+		return nil, errors.Errorf("zfs: error can not have more than one source volume %s bkpname %s", pvname, bkpname)
 	} else if len (volList.Items) == 1 {
 		vol = &volList.Items[0]
 		if !p.incremental ||
@@ -121,7 +120,6 @@ func (p *Plugin) createVolume(pvname string, bkpname string, bkpZV *apis.ZFSVolu
 }
 
 func (p *Plugin) restoreZFSVolume(pvname, bkpname string) (*apis.ZFSVolume, error) {
-
 	bkpZV := &apis.ZFSVolume{}
 
 	filename := p.cl.GenerateRemoteFilename(pvname, bkpname)
@@ -151,8 +149,7 @@ func (p *Plugin) isVolumeReady(volumeID string) (ready bool, err error) {
 }
 
 func (p *Plugin) checkRestoreStatus(snapname string) {
-
-	for true {
+	for {
 		getOptions := metav1.GetOptions{}
 	        rstr, err := restorebuilder.NewKubeclient().
 		        WithNamespace(p.namespace).Get(snapname, getOptions)

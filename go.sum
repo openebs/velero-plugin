@@ -556,6 +556,8 @@ github.com/openebs/api v1.11.1-0.20200629052954-e52e2bcd8339 h1:T6IuGc8zikB4XG+s
 github.com/openebs/api v1.11.1-0.20200629052954-e52e2bcd8339/go.mod h1:TASujm6H1LGdx43MN7Dab1xdAqR7MVU8bsS74Ywop5w=
 github.com/openebs/maya v0.0.0-20200411140727-1c81f9e017b0 h1:9o6+N3YkssQvUlmJnqNULSxsGFO/rb1we8MtYKr5ze4=
 github.com/openebs/maya v0.0.0-20200411140727-1c81f9e017b0/go.mod h1:QQY9cOHKQwZ73qbv6O//UYUBLNV2S0MRDIfG7t5KOCk=
+github.com/openebs/zfs-localpv v0.9.0-RC1.0.20200908081439-e40026c98a2b h1:f7q/JlKx165iBnn8xTdFFvU6D3JGe7iz9Jtvx61UzC8=
+github.com/openebs/zfs-localpv v0.9.0-RC1.0.20200908081439-e40026c98a2b/go.mod h1:EvN06mQH8s6oGq4ybAs1DLqy0fVS3CDh7xmvPLBQtpE=
 github.com/pborman/uuid v0.0.0-20170612153648-e790cca94e6c/go.mod h1:VyrYX9gd7irzKovcSS6BIIEwPRkP2Wm2m9ufcdFSJ34=
 github.com/pborman/uuid v1.2.0/go.mod h1:X/NO0urCmaxf9VXbdlT7C2Yzkj2IKimNn4k+gtPdI/k=
 github.com/pelletier/go-toml v1.0.1/go.mod h1:5z9KED0ma1S8pY6P1sdut58dfprrGBbd/94hg7ilaic=
