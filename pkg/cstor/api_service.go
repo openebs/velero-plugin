@@ -251,7 +251,6 @@ func (p *Plugin) sendRestoreRequest(vol *Volume) (*v1alpha1.CStorRestore, error)
 	// if apiserver is having version <=1.8 then it will return empty response
 	ok, err := isEmptyRestResponse(data)
 	if !ok && err == nil {
-		// TODO: for CSI base volume response type may be different
 		err = p.updateVolCASInfo(data, vol.volname)
 		if err != nil {
 			err = errors.Wrapf(err, "Error parsing restore API response")
