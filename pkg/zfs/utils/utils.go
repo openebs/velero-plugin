@@ -18,12 +18,10 @@ package utils
 
 import (
 	"net"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/gofrs/uuid"
-	cloud "github.com/openebs/velero-plugin/pkg/clouduploader"
 	"github.com/pkg/errors"
 )
 
@@ -45,7 +43,7 @@ func GetServerAddress() (string, error) {
 		networkIP, ok := netInterfaceAddress.(*net.IPNet)
 		if ok && !networkIP.IP.IsLoopback() && networkIP.IP.To4() != nil {
 			ip := networkIP.IP.String()
-			return ip + ":" + strconv.Itoa(cloud.RecieverPort), nil
+			return ip, nil
 		}
 	}
 	return "", errors.New("error: fetching the interface")

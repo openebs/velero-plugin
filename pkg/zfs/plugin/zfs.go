@@ -40,6 +40,12 @@ const (
 	ZfsDriverName = "zfs.csi.openebs.io"
 
 	backupStatusInterval = 5
+
+	// port to connect for restoring the data
+	ZFSRestorePort = 9100
+
+	// port to connect for backup
+	ZFSBackupPort = 9101
 )
 
 // Plugin is a plugin for containing state for the blockstore

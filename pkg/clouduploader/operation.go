@@ -26,7 +26,7 @@ const (
 // Upload will perform upload operation for given file.
 // It will create a TCP server through which client can
 // connect and upload data to cloud blob storage file
-func (c *Conn) Upload(file string, fileSize int64) bool {
+func (c *Conn) Upload(file string, fileSize int64, port int) bool {
 	c.Log.Infof("Uploading snapshot to '%s' with provider{%s} to bucket{%s}", file, c.provider, c.bucketname)
 
 	c.file = file
@@ -44,7 +44,7 @@ func (c *Conn) Upload(file string, fileSize int64) bool {
 		Log: c.Log,
 		cl:  c,
 	}
-	err := s.Run(OpBackup)
+	err := s.Run(OpBackup, port)
 	if err != nil {
 		c.Log.Errorf("Failed to upload snapshot to bucket: %s", err.Error())
 		if c.bucket.Delete(c.ctx, file) != nil {
@@ -71,13 +71,13 @@ func (c *Conn) Delete(file string) bool {
 // Download will perform restore operation for given file.
 // It will create a TCP server through which client can
 // connect and download data from cloud blob storage file
-func (c *Conn) Download(file string) bool {
+func (c *Conn) Download(file string, port int) bool {
 	c.file = file
 	s := &Server{
 		Log: c.Log,
 		cl:  c,
 	}
-	err := s.Run(OpRestore)
+	err := s.Run(OpRestore, port)
 	if err != nil {
 		c.Log.Errorf("Failed to receive snapshot from bucket: %s", err.Error())
 		return false
