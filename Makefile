@@ -83,7 +83,7 @@ all: build
 container: all
 	@echo ">> building container"
 	@cp Dockerfile _output/Dockerfile
-	docker build -t $(IMAGE):$(IMAGE_TAG) ${DBUILD_ARGS} -f _output/Dockerfile _output
+	@sudo docker build -t $(IMAGE):$(IMAGE_TAG) ${DBUILD_ARGS} -f _output/Dockerfile _output
 
 build:
 	@echo ">> building binary"
@@ -99,7 +99,7 @@ gomod: ## Ensures fresh go.mod and go.sum.
 # Run linter using docker image
 lint-docker: gomod
 	@echo ">> running golangci-lint"
-	@docker run -i	\
+	@sudo docker run -i	\
 		--rm -v $$(pwd):/app -w /app	\
 		golangci/golangci-lint:v1.24.0	\
 		bash -c "GOGC=75 golangci-lint run -E $(LINTERS)"
