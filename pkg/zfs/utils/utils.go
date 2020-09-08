@@ -18,12 +18,13 @@ package utils
 
 import (
 	"net"
-	"time"
 	"strconv"
 	"strings"
-	"github.com/pkg/errors"
+	"time"
+
 	"github.com/gofrs/uuid"
 	cloud "github.com/openebs/velero-plugin/pkg/clouduploader"
+	"github.com/pkg/errors"
 )
 
 const (

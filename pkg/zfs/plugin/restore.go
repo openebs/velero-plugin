@@ -17,16 +17,17 @@ limitations under the License.
 package plugin
 
 import (
-	"time"
 	"encoding/json"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"github.com/openebs/zfs-localpv/pkg/zfs"
+	"time"
+
 	"github.com/openebs/velero-plugin/pkg/velero"
-	"github.com/pkg/errors"
 	"github.com/openebs/velero-plugin/pkg/zfs/utils"
-	"github.com/openebs/zfs-localpv/pkg/builder/volbuilder"
-	"github.com/openebs/zfs-localpv/pkg/builder/restorebuilder"
 	apis "github.com/openebs/zfs-localpv/pkg/apis/openebs.io/zfs/v1"
+	"github.com/openebs/zfs-localpv/pkg/builder/restorebuilder"
+	"github.com/openebs/zfs-localpv/pkg/builder/volbuilder"
+	"github.com/openebs/zfs-localpv/pkg/zfs"
+	"github.com/pkg/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -54,9 +55,9 @@ func (p *Plugin) createVolume(pvname string, bkpname string, bkpZV *apis.ZFSVolu
 
 	var vol *apis.ZFSVolume = nil
 
-	if len (volList.Items) > 1 {
+	if len(volList.Items) > 1 {
 		return nil, errors.Errorf("zfs: error can not have more than one source volume %s bkpname %s", pvname, bkpname)
-	} else if len (volList.Items) == 1 {
+	} else if len(volList.Items) == 1 {
 		vol = &volList.Items[0]
 		if !p.incremental ||
 			bkpname == vol.Annotations[VeleroBkpKey] {
@@ -64,7 +65,7 @@ func (p *Plugin) createVolume(pvname string, bkpname string, bkpZV *apis.ZFSVolu
 			return vol, errors.Errorf("zfs: pv %s is already restored bkpname %s", pvname, bkpname)
 		}
 
-		p.Log.Debugf("zfs: got existing volume %s for restore vol %s snap %s",  vol.Name, pvname, bkpname)
+		p.Log.Debugf("zfs: got existing volume %s for restore vol %s snap %s", vol.Name, pvname, bkpname)
 	}
 
 	if vol == nil {
@@ -92,8 +93,8 @@ func (p *Plugin) createVolume(pvname string, bkpname string, bkpZV *apis.ZFSVolu
 		rZV.Status.State = zfs.ZFSStatusPending
 
 		// add original volume and schedule name in the label
-		rZV.Labels = map[string]string{VeleroVolKey : pvname, VeleroNsKey : ns}
-		rZV.Annotations = map[string]string{VeleroBkpKey : bkpname}
+		rZV.Labels = map[string]string{VeleroVolKey: pvname, VeleroNsKey: ns}
+		rZV.Annotations = map[string]string{VeleroBkpKey: bkpname}
 
 		vol, err = volbuilder.NewKubeclient().WithNamespace(p.namespace).Create(rZV)
 		if err != nil {
@@ -137,9 +138,9 @@ func (p *Plugin) restoreZFSVolume(pvname, bkpname string) (*apis.ZFSVolume, erro
 }
 
 func (p *Plugin) isVolumeReady(volumeID string) (ready bool, err error) {
-        getOptions := metav1.GetOptions{}
-        vol, err := volbuilder.NewKubeclient().
-                WithNamespace(p.namespace).Get(volumeID, getOptions)
+	getOptions := metav1.GetOptions{}
+	vol, err := volbuilder.NewKubeclient().
+		WithNamespace(p.namespace).Get(volumeID, getOptions)
 
 	if err != nil {
 		return false, err
@@ -151,8 +152,8 @@ func (p *Plugin) isVolumeReady(volumeID string) (ready bool, err error) {
 func (p *Plugin) checkRestoreStatus(snapname string) {
 	for {
 		getOptions := metav1.GetOptions{}
-	        rstr, err := restorebuilder.NewKubeclient().
-		        WithNamespace(p.namespace).Get(snapname, getOptions)
+		rstr, err := restorebuilder.NewKubeclient().
+			WithNamespace(p.namespace).Get(snapname, getOptions)
 
 		if err != nil {
 			p.Log.Errorf("zfs: Failed to fetch restore {%s}", snapname)
@@ -195,8 +196,8 @@ func (p *Plugin) checkVolCreation(volname string) error {
 }
 
 func (p *Plugin) cleanupRestore(oldvol, newvol, rname string) error {
-        rstr, err := restorebuilder.NewKubeclient().
-	        WithNamespace(p.namespace).Get(rname, metav1.GetOptions{})
+	rstr, err := restorebuilder.NewKubeclient().
+		WithNamespace(p.namespace).Get(rname, metav1.GetOptions{})
 
 	if err != nil {
 		p.Log.Errorf("zfs: get restore failed vol %s => %s snap %s err: %v", oldvol, newvol, rname, err)
@@ -217,7 +218,7 @@ func (p *Plugin) cleanupRestore(oldvol, newvol, rname string) error {
 			p.Log.Errorf("zfs: delete vol failed vol %s => %s snap %s err: %v", oldvol, newvol, rname, err)
 		}
 
-		p.Log.Errorf("zfs: restoreVolume status failed vol %s => %s snap %s",  oldvol, newvol, rname)
+		p.Log.Errorf("zfs: restoreVolume status failed vol %s => %s snap %s", oldvol, newvol, rname)
 		return errors.Errorf("zfs: Failed to restore snapshoti %s, status:{%v}", rname, rstr.Status)
 	}
 

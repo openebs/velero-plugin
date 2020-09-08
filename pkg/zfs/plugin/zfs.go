@@ -17,14 +17,14 @@ limitations under the License.
 package plugin
 
 import (
+	cloud "github.com/openebs/velero-plugin/pkg/clouduploader"
+	"github.com/openebs/velero-plugin/pkg/velero"
+	"github.com/openebs/velero-plugin/pkg/zfs/utils"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	"github.com/openebs/velero-plugin/pkg/zfs/utils"
-	"github.com/openebs/velero-plugin/pkg/velero"
-	cloud "github.com/openebs/velero-plugin/pkg/clouduploader"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 )
@@ -39,13 +39,13 @@ const (
 	// zfs csi driver name
 	ZfsDriverName = "zfs.csi.openebs.io"
 
-	backupStatusInterval  = 5
+	backupStatusInterval = 5
 )
 
 // Plugin is a plugin for containing state for the blockstore
 type Plugin struct {
 	config map[string]string
-	Log logrus.FieldLogger
+	Log    logrus.FieldLogger
 
 	// K8sClient is used for kubernetes operation
 	K8sClient *kubernetes.Clientset
@@ -72,7 +72,7 @@ func (p *Plugin) Init(config map[string]string) error {
 	p.Log.Debugf("zfs: Init called %v", config)
 	p.config = config
 
-	p.remoteAddr, _  = utils.GetServerAddress()
+	p.remoteAddr, _ = utils.GetServerAddress()
 	if p.remoteAddr == "" {
 		return errors.New("zfs: error fetching Server address")
 	}

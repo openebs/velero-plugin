@@ -3,11 +3,16 @@ module github.com/openebs/velero-plugin
 go 1.13
 
 require (
+	cloud.google.com/go v0.58.0 // indirect
+	cloud.google.com/go/storage v1.9.0 // indirect
+	github.com/Azure/azure-pipeline-go v0.2.2 // indirect
+	github.com/Azure/azure-storage-blob-go v0.8.0 // indirect
 	github.com/aws/aws-sdk-go v1.31.13
 	github.com/ghodss/yaml v1.0.0
 	github.com/gofrs/uuid v3.2.0+incompatible
-	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
+	github.com/google/wire v0.4.0 // indirect
 	github.com/hashicorp/go-plugin v1.0.1-0.20190610192547-a1bc61569a26 // indirect
+	github.com/mattn/go-ieproxy v0.0.1 // indirect
 	github.com/onsi/ginkgo v1.10.3
 	github.com/onsi/gomega v1.7.1
 	github.com/openebs/api v1.11.1-0.20200629052954-e52e2bcd8339
@@ -17,12 +22,14 @@ require (
 	github.com/prometheus/client_golang v1.5.1 // indirect
 	github.com/sirupsen/logrus v1.5.0
 	github.com/spf13/cobra v1.0.0 // indirect
+	github.com/stretchr/objx v0.2.0 // indirect
 	github.com/vmware-tanzu/velero v1.3.2
-	gocloud.dev v0.20.0
+	gocloud.dev v0.15.0
 	golang.org/x/crypto v0.0.0-20200220183623-bac4c82f6975 // indirect
-	golang.org/x/exp v0.0.0-20200224162631-6cc2880d07d6 // indirect
+	golang.org/x/net v0.0.0-20200602114024-627f9648deb9 // indirect
+	golang.org/x/sys v0.0.0-20200602225109-6fdc65e7d980 // indirect
+	golang.org/x/tools v0.0.0-20200608174601-1b747fd94509 // indirect
 	google.golang.org/api v0.26.0
-	google.golang.org/appengine v1.6.6 // indirect
 	k8s.io/api v0.17.4
 	k8s.io/apimachinery v0.17.4
 	k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible

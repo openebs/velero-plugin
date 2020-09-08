@@ -17,26 +17,26 @@ limitations under the License.
 package plugin
 
 import (
-	"time"
-	"sort"
 	"encoding/json"
+	"sort"
 	"strconv"
+	"time"
+
+	"github.com/openebs/velero-plugin/pkg/zfs/utils"
+	apis "github.com/openebs/zfs-localpv/pkg/apis/openebs.io/zfs/v1"
+	"github.com/openebs/zfs-localpv/pkg/builder/bkpbuilder"
+	"github.com/openebs/zfs-localpv/pkg/builder/volbuilder"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
-	"github.com/openebs/velero-plugin/pkg/zfs/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"github.com/openebs/zfs-localpv/pkg/builder/volbuilder"
-	"github.com/openebs/zfs-localpv/pkg/builder/bkpbuilder"
-	apis "github.com/openebs/zfs-localpv/pkg/apis/openebs.io/zfs/v1"
 )
 
 const (
-	VeleroBkpKey = "velero.io/backup"
+	VeleroBkpKey  = "velero.io/backup"
 	VeleroSchdKey = "velero.io/schedule-name"
-	VeleroVolKey = "velero.io/volname"
-	VeleroNsKey = "velero.io/namespace"
+	VeleroVolKey  = "velero.io/volname"
+	VeleroNsKey   = "velero.io/namespace"
 )
-
 
 func (p *Plugin) getPV(volumeID string) (*v1.PersistentVolume, error) {
 	return p.K8sClient.
@@ -87,7 +87,7 @@ func (p *Plugin) getPrevSnap(volname, schdname string) (string, error) {
 	 * to get the last snapshot, sort the list of successful backups,
 	 * the previous snapshot will be the last element in the sorted list
 	 */
-	if len (bkpList.Items) > 0 {
+	if len(bkpList.Items) > 0 {
 		for _, bkp := range bkpList.Items {
 			if bkp.Status == apis.BKPZFSStatusDone {
 				backups = append(backups, bkp.Spec.SnapName)
@@ -95,7 +95,7 @@ func (p *Plugin) getPrevSnap(volname, schdname string) (string, error) {
 		}
 		size := len(backups)
 		sort.Strings(backups)
-		return backups[size - 1], nil
+		return backups[size-1], nil
 	}
 
 	return "", nil
@@ -150,8 +150,8 @@ func (p *Plugin) checkBackupStatus(bkpname string) {
 
 	for !bkpDone {
 		getOptions := metav1.GetOptions{}
-	        bkp, err := bkpbuilder.NewKubeclient().
-		        WithNamespace(p.namespace).Get(bkpname, getOptions)
+		bkp, err := bkpbuilder.NewKubeclient().
+			WithNamespace(p.namespace).Get(bkpname, getOptions)
 
 		if err != nil {
 			p.Log.Errorf("zfs: Failed to fetch backup info {%s}", bkpname)
@@ -182,9 +182,9 @@ func (p *Plugin) doBackup(volumeID string, snapname string, schdname string) (st
 
 	volHandle := pv.Spec.PersistentVolumeSource.CSI.VolumeHandle
 
-        getOptions := metav1.GetOptions{}
-        vol, err := volbuilder.NewKubeclient().
-                WithNamespace(p.namespace).Get(volHandle, getOptions)
+	getOptions := metav1.GetOptions{}
+	vol, err := volbuilder.NewKubeclient().
+		WithNamespace(p.namespace).Get(volHandle, getOptions)
 	if err != nil {
 		return "", err
 	}
@@ -232,8 +232,8 @@ func (p *Plugin) doBackup(volumeID string, snapname string, schdname string) (st
 		return "", errors.New("zfs: error in uploading snapshot")
 	}
 
-        bkp, err := bkpbuilder.NewKubeclient().
-	        WithNamespace(p.namespace).Get(bkpname, metav1.GetOptions{})
+	bkp, err := bkpbuilder.NewKubeclient().
+		WithNamespace(p.namespace).Get(bkpname, metav1.GetOptions{})
 
 	if err != nil {
 		p.deleteBackup(bkpname)

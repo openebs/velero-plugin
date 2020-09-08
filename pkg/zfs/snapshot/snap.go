@@ -17,8 +17,8 @@ limitations under the License.
 package snapshot
 
 import (
-	"github.com/sirupsen/logrus"
 	zfs "github.com/openebs/velero-plugin/pkg/zfs/plugin"
+	"github.com/sirupsen/logrus"
 	"github.com/vmware-tanzu/velero/pkg/plugin/velero"
 	"k8s.io/apimachinery/pkg/runtime"
 )
