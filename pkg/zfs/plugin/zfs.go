@@ -42,10 +42,10 @@ const (
 	backupStatusInterval = 5
 
 	// port to connect for restoring the data
-	ZFSRestorePort = 9100
+	ZFSRestorePort = 9010
 
 	// port to connect for backup
-	ZFSBackupPort = 9101
+	ZFSBackupPort = 9011
 )
 
 // Plugin is a plugin for containing state for the blockstore
