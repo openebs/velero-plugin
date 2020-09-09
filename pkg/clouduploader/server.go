@@ -109,9 +109,6 @@ const (
 	// MaxClient defines max number of connection a server can accept
 	MaxClient = 10
 
-	// RecieverPort defines port number on which server should listen for new connection
-	RecieverPort = 9000
-
 	// ReadBufferLen defines max number of bytes should be read from wire
 	ReadBufferLen = 32 * 1024
 
