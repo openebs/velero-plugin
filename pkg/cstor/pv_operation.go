@@ -73,7 +73,7 @@ func (p *Plugin) restoreVolumeFromCloud(vol *Volume) error {
 
 	go p.checkRestoreStatus(restore, vol)
 
-	ret := p.cl.Download(filename)
+	ret := p.cl.Download(filename, CstorRestorePort)
 	if !ret {
 		return errors.New("failed to restore snapshot")
 	}

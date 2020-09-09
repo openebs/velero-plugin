@@ -101,7 +101,7 @@ func (p *Plugin) getPrevSnap(volname, schdname string) (string, error) {
 	return "", nil
 }
 
-func (p *Plugin) createBackup(vol *apis.ZFSVolume, schdname, snapname string) (string, error) {
+func (p *Plugin) createBackup(vol *apis.ZFSVolume, schdname, snapname string, port int) (string, error) {
 	bkpname := utils.GenerateSnapshotID(vol.Name, snapname)
 
 	p.Log.Debugf("zfs: creating ZFSBackup vol = %s bkp = %s schd = %s", vol.Name, bkpname, schdname)
@@ -123,6 +123,8 @@ func (p *Plugin) createBackup(vol *apis.ZFSVolume, schdname, snapname string) (s
 		}
 	}
 
+	serverAddr := p.remoteAddr + ":" + strconv.Itoa(port)
+
 	bkp, err := bkpbuilder.NewBuilder().
 		WithName(bkpname).
 		WithLabels(labels).
@@ -131,7 +133,7 @@ func (p *Plugin) createBackup(vol *apis.ZFSVolume, schdname, snapname string) (s
 		WithSnap(snapname).
 		WithNode(vol.Spec.OwnerNodeID).
 		WithStatus(apis.BKPZFSStatusInit).
-		WithRemote(p.remoteAddr).
+		WithRemote(serverAddr).
 		Build()
 
 	if err != nil {
@@ -218,7 +220,7 @@ func (p *Plugin) doBackup(volumeID string, snapname string, schdname string) (st
 	}
 
 	// TODO(pawan) should wait for upload server to be up
-	bkpname, err := p.createBackup(vol, schdname, snapname)
+	bkpname, err := p.createBackup(vol, schdname, snapname, ZFSBackupPort)
 	if err != nil {
 		return "", err
 	}
@@ -226,7 +228,7 @@ func (p *Plugin) doBackup(volumeID string, snapname string, schdname string) (st
 	go p.checkBackupStatus(bkpname)
 
 	p.Log.Debugf("zfs: uploading Snapshot %s file %s", snapname, filename)
-	ok := p.cl.Upload(filename, size)
+	ok := p.cl.Upload(filename, size, ZFSBackupPort)
 	if !ok {
 		p.deleteBackup(bkpname)
 		return "", errors.New("zfs: error in uploading snapshot")

@@ -109,9 +109,6 @@ const (
 	// MaxClient defines max number of connection a server can accept
 	MaxClient = 10
 
-	// RecieverPort defines port number on which server should listen for new connection
-	RecieverPort = 9000
-
 	// ReadBufferLen defines max number of bytes should be read from wire
 	ReadBufferLen = 32 * 1024
 
@@ -244,7 +241,7 @@ func (s *Server) handleWrite(event syscall.EpollEvent) error {
 }
 
 // Run will start TCP server
-func (s *Server) Run(opType ServerOperation) error {
+func (s *Server) Run(opType ServerOperation, port int) error {
 	var event syscall.EpollEvent
 	var events [MaxEpollEvents]syscall.EpollEvent
 
@@ -264,11 +261,11 @@ func (s *Server) Run(opType ServerOperation) error {
 		return err
 	}
 
-	addr := syscall.SockaddrInet4{Port: RecieverPort}
+	addr := syscall.SockaddrInet4{Port: port}
 	copy(addr.Addr[:], net.ParseIP("0.0.0.0").To4())
 
 	if err = syscall.Bind(fd, &addr); err != nil {
-		s.Log.Errorf("Failed to bind server to port {%v} : %s", RecieverPort, err.Error())
+		s.Log.Errorf("Failed to bind server to port {%v} : %s", port, err.Error())
 		return err
 	}
 

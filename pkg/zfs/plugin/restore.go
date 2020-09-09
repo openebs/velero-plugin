@@ -18,6 +18,7 @@ package plugin
 
 import (
 	"encoding/json"
+	"strconv"
 	"time"
 
 	"github.com/openebs/velero-plugin/pkg/velero"
@@ -227,7 +228,7 @@ func (p *Plugin) cleanupRestore(oldvol, newvol, rname string) error {
 
 // restoreVolume returns restored vol name and a boolean value indication if we need
 // to restore the volume. If Volume is already restored, we don't need to restore it.
-func (p *Plugin) restoreVolume(rname, volname, bkpname string) (string, error) {
+func (p *Plugin) restoreVolume(rname, volname, bkpname string, port int) (string, error) {
 	zv, err := p.restoreZFSVolume(volname, bkpname)
 	if err != nil {
 		p.Log.Errorf("zfs: restore ZFSVolume failed vol %s bkp %s err %v", volname, bkpname, err)
@@ -235,13 +236,14 @@ func (p *Plugin) restoreVolume(rname, volname, bkpname string) (string, error) {
 	}
 
 	node := zv.Spec.OwnerNodeID
+	serverAddr := p.remoteAddr + ":" + strconv.Itoa(port)
 
 	rstr, err := restorebuilder.NewBuilder().
 		WithName(rname).
 		WithVolume(zv.Name).
 		WithNode(node).
 		WithStatus(apis.RSTZFSStatusInit).
-		WithRemote(p.remoteAddr).
+		WithRemote(serverAddr).
 		Build()
 
 	if err != nil {
@@ -263,7 +265,7 @@ func (p *Plugin) doRestore(snapshotID string) (string, error) {
 		return "", errors.Errorf("zfs: Error creating remote file name for restore")
 	}
 
-	newvol, err := p.restoreVolume(snapshotID, volname, bkpname)
+	newvol, err := p.restoreVolume(snapshotID, volname, bkpname, ZFSRestorePort)
 	if err != nil {
 		p.Log.Errorf("zfs: restoreVolume failed vol %s snap %s err: %v", volname, bkpname, err)
 		return "", err
@@ -271,7 +273,7 @@ func (p *Plugin) doRestore(snapshotID string) (string, error) {
 
 	go p.checkRestoreStatus(snapshotID)
 
-	ret := p.cl.Download(filename)
+	ret := p.cl.Download(filename, ZFSRestorePort)
 	if !ret {
 		p.cleanupRestore(volname, newvol, snapshotID)
 		return "", errors.New("zfs: failed to restore snapshot")
