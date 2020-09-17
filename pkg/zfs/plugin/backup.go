@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"sort"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/openebs/velero-plugin/pkg/zfs/utils"
@@ -144,34 +145,44 @@ func (p *Plugin) createBackup(vol *apis.ZFSVolume, schdname, snapname string, po
 		return "", err
 	}
 
-	return bkpname, err
+	return bkpname, nil
 }
 
-func (p *Plugin) checkBackupStatus(bkpname string) {
-	bkpDone := false
-
-	for !bkpDone {
+func (p *Plugin) checkBackupStatus(bkpname string) error {
+	for {
 		getOptions := metav1.GetOptions{}
 		bkp, err := bkpbuilder.NewKubeclient().
 			WithNamespace(p.namespace).Get(bkpname, getOptions)
 
 		if err != nil {
 			p.Log.Errorf("zfs: Failed to fetch backup info {%s}", bkpname)
-			p.cl.ExitServer = true
-			return
+			return errors.Errorf("zfs: error in getting bkp status err %v", err)
+		}
+
+		switch bkp.Status {
+		case apis.BKPZFSStatusDone:
+			return nil
+		case apis.BKPZFSStatusFailed, apis.BKPZFSStatusInvalid:
+			return errors.Errorf("zfs: error in uploading snapshot, status:{%v}", bkp.Status)
 		}
 
 		time.Sleep(backupStatusInterval * time.Second)
-
-		switch bkp.Status {
-		case apis.BKPZFSStatusDone, apis.BKPZFSStatusFailed, apis.BKPZFSStatusInvalid:
-			bkpDone = true
-			p.cl.ExitServer = true
-		}
 	}
 }
 
-func (p *Plugin) doBackup(volumeID string, snapname string, schdname string) (string, error) {
+func (p *Plugin) doUpload(wg *sync.WaitGroup, filename string, size int64, port int) {
+	defer wg.Done()
+
+	ok := p.cl.Upload(filename, size, port)
+	if !ok {
+		p.Log.Errorf("zfs: Failed to upload file %s", filename)
+		*p.cl.ConnReady <- false
+	}
+	// done with the channel, close it
+	close(*p.cl.ConnReady)
+}
+
+func (p *Plugin) doBackup(volumeID string, snapname string, schdname string, port int) (string, error) {
 	pv, err := p.getPV(volumeID)
 	if err != nil {
 		p.Log.Errorf("zfs: Failed to get pv %s snap %s schd %s err %v", volumeID, snapname, schdname, err)
@@ -201,9 +212,6 @@ func (p *Plugin) doBackup(volumeID string, snapname string, schdname string) (st
 		return "", errors.Errorf("zfs: err pv is not claimed")
 	}
 
-	// reset the exit server to false
-	p.cl.ExitServer = false
-
 	filename := p.cl.GenerateRemoteFilename(volumeID, snapname)
 	if filename == "" {
 		return "", errors.Errorf("zfs: error creating remote file name for backup")
@@ -219,33 +227,45 @@ func (p *Plugin) doBackup(volumeID string, snapname string, schdname string) (st
 		return "", errors.Errorf("zfs: error parsing the size %s", vol.Spec.Capacity)
 	}
 
-	// TODO(pawan) should wait for upload server to be up
-	bkpname, err := p.createBackup(vol, schdname, snapname, ZFSBackupPort)
-	if err != nil {
-		return "", err
-	}
-
-	go p.checkBackupStatus(bkpname)
-
 	p.Log.Debugf("zfs: uploading Snapshot %s file %s", snapname, filename)
-	ok := p.cl.Upload(filename, size, ZFSBackupPort)
+
+	// reset the connection state
+	p.cl.ConnStateInit()
+
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	go p.doUpload(&wg, filename, size, port)
+
+	// wait for the upload server to exit
+	defer func() {
+		p.cl.ExitServer = true
+		wg.Wait()
+		p.cl.ConnReady = nil
+	}()
+
+	// wait for the connection to be ready
+	ok := p.cl.ConnReadyWait()
 	if !ok {
-		p.deleteBackup(bkpname)
 		return "", errors.New("zfs: error in uploading snapshot")
 	}
 
-	bkp, err := bkpbuilder.NewKubeclient().
-		WithNamespace(p.namespace).Get(bkpname, metav1.GetOptions{})
-
+	bkpname, err := p.createBackup(vol, schdname, snapname, port)
 	if err != nil {
-		p.deleteBackup(bkpname)
 		return "", err
 	}
 
-	if bkp.Status != apis.BKPZFSStatusDone {
+	err = p.checkBackupStatus(bkpname)
+	if err != nil {
 		p.deleteBackup(bkpname)
-		return "", errors.Errorf("zfs: error in uploading snapshot, status:{%v}", bkp.Status)
+		p.Log.Errorf("zfs: backup failed vol %s snap %s bkpname %s err: %v", volumeID, snapname, bkpname, err)
+		return "", err
 	}
 
-	return bkpname, nil
+	// generate the snapID
+	snapID := utils.GenerateSnapshotID(volumeID, snapname)
+
+	p.Log.Debugf("zfs: backup done vol %s bkp %s snapID %s", volumeID, bkpname, snapID)
+
+	return snapID, nil
 }
