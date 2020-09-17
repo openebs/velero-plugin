@@ -18,6 +18,10 @@ package clouduploader
 
 import (
 	"context"
+	"crypto/tls"
+	base64 "encoding/base64"
+	"net/http"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -68,6 +72,12 @@ const (
 
 	// AWSSsl if ssl needs to be enabled
 	AWSSsl = "DisableSSL"
+
+	// AWSCaCert certificate key for AWS
+	AWSCaCert = "caCert"
+
+	// AWSInSecureSkipTLSVerify insecureSkipTLSVerify key for AWS
+	AWSInSecureSkipTLSVerify = "insecureSkipTLSVerify"
 
 	// MultiPartChunkSize is chunk size in case of multi-part upload of individual files
 	MultiPartChunkSize = "multiPartChunkSize"
@@ -179,9 +189,28 @@ func (c *Conn) setupAWS(ctx context.Context, bucketName string, config map[strin
 	// if partSize is 0 then it will be calculated from file size
 	c.partSize = pSize
 
+	// check if tls verification is disabled
+	if skipTLSVerify, ok := config[AWSInSecureSkipTLSVerify]; ok {
+		if skipTLSVerify == "true" {
+			defaultTransport := http.DefaultTransport.(*http.Transport)
+			defaultTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+			awsconfig = awsconfig.WithHTTPClient(&http.Client{Transport: defaultTransport})
+		}
+	}
+
 	opts := session.Options{
 		Config:  *awsconfig,
 		Profile: profile,
+	}
+
+	if caCert, ok := config[AWSCaCert]; ok {
+		if len(caCert) > 0 {
+			caCertData, err := base64.StdEncoding.DecodeString(caCert)
+			if err != nil {
+				return nil, errors.Wrap(err, "invalid caCert value")
+			}
+			opts.CustomCABundle = strings.NewReader(string(caCertData))
+		}
 	}
 
 	s := session.Must(session.NewSessionWithOptions(opts))
