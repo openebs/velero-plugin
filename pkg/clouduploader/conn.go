@@ -21,6 +21,7 @@ import (
 	"crypto/tls"
 	base64 "encoding/base64"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -37,9 +38,6 @@ import (
 )
 
 const (
-	// DefaultProfile default profile provider
-	DefaultProfile = "default"
-
 	// S3Profile profile for s3 base remote storage
 	S3Profile = "profile"
 
@@ -151,16 +149,22 @@ func (c *Conn) setupGCP(ctx context.Context, bucket string, config map[string]st
 
 // setupAWS creates a connection to AWS's blob storage
 func (c *Conn) setupAWS(ctx context.Context, bucketName string, config map[string]string) (*blob.Bucket, error) {
-	var profile string
+	var (
+		// if profile is empty then "default" profile will be used
+		profile                = config[S3Profile]
+		disablesslVal          = config[AWSSsl]
+		s3ForcePathStyleVal    = config[AWSForcePath]
+		skipTLSVerificationVal = config[AWSInSecureSkipTLSVerify]
+		err                    error
+
+		s3ForcePathStyle    bool
+		skipTLSVerification bool
+		disablessl          bool
+	)
 
 	region, ok := config[REGION]
 	if !ok {
 		return nil, errors.New("no region provided for AWS")
-	}
-
-	// get the s3 profile from config, if not mentioned, use profile `default`
-	if profile, ok = config[S3Profile]; !ok {
-		profile = DefaultProfile
 	}
 
 	awsconfig := aws.NewConfig().
@@ -170,16 +174,30 @@ func (c *Conn) setupAWS(ctx context.Context, bucketName string, config map[strin
 		awsconfig = awsconfig.WithEndpoint(url)
 	}
 
-	if pathstyle, ok := config[AWSForcePath]; ok {
-		if pathstyle == "true" {
-			awsconfig = awsconfig.WithS3ForcePathStyle(true)
+	if s3ForcePathStyleVal != "" {
+		if s3ForcePathStyle, err = strconv.ParseBool(s3ForcePathStyleVal); err != nil {
+			return nil, errors.Wrapf(err, "failed to parse %s (expected format bool)", AWSForcePath)
 		}
 	}
 
-	if disablessl, ok := config[AWSSsl]; ok {
-		if disablessl == "true" {
-			awsconfig = awsconfig.WithDisableSSL(true)
+	if disablesslVal != "" {
+		if disablessl, err = strconv.ParseBool(disablesslVal); err != nil {
+			return nil, errors.Wrapf(err, "failed to parse %s (expected format bool)", AWSSsl)
 		}
+	}
+
+	if skipTLSVerificationVal != "" {
+		if skipTLSVerification, err = strconv.ParseBool(skipTLSVerificationVal); err != nil {
+			return nil, errors.Wrapf(err, "failed to parse %s (expected format bool)", AWSInSecureSkipTLSVerify)
+		}
+	}
+
+	if disablessl {
+		awsconfig = awsconfig.WithDisableSSL(true)
+	}
+
+	if s3ForcePathStyle {
+		awsconfig = awsconfig.WithS3ForcePathStyle(true)
 	}
 
 	pSize, err := getPartSize(config)
@@ -190,12 +208,11 @@ func (c *Conn) setupAWS(ctx context.Context, bucketName string, config map[strin
 	c.partSize = pSize
 
 	// check if tls verification is disabled
-	if skipTLSVerify, ok := config[AWSInSecureSkipTLSVerify]; ok {
-		if skipTLSVerify == "true" {
-			defaultTransport := http.DefaultTransport.(*http.Transport)
-			defaultTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-			awsconfig = awsconfig.WithHTTPClient(&http.Client{Transport: defaultTransport})
-		}
+	if skipTLSVerification {
+		defaultTransport := http.DefaultTransport.(*http.Transport)
+		defaultTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} /* #nosec */
+
+		awsconfig = awsconfig.WithHTTPClient(&http.Client{Transport: defaultTransport})
 	}
 
 	opts := session.Options{
