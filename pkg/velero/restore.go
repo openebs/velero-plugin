@@ -23,6 +23,7 @@ import (
 	"github.com/sirupsen/logrus"
 	velerov1api "github.com/vmware-tanzu/velero/pkg/apis/velero/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 )
 
 // GetRestoreNamespace return the namespace mapping for the given namespace
@@ -56,4 +57,39 @@ func GetRestoreNamespace(ns, bkpName string, log logrus.FieldLogger) (string, er
 		}
 	}
 	return "", errors.Errorf("restore not found for backup %s", bkpName)
+}
+
+// GetTargetNode return the node mapping for the given node
+// if node mapping not found then it will return the same nodename in which backup was created
+// if node mapping found then it will return the mapping/target nodename
+func GetTargetNode(k8s *kubernetes.Clientset, node string) (string, error) {
+	opts := metav1.ListOptions{
+		LabelSelector: "velero.io/plugin-config,velero.io/change-pvc-node=RestoreItemAction",
+	}
+
+	list, err := k8s.CoreV1().ConfigMaps(veleroNs).List(opts)
+	if err != nil {
+		return "", errors.Wrapf(err, "failed to get list of node mapping configmap")
+	}
+
+	if len(list.Items) == 0 {
+		return node, nil
+	}
+
+	if len(list.Items) > 1 {
+		var items []string
+		for _, item := range list.Items {
+			items = append(items, item.Name)
+		}
+		return "", errors.Errorf("found more than one ConfigMap matching label selector %q: %v", opts.LabelSelector, items)
+	}
+
+	config := list.Items[0]
+
+	tnode, ok := config.Data[node]
+	if !ok {
+		return node, nil
+	}
+
+	return tnode, nil
 }

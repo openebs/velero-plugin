@@ -20,9 +20,12 @@ import (
 	cloud "github.com/openebs/velero-plugin/pkg/clouduploader"
 	"github.com/openebs/velero-plugin/pkg/velero"
 	"github.com/openebs/velero-plugin/pkg/zfs/utils"
+	"github.com/openebs/zfs-localpv/pkg/builder/volbuilder"
+	"github.com/openebs/zfs-localpv/pkg/zfs"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
@@ -222,6 +225,34 @@ func (p *Plugin) SetVolumeID(unstructuredPV runtime.Unstructured, volumeID strin
 	// Set the PV Name and VolumeHandle
 	pv.Name = volumeID
 	pv.Spec.PersistentVolumeSource.CSI.VolumeHandle = volumeID
+
+	// set the node affinity
+	if pv.Spec.NodeAffinity != nil && pv.Spec.NodeAffinity.Required != nil {
+		vol, err := volbuilder.NewKubeclient().
+			WithNamespace(p.namespace).Get(volumeID, metav1.GetOptions{})
+		if err != nil {
+			p.Log.Errorf("zfs: Failed to fetch volume {%s}", volumeID)
+			return nil, err
+		}
+
+		var expr []v1.NodeSelectorRequirement
+		expr = append(expr, v1.NodeSelectorRequirement{
+			Key:      zfs.ZFSTopologyKey,
+			Operator: v1.NodeSelectorOpIn,
+			Values:   []string{vol.Spec.OwnerNodeID},
+		})
+
+		var terms []v1.NodeSelectorTerm
+		terms = append(terms, v1.NodeSelectorTerm{
+			MatchExpressions: expr,
+		})
+
+		pv.Spec.NodeAffinity = &v1.VolumeNodeAffinity{
+			Required: &v1.NodeSelector{
+				NodeSelectorTerms: terms,
+			},
+		}
+	}
 
 	res, err := runtime.DefaultUnstructuredConverter.ToUnstructured(pv)
 	if err != nil {

@@ -91,6 +91,16 @@ func (p *Plugin) createVolume(pvname string, bkpname string, bkpZV *apis.ZFSVolu
 		// if restored volume was a clone, create a new volume instead of cloning it from a snaphsot
 		rZV.Spec.SnapName = ""
 
+		// get the target node
+		tnode, err := velero.GetTargetNode(p.K8sClient, rZV.Spec.OwnerNodeID)
+		if err != nil {
+			return nil, err
+		}
+
+		// update the target node name
+		p.Log.Debugf("zfs: GetTargetNode node %s=>%s", rZV.Spec.OwnerNodeID, tnode)
+		rZV.Spec.OwnerNodeID = tnode
+
 		// set the volume status as pending
 		rZV.Status.State = zfs.ZFSStatusPending
 
