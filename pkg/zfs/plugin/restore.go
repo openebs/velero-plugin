@@ -282,8 +282,8 @@ func (p *Plugin) doRestore(snapshotID string, port int) (string, error) {
 		return "", errors.Errorf("zfs: Error creating remote file name for restore")
 	}
 
-	// init the connection state
-	p.cl.ConnStateInit()
+	// reset the connection state
+	p.cl.ConnStateReset()
 
 	var wg sync.WaitGroup
 

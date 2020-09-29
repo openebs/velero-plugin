@@ -230,7 +230,7 @@ func (p *Plugin) doBackup(volumeID string, snapname string, schdname string, por
 	p.Log.Debugf("zfs: uploading Snapshot %s file %s", snapname, filename)
 
 	// reset the connection state
-	p.cl.ConnStateInit()
+	p.cl.ConnStateReset()
 
 	var wg sync.WaitGroup
 
