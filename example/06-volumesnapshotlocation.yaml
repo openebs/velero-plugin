@@ -91,6 +91,15 @@ spec:
 #     # For more information: https://docs.min.io/docs/minio-server-limits-per-tenant.html
 #     # If not set then it will be calculated from the file size
 #     multiPartChunkSize: 64Mi
+#
+#     # If MinIO is configured with custom certificate then certificate can be passed to plugin through caCert
+#     # Value of caCert must be base64 encoded
+#     # To encode, execute command: cat ca.crt |base64 -w 0
+#     caCert: LS0tLS1CRU...tRU5EIENFUlRJRklDQVRFLS0tLS0K
+#
+#     # If you want to disable certificate verification then set insecureSkipTLSVerify to "true"
+#     # By default insecureSkipTLSVerify is set to "false"
+#     insecureSkipTLSVerify: "false"
 
 #
 # # For AWS
@@ -98,7 +107,7 @@ spec:
 # apiVersion: velero.io/v1
 # kind: VolumeSnapshotLocation
 # metadata:
-#   name: aws-bucket
+#   name: aws
 #   namespace: velero
 # spec:
 #   provider: openebs.io/cstor-blockstore
@@ -120,3 +129,12 @@ spec:
 #     # For more information: https://docs.aws.amazon.com/AmazonS3/latest/dev/qfacts.html
 #     # If not set then it will be calculated from the file size
 #     multiPartChunkSize: 64Mi
+#
+#     # if s3 endpoint is configured with custom certificate then certificate can be passed to plugin through caCert.
+#     # Value of caCert must be base64 encoded
+#     # To encode, execute command: cat ca.crt |base64 -w 0
+#     caCert: LS0tLS1CRU...tRU5EIENFUlRJRklDQVRFLS0tLS0K
+#
+#     # If you want to disable certificate verification then set insecureSkipTLSVerify to "true"
+#     # By default insecureSkipTLSVerify is set to "false"
+#     insecureSkipTLSVerify: "false"
