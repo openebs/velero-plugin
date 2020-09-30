@@ -274,6 +274,11 @@ func (s *Server) Run(opType ServerOperation, port int) error {
 		return err
 	}
 
+	if s.cl.ConnReady != nil {
+		// Connection has started listening on the specified port
+		*s.cl.ConnReady <- true
+	}
+
 	epfd, err := syscall.EpollCreate1(0)
 	if err != nil {
 		s.Log.Errorf("Failed to create epoll: %s", err.Error())

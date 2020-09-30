@@ -104,6 +104,9 @@ type Conn struct {
 
 	// exitServer, if server connection needs to be stopped or not
 	ExitServer bool
+
+	// ConnReady describes the connection ready state
+	ConnReady *chan bool
 }
 
 // setupBucket creates a connection to a particular cloud provider's blob storage.

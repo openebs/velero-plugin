@@ -119,7 +119,7 @@ func (p *Plugin) Init(config map[string]string) error {
 func (p *Plugin) CreateVolumeFromSnapshot(snapshotID, volumeType, volumeAZ string, iops *int64) (string, error) {
 	p.Log.Debugf("zfs: CreateVolumeFromSnapshot called snap %s", snapshotID)
 
-	volumeID, err := p.doRestore(snapshotID)
+	volumeID, err := p.doRestore(snapshotID, ZFSRestorePort)
 
 	if err != nil {
 		p.Log.Errorf("zfs: error CreateVolumeFromSnapshot returning snap %s err %v", snapshotID, err)
@@ -156,7 +156,7 @@ func (p *Plugin) CreateSnapshot(volumeID, volumeAZ string, tags map[string]strin
 
 	schdname, _ := tags[VeleroSchdKey]
 
-	snapshotID, err := p.doBackup(volumeID, bkpname, schdname)
+	snapshotID, err := p.doBackup(volumeID, bkpname, schdname, ZFSBackupPort)
 
 	if err != nil {
 		p.Log.Errorf("zfs: error createBackup %s@%s failed %v", volumeID, bkpname, err)

@@ -133,3 +133,16 @@ func (c *Conn) GenerateRemoteFilename(file, backup string) string {
 	}
 	return c.backupPathPrefix + "/" + backupDir + "/" + backup + "/" + c.prefix + "-" + file + "-" + backup
 }
+
+// ConnStateReset resets the channel and exit server flag
+func (c *Conn) ConnStateReset() {
+	ch := make(chan bool, 1)
+	c.ConnReady = &ch
+	c.ExitServer = false
+}
+
+// ConnReadyWait will return when connection is ready to accept the connection
+func (c *Conn) ConnReadyWait() bool {
+	ok := <-*c.ConnReady
+	return ok
+}
