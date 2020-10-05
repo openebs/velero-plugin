@@ -16,11 +16,32 @@ limitations under the License.
 
 package clouduploader
 
-import "github.com/aws/aws-sdk-go/service/s3/s3manager"
+import (
+	"io"
+	"strings"
+
+	"github.com/pkg/errors"
+
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"gocloud.dev/blob"
+)
 
 const (
 	// backupDir is remote storage-bucket directory
 	backupDir = "backups"
+)
+
+const (
+	// Type of Key, used while listing keys
+
+	// KeyFile - if key is a file
+	KeyFile int = 1 << iota
+
+	// KeyDirectory - if key is a directory
+	KeyDirectory
+
+	// KeyBoth - if key is a file or directory
+	KeyBoth
 )
 
 // Upload will perform upload operation for given file.
@@ -145,4 +166,90 @@ func (c *Conn) ConnStateReset() {
 func (c *Conn) ConnReadyWait() bool {
 	ok := <-*c.ConnReady
 	return ok
+}
+
+// listKeys return list of Keys -- files/directories
+// Note:
+// - list may contain incomplete list of keys, check for error before using list
+// - listKeys uses '/' as delimiter.
+func (c *Conn) listKeys(prefix string, keyType int) ([]string, error) {
+	keys := []string{}
+
+	lister := c.bucket.List(&blob.ListOptions{
+		Delimiter: "/",
+		Prefix:    prefix,
+	})
+	for {
+		obj, err := lister.Next(c.ctx)
+		if err == io.EOF {
+			break
+		}
+
+		if err != nil {
+			c.Log.Errorf("Failed to get next blob err=%v", err)
+			return keys, err
+		}
+
+		switch keyType {
+		case KeyBoth:
+		case KeyFile:
+			if obj.IsDir {
+				continue
+			}
+		case KeyDirectory:
+			if !obj.IsDir {
+				continue
+			}
+		default:
+			c.Log.Warningf("Invalid keyType=%d, Ignored", keyType)
+		}
+
+		keys = append(keys, obj.Key)
+	}
+	return keys, nil
+}
+
+// bkpPathPrefix return 'prefix path' for the given 'backup name prefix'
+func (c *Conn) bkpPathPrefix(backupPrefix string) string {
+	if c.backupPathPrefix == "" {
+		return backupDir + "/" + backupPrefix
+	}
+	return c.backupPathPrefix + "/" + backupDir + "/" + backupPrefix
+}
+
+// filePathPrefix generate prefix for the given file name prefix using 'configured file prefix'
+func (c *Conn) filePathPrefix(filePrefix string) string {
+	return c.prefix + "-" + filePrefix
+}
+
+// GetSnapListFromCloud gets the list of a snapshot for the given backup name
+// the argument should be same as that of GenerateRemoteFilename(file, backup) call
+// used while doing the backup of the volume
+func (c *Conn) GetSnapListFromCloud(file, backup string) ([]string, error) {
+	var snapList []string
+
+	// list directory having schedule/backup name as prefix
+	dirs, err := c.listKeys(c.bkpPathPrefix(backup), KeyDirectory)
+	if err != nil {
+		return snapList, errors.Wrapf(err, "failed to get list of directory")
+	}
+
+	for _, dir := range dirs {
+		// list files for dir having volume name as prefix
+		files, err := c.listKeys(dir+c.filePathPrefix(file), KeyFile)
+		if err != nil {
+			return snapList, errors.Wrapf(err, "failed to get list of snapshot file at path=%v", dir)
+		}
+
+		if len(files) != 0 {
+			// snapshot exist in the backup directory
+
+			// add backup name from dir path to snapList
+			s := strings.Split(dir, "/")
+
+			// dir will contain path with trailing '/', example: 'backups/b-0/'
+			snapList = append(snapList, s[len(s)-2])
+		}
+	}
+	return snapList, nil
 }

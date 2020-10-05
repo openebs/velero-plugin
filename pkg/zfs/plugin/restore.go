@@ -18,6 +18,7 @@ package plugin
 
 import (
 	"encoding/json"
+	"sort"
 	"strconv"
 	"sync"
 	"time"
@@ -55,78 +56,57 @@ func (p *Plugin) createVolume(pvname string, bkpname string, bkpZV *apis.ZFSVolu
 		return nil, err
 	}
 
-	var vol *apis.ZFSVolume = nil
-
-	if len(volList.Items) > 1 {
-		return nil, errors.Errorf("zfs: error can not have more than one source volume %s bkpname %s", pvname, bkpname)
-	} else if len(volList.Items) == 1 {
-		vol = &volList.Items[0]
-		if !p.incremental ||
-			bkpname == vol.Annotations[VeleroBkpKey] {
-			// volume has already been restored
-			return vol, errors.Errorf("zfs: pv %s is already restored bkpname %s", pvname, bkpname)
-		}
-
-		p.Log.Debugf("zfs: got existing volume %s for restore vol %s snap %s", vol.Name, pvname, bkpname)
+	if len(volList.Items) > 0 {
+		return nil, errors.Errorf("zfs: err pv %s has already been restored bkpname %s", pvname, bkpname)
 	}
 
-	if vol == nil {
-		// this is first full restore, go ahead and create the volume
-		rZV := &apis.ZFSVolume{}
-		// hack(https://github.com/vmware-tanzu/velero/pull/2835): generate a new uuid only if PV exist
-		pv, err := p.getPV(pvname)
+	// this is first full restore, go ahead and create the volume
+	rZV := &apis.ZFSVolume{}
+	// hack(https://github.com/vmware-tanzu/velero/pull/2835): generate a new uuid only if PV exist
+	pv, err := p.getPV(pvname)
 
-		if err == nil && pv != nil {
-			rvol, err := utils.GetRestorePVName()
-			if err != nil {
-				return nil, errors.Errorf("zfs: failed to get restore vol name for %s", pvname)
-			}
-			rZV.Name = rvol
-		} else {
-			rZV.Name = pvname
-		}
-
-		rZV.Spec = bkpZV.Spec
-
-		// if restored volume was a clone, create a new volume instead of cloning it from a snaphsot
-		rZV.Spec.SnapName = ""
-
-		// get the target node
-		tnode, err := velero.GetTargetNode(p.K8sClient, rZV.Spec.OwnerNodeID)
+	if err == nil && pv != nil {
+		rvol, err := utils.GetRestorePVName()
 		if err != nil {
-			return nil, err
+			return nil, errors.Errorf("zfs: failed to get restore vol name for %s", pvname)
 		}
-
-		// update the target node name
-		p.Log.Debugf("zfs: GetTargetNode node %s=>%s", rZV.Spec.OwnerNodeID, tnode)
-		rZV.Spec.OwnerNodeID = tnode
-
-		// set the volume status as pending
-		rZV.Status.State = zfs.ZFSStatusPending
-
-		// add original volume and schedule name in the label
-		rZV.Labels = map[string]string{VeleroVolKey: pvname, VeleroNsKey: ns}
-		rZV.Annotations = map[string]string{VeleroBkpKey: bkpname}
-
-		vol, err = volbuilder.NewKubeclient().WithNamespace(p.namespace).Create(rZV)
-		if err != nil {
-			p.Log.Errorf("zfs: create ZFSVolume failed vol %v err: %v", rZV, err)
-			return nil, err
-		}
-
-		err = p.checkVolCreation(rZV.Name)
-		if err != nil {
-			p.Log.Errorf("zfs: checkVolCreation failed %s err: %v", rZV.Name, err)
-			return nil, err
-		}
+		rZV.Name = rvol
 	} else {
-		// this is incremental restore, update the ZFS volume
-		vol.Spec = bkpZV.Spec
-		vol, err := volbuilder.NewKubeclient().WithNamespace(p.namespace).Update(vol)
-		if err != nil {
-			p.Log.Errorf("zfs: update ZFSVolume failed vol %v err: %v", vol, err)
-			return nil, err
-		}
+		rZV.Name = pvname
+	}
+
+	rZV.Spec = bkpZV.Spec
+
+	// if restored volume was a clone, create a new volume instead of cloning it from a snaphsot
+	rZV.Spec.SnapName = ""
+
+	// get the target node
+	tnode, err := velero.GetTargetNode(p.K8sClient, rZV.Spec.OwnerNodeID)
+	if err != nil {
+		return nil, err
+	}
+
+	// update the target node name
+	p.Log.Debugf("zfs: GetTargetNode node %s=>%s", rZV.Spec.OwnerNodeID, tnode)
+	rZV.Spec.OwnerNodeID = tnode
+
+	// set the volume status as pending
+	rZV.Status.State = zfs.ZFSStatusPending
+
+	// add original volume and schedule name in the label
+	rZV.Labels = map[string]string{VeleroVolKey: pvname, VeleroNsKey: ns}
+	rZV.Annotations = map[string]string{VeleroBkpKey: bkpname}
+
+	vol, err := volbuilder.NewKubeclient().WithNamespace(p.namespace).Create(rZV)
+	if err != nil {
+		p.Log.Errorf("zfs: create ZFSVolume failed vol %v err: %v", rZV, err)
+		return nil, err
+	}
+
+	err = p.checkVolCreation(rZV.Name)
+	if err != nil {
+		p.Log.Errorf("zfs: checkVolCreation failed %s err: %v", rZV.Name, err)
+		return nil, err
 	}
 
 	return vol, nil
@@ -149,6 +129,14 @@ func (p *Plugin) restoreZFSVolume(pvname, bkpname string) (*apis.ZFSVolume, erro
 	return p.createVolume(pvname, bkpname, bkpZV)
 }
 
+func (p *Plugin) destroyZFSVolume(volname string) error {
+	err := volbuilder.NewKubeclient().WithNamespace(p.namespace).Delete(volname)
+	if err != nil {
+		p.Log.Errorf("zfs: delete vol failed vol %s err: %v", volname, err)
+	}
+	return err
+}
+
 func (p *Plugin) isVolumeReady(volumeID string) (ready bool, err error) {
 	getOptions := metav1.GetOptions{}
 	vol, err := volbuilder.NewKubeclient().
@@ -161,7 +149,7 @@ func (p *Plugin) isVolumeReady(volumeID string) (ready bool, err error) {
 	return vol.Status.State == zfs.ZFSStatusReady, nil
 }
 
-func (p *Plugin) checkRestoreStatus(rname, volname string) error {
+func (p *Plugin) checkRestoreStatus(rname string) error {
 	defer func() {
 		err := restorebuilder.NewKubeclient().WithNamespace(p.namespace).Delete(rname)
 		if err != nil {
@@ -184,13 +172,6 @@ func (p *Plugin) checkRestoreStatus(rname, volname string) error {
 		case apis.RSTZFSStatusDone:
 			return nil
 		case apis.RSTZFSStatusFailed, apis.RSTZFSStatusInvalid:
-			// delete the volume
-			err = volbuilder.NewKubeclient().WithNamespace(p.namespace).Delete(volname)
-			if err != nil {
-				// ignore error
-				p.Log.Errorf("zfs: delete vol failed vol %s restore %s err: %v", volname, rname, err)
-			}
-
 			return errors.Errorf("zfs: error in restoring %s, status:{%v}", rname, rstr.Status)
 		}
 
@@ -222,15 +203,8 @@ func (p *Plugin) checkVolCreation(volname string) error {
 	return nil
 }
 
-// restoreVolume returns restored vol name and a boolean value indication if we need
-// to restore the volume. If Volume is already restored, we don't need to restore it.
-func (p *Plugin) restoreVolume(volname, bkpname string, port int) (string, string, error) {
-	zv, err := p.restoreZFSVolume(volname, bkpname)
-	if err != nil {
-		p.Log.Errorf("zfs: restore ZFSVolume failed vol %s bkp %s err %v", volname, bkpname, err)
-		return "", "", err
-	}
-
+// startRestore creates the ZFSRestore CR to start downloading the data and returns ZFSRestore CR name
+func (p *Plugin) startRestore(zv *apis.ZFSVolume, bkpname string, port int) (string, error) {
 	node := zv.Spec.OwnerNodeID
 	serverAddr := p.remoteAddr + ":" + strconv.Itoa(port)
 	zfsvol := zv.Name
@@ -245,27 +219,15 @@ func (p *Plugin) restoreVolume(volname, bkpname string, port int) (string, strin
 		Build()
 
 	if err != nil {
-		// delete the volume
-		verr := volbuilder.NewKubeclient().WithNamespace(p.namespace).Delete(zfsvol)
-		if verr != nil {
-			// ignore error
-			p.Log.Errorf("zfs: delete vol failed vol %s rname %s err: %v", zfsvol, rname, verr)
-		}
-		return "", "", err
+		return "", err
 	}
 
 	_, err = restorebuilder.NewKubeclient().WithNamespace(p.namespace).Create(rstr)
 
 	if err != nil {
-		// delete the volume
-		verr := volbuilder.NewKubeclient().WithNamespace(p.namespace).Delete(zfsvol)
-		if verr != nil {
-			// ignore error
-			p.Log.Errorf("zfs: delete vol failed vol %s rname %s err: %v", zfsvol, rname, err)
-		}
-		return "", "", err
+		return "", err
 	}
-	return zfsvol, rname, nil
+	return rname, nil
 }
 
 func (p *Plugin) doDownload(wg *sync.WaitGroup, filename string, port int) {
@@ -280,16 +242,10 @@ func (p *Plugin) doDownload(wg *sync.WaitGroup, filename string, port int) {
 	close(*p.cl.ConnReady)
 }
 
-func (p *Plugin) doRestore(snapshotID string, port int) (string, error) {
-
-	volname, bkpname, err := utils.GetInfoFromSnapshotID(snapshotID)
-	if err != nil {
-		return "", err
-	}
-
-	filename := p.cl.GenerateRemoteFilename(volname, bkpname)
+func (p *Plugin) dataRestore(zv *apis.ZFSVolume, pvname, bkpname string, port int) error {
+	filename := p.cl.GenerateRemoteFilename(pvname, bkpname)
 	if filename == "" {
-		return "", errors.Errorf("zfs: Error creating remote file name for restore")
+		return errors.Errorf("zfs: Error creating remote file name for restore")
 	}
 
 	// reset the connection state
@@ -310,21 +266,95 @@ func (p *Plugin) doRestore(snapshotID string, port int) (string, error) {
 	// wait for the connection to be ready
 	ok := p.cl.ConnReadyWait()
 	if !ok {
-		return "", errors.Errorf("zfs: restore server is not ready")
+		return errors.Errorf("zfs: restore server is not ready")
 	}
 
-	newvol, rname, err := p.restoreVolume(volname, bkpname, port)
+	rname, err := p.startRestore(zv, bkpname, port)
 	if err != nil {
-		p.Log.Errorf("zfs: restoreVolume failed vol %s snap %s err: %v", volname, bkpname, err)
+		p.Log.Errorf("zfs: restoreVolume failed vol %s snap %s err: %v", pvname, bkpname, err)
+		return err
+	}
+
+	err = p.checkRestoreStatus(rname)
+	if err != nil {
+		p.Log.Errorf("zfs: restore failed vol %s snap %s err: %v", pvname, bkpname, err)
+		return err
+	}
+
+	p.Log.Debugf("zfs: restore done vol %s => %s bkp %s", pvname, zv.Name, bkpname)
+	return nil
+}
+
+func (p *Plugin) getSnapList(pvname, bkpname string) ([]string, error) {
+	var list []string
+
+	schdname := utils.GetScheduleName(bkpname)
+
+	snapList, err := p.cl.GetSnapListFromCloud(pvname, schdname)
+	if err != nil {
+		return list, err
+	}
+
+	sort.Strings(snapList)
+
+	var size uint64 = 0
+
+	// get the index of the backup
+	for idx, snap := range snapList {
+		if snap == bkpname {
+			size = uint64(idx) + 1
+			break
+		}
+	}
+
+	if size == 0 {
+		return list, errors.Errorf("zfs: error backup not found in snap list %s", bkpname)
+	}
+
+	// add the full backup count to get the closest full snapshot index for the backup
+	count := p.incremental + 1
+
+	// get the index of full backup
+	fullBkpIdx := (uint64(size-1) / count) * count
+	list = snapList[fullBkpIdx:size]
+
+	return list, nil
+}
+
+func (p *Plugin) doRestore(snapshotID string, port int) (string, error) {
+	pvname, bkpname, err := utils.GetInfoFromSnapshotID(snapshotID)
+	if err != nil {
 		return "", err
 	}
 
-	err = p.checkRestoreStatus(rname, newvol)
+	bkpList, err := p.getSnapList(pvname, bkpname)
 	if err != nil {
-		p.Log.Errorf("zfs: restore failed vol %s snap %s err: %v", volname, bkpname, err)
 		return "", err
 	}
 
-	p.Log.Debugf("zfs: restore done vol %s => %s snap %s", volname, newvol, snapshotID)
-	return newvol, nil
+	if len(bkpList) == 0 {
+		return "", errors.Errorf("zfs: error empty restore list %s", bkpname)
+	}
+
+	p.Log.Debugf("zfs: backup list for restore %v", bkpList)
+
+	zv, err := p.restoreZFSVolume(pvname, bkpname)
+	if err != nil {
+		p.Log.Errorf("zfs: restore ZFSVolume failed vol %s bkp %s err %v", pvname, bkpname, err)
+		return "", err
+	}
+
+	// attempt the incremental restore, will resote single backup if it is not a incremental backup
+	for _, bkp := range bkpList {
+		err = p.dataRestore(zv, pvname, bkp, port)
+
+		if err != nil {
+			// delete the volume
+			p.destroyZFSVolume(zv.Name)
+			p.Log.Errorf("zfs: error doRestore returning snap %s err %v", snapshotID, err)
+			return "", err
+		}
+	}
+
+	return zv.Name, nil
 }
