@@ -52,8 +52,11 @@ after_success:
 notifications:
   email:
     recipients:
+    - ashutosh.kumar@mayadata.io
     - kiran.mova@mayadata.io
     - mayank.patel@mayadata.io
+    - prateek.pandey@mayadata.io
+    - shubham.bajpai@mayadata.io
 
 branches:
   except:
