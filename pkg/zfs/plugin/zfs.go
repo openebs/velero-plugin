@@ -38,8 +38,8 @@ const (
 	// ZfsPvNamespace config key for OpenEBS namespace
 	ZfsPvNamespace = "namespace"
 
-	// ZfsPvBackup config key for backup type full or incremental
-	ZfsPvIncr = "incr"
+	// ZfsPvIncr config key for providing count of incremental backups
+	ZfsPvIncr = "incrBackupCount"
 
 	// zfs csi driver name
 	ZfsDriverName = "zfs.csi.openebs.io"
@@ -97,7 +97,7 @@ func (p *Plugin) Init(config map[string]string) error {
 	if count, ok := config[ZfsPvIncr]; ok {
 		incr, err := strconv.ParseUint(count, 10, 64)
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "zfs: invalid incrBackupCount value=%s", count)
 		}
 		p.incremental = incr
 	}
