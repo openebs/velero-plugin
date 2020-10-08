@@ -83,6 +83,14 @@ func (p *Plugin) getPrevSnap(volname, schdname string) (string, error) {
 
 	var backups []string
 
+	size := len(bkpList.Items)
+	count := p.incremental + 1
+
+	if uint64(size)%count == 0 {
+		// have to start the next snapshot incremental group, take the full backup
+		return "", nil
+	}
+
 	/*
 	 * Backup names are in the form of <schdeule>-<yyyymmddhhmmss>
 	 * to get the last snapshot, sort the list of successful backups,
@@ -115,14 +123,14 @@ func (p *Plugin) createBackup(vol *apis.ZFSVolume, schdname, snapname string, po
 		// add schdeule name as label
 		labels[VeleroSchdKey] = schdname
 		labels[VeleroVolKey] = vol.Name
-		if p.incremental {
-			prevSnap, err = p.getPrevSnap(vol.Name, schdname)
-			if err != nil {
-				p.Log.Errorf("zfs: Failed to get prev snapshot bkp %s err: {%v}", snapname, err)
-				return "", err
-			}
+		prevSnap, err = p.getPrevSnap(vol.Name, schdname)
+		if err != nil {
+			p.Log.Errorf("zfs: Failed to get prev snapshot bkp %s err: {%v}", snapname, err)
+			return "", err
 		}
 	}
+
+	p.Log.Debugf("zfs: backup incr(%d) schd=%s snap=%s prevsnap=%s vol=%s", p.incremental, schdname, snapname, prevSnap, vol.Name)
 
 	serverAddr := p.remoteAddr + ":" + strconv.Itoa(port)
 
