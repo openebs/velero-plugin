@@ -17,6 +17,8 @@ limitations under the License.
 package plugin
 
 import (
+	"strconv"
+
 	cloud "github.com/openebs/velero-plugin/pkg/clouduploader"
 	"github.com/openebs/velero-plugin/pkg/velero"
 	"github.com/openebs/velero-plugin/pkg/zfs/utils"
@@ -36,8 +38,8 @@ const (
 	// ZfsPvNamespace config key for OpenEBS namespace
 	ZfsPvNamespace = "namespace"
 
-	// ZfsPvBackup config key for backup type full or incremental
-	ZfsPvBackup = "backup"
+	// ZfsPvIncr config key for providing count of incremental backups
+	ZfsPvIncr = "incrBackupCount"
 
 	// zfs csi driver name
 	ZfsDriverName = "zfs.csi.openebs.io"
@@ -67,8 +69,8 @@ type Plugin struct {
 	// as env OPENEBS_NAMESPACE while deploying it.
 	namespace string
 
-	// This specify whether we have to take incremental backup or full backup
-	incremental bool
+	// This specifies how many incremental backup we have to keep
+	incremental uint64
 
 	// cl stores cloud connection information
 	cl *cloud.Conn
@@ -92,8 +94,12 @@ func (p *Plugin) Init(config map[string]string) error {
 		return errors.New("zfs: namespace not provided for ZFS-LocalPV")
 	}
 
-	if bkptype, ok := config[ZfsPvBackup]; ok && bkptype == "incremental" {
-		p.incremental = true
+	if count, ok := config[ZfsPvIncr]; ok {
+		incr, err := strconv.ParseUint(count, 10, 64)
+		if err != nil {
+			return errors.Wrapf(err, "zfs: invalid incrBackupCount value=%s", count)
+		}
+		p.incremental = incr
 	}
 
 	conf, err := rest.InClusterConfig()
@@ -123,7 +129,6 @@ func (p *Plugin) CreateVolumeFromSnapshot(snapshotID, volumeType, volumeAZ strin
 	p.Log.Debugf("zfs: CreateVolumeFromSnapshot called snap %s", snapshotID)
 
 	volumeID, err := p.doRestore(snapshotID, ZFSRestorePort)
-
 	if err != nil {
 		p.Log.Errorf("zfs: error CreateVolumeFromSnapshot returning snap %s err %v", snapshotID, err)
 		return "", err

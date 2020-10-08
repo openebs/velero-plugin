@@ -84,7 +84,7 @@ func GetRestorePVName() (string, error) {
 // It will check if backup name have 'bkp-20060102150405' format
 func GetScheduleName(backupName string) string {
 	// for non-scheduled backup, we are considering backup name as schedule name only
-	schdName := ""
+	schdName := backupName
 
 	// If it is scheduled backup then we need to get the schedule name
 	splitName := strings.Split(backupName, "-")
@@ -92,7 +92,7 @@ func GetScheduleName(backupName string) string {
 		_, err := time.Parse("20060102150405", splitName[len(splitName)-1])
 		if err != nil {
 			// last substring is not timestamp, so it is not generated from schedule
-			return ""
+			return schdName
 		}
 		schdName = strings.Join(splitName[0:len(splitName)-1], "-")
 	}
