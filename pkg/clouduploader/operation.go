@@ -155,6 +155,24 @@ func (c *Conn) GenerateRemoteFilename(file, backup string) string {
 	return c.backupPathPrefix + "/" + backupDir + "/" + backup + "/" + c.prefix + "-" + file + "-" + backup
 }
 
+// GenerateRemoteFileWithSchd will create a file-name specific for given backup and schedule name
+func (c *Conn) GenerateRemoteFileWithSchd(file, schdname, backup string) string {
+	filePath := backupDir + "/" + backup + "/" + c.prefix
+	if len(schdname) > 0 {
+		filePath += "-" + schdname
+	}
+
+	if c.backupPathPrefix == "" {
+		return filePath + "-" + file + "-" + backup
+	}
+
+	return c.backupPathPrefix + "/" + filePath + "-" + file + "-" + backup
+}
+
+func (c *Conn) GetFileNameWithSchd(file, schdname string) string {
+	return schdname + "-" + file
+}
+
 // ConnStateReset resets the channel and exit server flag
 func (c *Conn) ConnStateReset() {
 	ch := make(chan bool, 1)
