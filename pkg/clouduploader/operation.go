@@ -35,13 +35,13 @@ const (
 	// Type of Key, used while listing keys
 
 	// KeyFile - if key is a file
-	KeyFile int = 1 << iota
+	ListKeyFile int = 1 << iota
 
 	// KeyDirectory - if key is a directory
-	KeyDirectory
+	ListKeyDir
 
 	// KeyBoth - if key is a file or directory
-	KeyBoth
+	ListKeyBoth
 )
 
 // Upload will perform upload operation for given file.
@@ -191,17 +191,18 @@ func (c *Conn) listKeys(prefix string, keyType int) ([]string, error) {
 		}
 
 		switch keyType {
-		case KeyBoth:
-		case KeyFile:
+		case ListKeyBoth:
+		case ListKeyFile:
 			if obj.IsDir {
 				continue
 			}
-		case KeyDirectory:
+		case ListKeyDir:
 			if !obj.IsDir {
 				continue
 			}
 		default:
 			c.Log.Warningf("Invalid keyType=%d, Ignored", keyType)
+			continue
 		}
 
 		keys = append(keys, obj.Key)
@@ -229,14 +230,14 @@ func (c *Conn) GetSnapListFromCloud(file, backup string) ([]string, error) {
 	var snapList []string
 
 	// list directory having schedule/backup name as prefix
-	dirs, err := c.listKeys(c.bkpPathPrefix(backup), KeyDirectory)
+	dirs, err := c.listKeys(c.bkpPathPrefix(backup), ListKeyDir)
 	if err != nil {
 		return snapList, errors.Wrapf(err, "failed to get list of directory")
 	}
 
 	for _, dir := range dirs {
 		// list files for dir having volume name as prefix
-		files, err := c.listKeys(dir+c.filePathPrefix(file), KeyFile)
+		files, err := c.listKeys(dir+c.filePathPrefix(file), ListKeyFile)
 		if err != nil {
 			return snapList, errors.Wrapf(err, "failed to get list of snapshot file at path=%v", dir)
 		}
