@@ -56,7 +56,7 @@ func GenerateSnapshotID(volumeID, schdname, backupName string) string {
 	return volumeID + IdentifierKey + schdname + IdentifierKey + backupName
 }
 
-// GetInfoFromSnapshotID return backup name and volume id from the given snapshotID
+// GetInfoFromSnapshotID return backup, schdname and volume id from the given snapshotID
 func GetInfoFromSnapshotID(snapshotID string) (volumeID, schdname, backupName string, err error) {
 	s := strings.Split(snapshotID, IdentifierKey)
 
