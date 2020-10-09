@@ -19,7 +19,6 @@ package utils
 import (
 	"net"
 	"strings"
-	"time"
 
 	"github.com/gofrs/uuid"
 	"github.com/pkg/errors"
@@ -49,20 +48,31 @@ func GetServerAddress() (string, error) {
 	return "", errors.New("error: fetching the interface")
 }
 
-func GenerateSnapshotID(volumeID, backupName string) string {
+func GenerateResourceName(volumeID, backupName string) string {
 	return volumeID + IdentifierKey + backupName
 }
 
-// GetInfoFromSnapshotID return backup name and volume id from the given snapshotID
-func GetInfoFromSnapshotID(snapshotID string) (volumeID, backupName string, err error) {
+func GenerateSnapshotID(volumeID, schdname, backupName string) string {
+	return volumeID + IdentifierKey + schdname + IdentifierKey + backupName
+}
+
+// GetInfoFromSnapshotID return backup, schdname and volume id from the given snapshotID
+func GetInfoFromSnapshotID(snapshotID string) (volumeID, schdname, backupName string, err error) {
 	s := strings.Split(snapshotID, IdentifierKey)
-	if len(s) != 2 {
+
+	if len(s) == 2 {
+		// backward compatibility, old backups
+		volumeID = s[0]
+		backupName = s[1]
+		schdname = ""
+	} else if len(s) == 3 {
+		volumeID = s[0]
+		schdname = s[1]
+		backupName = s[2]
+	} else {
 		err = errors.New("invalid snapshot id")
 		return
 	}
-
-	volumeID = s[0]
-	backupName = s[1]
 
 	if volumeID == "" || backupName == "" {
 		err = errors.Errorf("invalid volumeID=%s backupName=%s", volumeID, backupName)
@@ -78,23 +88,4 @@ func GetRestorePVName() (string, error) {
 	}
 
 	return RestorePrefix + nuuid.String(), nil
-}
-
-// GetScheduleName return the schedule name for the given backup
-// It will check if backup name have 'bkp-20060102150405' format
-func GetScheduleName(backupName string) string {
-	// for non-scheduled backup, we are considering backup name as schedule name only
-	schdName := backupName
-
-	// If it is scheduled backup then we need to get the schedule name
-	splitName := strings.Split(backupName, "-")
-	if len(splitName) >= 2 {
-		_, err := time.Parse("20060102150405", splitName[len(splitName)-1])
-		if err != nil {
-			// last substring is not timestamp, so it is not generated from schedule
-			return schdName
-		}
-		schdName = strings.Join(splitName[0:len(splitName)-1], "-")
-	}
-	return schdName
 }
