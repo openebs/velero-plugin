@@ -112,10 +112,10 @@ func (p *Plugin) createVolume(pvname string, bkpname string, bkpZV *apis.ZFSVolu
 	return vol, nil
 }
 
-func (p *Plugin) restoreZFSVolume(pvname, bkpname string) (*apis.ZFSVolume, error) {
+func (p *Plugin) restoreZFSVolume(pvname, schdname, bkpname string) (*apis.ZFSVolume, error) {
 	bkpZV := &apis.ZFSVolume{}
 
-	filename := p.cl.GenerateRemoteFilename(pvname, bkpname)
+	filename := p.cl.GenerateRemoteFileWithSchd(pvname, schdname, bkpname)
 
 	data, ok := p.cl.Read(filename + ".zfsvol")
 	if !ok {
@@ -208,7 +208,7 @@ func (p *Plugin) startRestore(zv *apis.ZFSVolume, bkpname string, port int) (str
 	node := zv.Spec.OwnerNodeID
 	serverAddr := p.remoteAddr + ":" + strconv.Itoa(port)
 	zfsvol := zv.Name
-	rname := utils.GenerateSnapshotID(zfsvol, bkpname)
+	rname := utils.GenerateResourceName(zfsvol, bkpname)
 
 	rstr, err := restorebuilder.NewBuilder().
 		WithName(rname).
@@ -242,8 +242,8 @@ func (p *Plugin) doDownload(wg *sync.WaitGroup, filename string, port int) {
 	close(*p.cl.ConnReady)
 }
 
-func (p *Plugin) dataRestore(zv *apis.ZFSVolume, pvname, bkpname string, port int) error {
-	filename := p.cl.GenerateRemoteFilename(pvname, bkpname)
+func (p *Plugin) dataRestore(zv *apis.ZFSVolume, pvname, schdname, bkpname string, port int) error {
+	filename := p.cl.GenerateRemoteFileWithSchd(pvname, schdname, bkpname)
 	if filename == "" {
 		return errors.Errorf("zfs: Error creating remote file name for restore")
 	}
@@ -285,12 +285,17 @@ func (p *Plugin) dataRestore(zv *apis.ZFSVolume, pvname, bkpname string, port in
 	return nil
 }
 
-func (p *Plugin) getSnapList(pvname, bkpname string) ([]string, error) {
-	var list []string
+func (p *Plugin) getSnapList(pvname, schdname, bkpname string) ([]string, error) {
+	list := []string{bkpname}
 
-	schdname := utils.GetScheduleName(bkpname)
+	if p.incremental < 1 || len(schdname) == 0 {
+		// not an incremental backup, return the list having bkpname
+		return list, nil
+	}
 
-	snapList, err := p.cl.GetSnapListFromCloud(pvname, schdname)
+	filename := p.cl.GetFileNameWithSchd(pvname, schdname)
+
+	snapList, err := p.cl.GetSnapListFromCloud(filename, schdname)
 	if err != nil {
 		return list, err
 	}
@@ -322,12 +327,12 @@ func (p *Plugin) getSnapList(pvname, bkpname string) ([]string, error) {
 }
 
 func (p *Plugin) doRestore(snapshotID string, port int) (string, error) {
-	pvname, bkpname, err := utils.GetInfoFromSnapshotID(snapshotID)
+	pvname, schdname, bkpname, err := utils.GetInfoFromSnapshotID(snapshotID)
 	if err != nil {
 		return "", err
 	}
 
-	bkpList, err := p.getSnapList(pvname, bkpname)
+	bkpList, err := p.getSnapList(pvname, schdname, bkpname)
 	if err != nil {
 		return "", err
 	}
@@ -338,7 +343,7 @@ func (p *Plugin) doRestore(snapshotID string, port int) (string, error) {
 
 	p.Log.Debugf("zfs: backup list for restore %v", bkpList)
 
-	zv, err := p.restoreZFSVolume(pvname, bkpname)
+	zv, err := p.restoreZFSVolume(pvname, schdname, bkpname)
 	if err != nil {
 		p.Log.Errorf("zfs: restore ZFSVolume failed vol %s bkp %s err %v", pvname, bkpname, err)
 		return "", err
@@ -346,7 +351,7 @@ func (p *Plugin) doRestore(snapshotID string, port int) (string, error) {
 
 	// attempt the incremental restore, will resote single backup if it is not a incremental backup
 	for _, bkp := range bkpList {
-		err = p.dataRestore(zv, pvname, bkp, port)
+		err = p.dataRestore(zv, pvname, schdname, bkp, port)
 
 		if err != nil {
 			// delete the volume

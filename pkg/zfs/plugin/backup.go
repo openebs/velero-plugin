@@ -70,6 +70,11 @@ func (p *Plugin) deleteBackup(snapshotID string) error {
 }
 
 func (p *Plugin) getPrevSnap(volname, schdname string) (string, error) {
+	if p.incremental < 1 || len(schdname) == 0 {
+		// not an incremental backup, take the full backup
+		return "", nil
+	}
+
 	listOptions := metav1.ListOptions{
 		LabelSelector: VeleroSchdKey + "=" + schdname + "," + VeleroVolKey + "=" + volname,
 	}
@@ -111,7 +116,7 @@ func (p *Plugin) getPrevSnap(volname, schdname string) (string, error) {
 }
 
 func (p *Plugin) createBackup(vol *apis.ZFSVolume, schdname, snapname string, port int) (string, error) {
-	bkpname := utils.GenerateSnapshotID(vol.Name, snapname)
+	bkpname := utils.GenerateResourceName(vol.Name, snapname)
 
 	p.Log.Debugf("zfs: creating ZFSBackup vol = %s bkp = %s schd = %s", vol.Name, bkpname, schdname)
 
@@ -220,7 +225,7 @@ func (p *Plugin) doBackup(volumeID string, snapname string, schdname string, por
 		return "", errors.Errorf("zfs: err pv is not claimed")
 	}
 
-	filename := p.cl.GenerateRemoteFilename(volumeID, snapname)
+	filename := p.cl.GenerateRemoteFileWithSchd(volumeID, schdname, snapname)
 	if filename == "" {
 		return "", errors.Errorf("zfs: error creating remote file name for backup")
 	}
@@ -271,7 +276,7 @@ func (p *Plugin) doBackup(volumeID string, snapname string, schdname string, por
 	}
 
 	// generate the snapID
-	snapID := utils.GenerateSnapshotID(volumeID, snapname)
+	snapID := utils.GenerateSnapshotID(volumeID, schdname, snapname)
 
 	p.Log.Debugf("zfs: backup done vol %s bkp %s snapID %s", volumeID, bkpname, snapID)
 
