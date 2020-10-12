@@ -61,7 +61,13 @@ func (p *Plugin) uploadZFSVolume(vol *apis.ZFSVolume, filename string) error {
 
 // deleteBackup deletes the backup resource
 func (p *Plugin) deleteBackup(snapshotID string) error {
-	err := bkpbuilder.NewKubeclient().WithNamespace(p.namespace).Delete(snapshotID)
+	pvname, _, snapname, err := utils.GetInfoFromSnapshotID(snapshotID)
+	if err != nil {
+		return err
+	}
+
+	bkpname := utils.GenerateResourceName(pvname, snapname)
+	err = bkpbuilder.NewKubeclient().WithNamespace(p.namespace).Delete(bkpname)
 	if err != nil {
 		p.Log.Errorf("zfs: Failed to delete the backup %s", snapshotID)
 	}
