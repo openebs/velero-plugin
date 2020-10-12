@@ -1,3 +1,19 @@
+v2.1.0 / 2020-09-15
+========================
+* adding support for parallel backup and restore ([#111](https://github.com/openebs/velero-plugin/pull/111),[@pawanpraka1](https://github.com/pawanpraka1))
+* adding velero plugin for ZFS-LocalPV ([#102](https://github.com/openebs/velero-plugin/pull/102),[@pawanpraka1](https://github.com/pawanpraka1))
+* making directory and binary name openebs specific ([#110](https://github.com/openebs/velero-plugin/pull/110),[@pawanpraka1](https://github.com/pawanpraka1))
+* Add support for local restore of cStor CSI volume ([#108](https://github.com/openebs/velero-plugin/pull/108),[@mittachaitu](https://github.com/mittachaitu))
+
+
+v2.0.0 / 2020-08-14
+========================
+
+
+v1.12.0 / 2020-07-14
+========================
+
+
 v1.11.0 / 2020-06-12
 ========================
 * add restore support for cStor CSI based volumes ([#93](https://github.com/openebs/velero-plugin/pull/93),[@sonasingh46](https://github.com/sonasingh46))

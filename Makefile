@@ -23,7 +23,7 @@ ARCH ?= $(shell go env GOARCH)
 
 # The images can be pushed to any docker/image registeries
 # like docker hub, quay. The registries are specified in
-# the `./push` script.
+# the script https://raw.githubusercontent.com/openebs/charts/gh-pages/scripts/release/buildscripts/push.
 #
 # The images of a project or company can then be grouped
 # or hosted under a unique organization key like `openebs`
@@ -75,12 +75,15 @@ endif
 # Specify the date of build
 BUILD_DATE = $(shell date +'%Y%m%d%H%M%S')
 
+#List of linters used by docker lint and local lint
+LINTERS ?= "goconst,gofmt,goimports,gosec,unparam"
+
 all: build
 
 container: all
 	@echo ">> building container"
 	@cp Dockerfile _output/Dockerfile
-	docker build -t $(IMAGE):$(IMAGE_TAG) ${DBUILD_ARGS} -f _output/Dockerfile _output
+	@sudo docker build -t $(IMAGE):$(IMAGE_TAG) ${DBUILD_ARGS} -f _output/Dockerfile _output
 
 build:
 	@echo ">> building binary"
@@ -96,20 +99,22 @@ gomod: ## Ensures fresh go.mod and go.sum.
 # Run linter using docker image
 lint-docker: gomod
 	@echo ">> running golangci-lint"
-	@docker run -i	\
+	@sudo docker run -i	\
 		--rm -v $$(pwd):/app -w /app	\
 		golangci/golangci-lint:v1.24.0	\
-		bash -c "GOGC=75 golangci-lint run"
+		bash -c "GOGC=75 golangci-lint run -E $(LINTERS)"
 
 # Run linter using local binary
 lint: gomod
 	@echo ">> running golangci-lint"
-	@golangci-lint run
+	@golangci-lint run -E $(LINTERS)
 
 test:
 	@CGO_ENABLED=0 go test -v ${PACKAGES} -timeout 20m
 
 deploy-image:
+	@curl --fail --show-error -s  https://raw.githubusercontent.com/openebs/charts/gh-pages/scripts/release/buildscripts/push > ./push
+	@chmod +x ./push
 	@DIMAGE=${IMAGE} ./push
 
 clean:

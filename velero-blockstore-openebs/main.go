@@ -18,16 +18,24 @@ package main
 
 import (
 	snap "github.com/openebs/velero-plugin/pkg/snapshot"
+	zfssnap "github.com/openebs/velero-plugin/pkg/zfs/snapshot"
 	"github.com/sirupsen/logrus"
+	"github.com/spf13/pflag"
 	veleroplugin "github.com/vmware-tanzu/velero/pkg/plugin/framework"
 )
 
 func main() {
 	veleroplugin.NewServer().
+		BindFlags(pflag.CommandLine).
 		RegisterVolumeSnapshotter("openebs.io/cstor-blockstore", openebsSnapPlugin).
+		RegisterVolumeSnapshotter("openebs.io/zfspv-blockstore", zfsSnapPlugin).
 		Serve()
 }
 
 func openebsSnapPlugin(logger logrus.FieldLogger) (interface{}, error) {
 	return &snap.BlockStore{Log: logger}, nil
+}
+
+func zfsSnapPlugin(logger logrus.FieldLogger) (interface{}, error) {
+	return &zfssnap.BlockStore{Log: logger}, nil
 }

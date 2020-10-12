@@ -18,6 +18,9 @@ package clouduploader
 
 import (
 	"io"
+	"strings"
+
+	"github.com/pkg/errors"
 
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"gocloud.dev/blob"
@@ -32,19 +35,19 @@ const (
 	// Type of Key, used while listing keys
 
 	// KeyFile - if key is a file
-	KeyFile int = 1 << iota
+	ListKeyFile int = 1 << iota
 
 	// KeyDirectory - if key is a directory
-	KeyDirectory
+	ListKeyDir
 
 	// KeyBoth - if key is a file or directory
-	KeyBoth
+	ListKeyBoth
 )
 
 // Upload will perform upload operation for given file.
 // It will create a TCP server through which client can
 // connect and upload data to cloud blob storage file
-func (c *Conn) Upload(file string, fileSize int64) bool {
+func (c *Conn) Upload(file string, fileSize int64, port int) bool {
 	c.Log.Infof("Uploading snapshot to '%s' with provider{%s} to bucket{%s}", file, c.provider, c.bucketname)
 
 	c.file = file
@@ -62,7 +65,7 @@ func (c *Conn) Upload(file string, fileSize int64) bool {
 		Log: c.Log,
 		cl:  c,
 	}
-	err := s.Run(OpBackup)
+	err := s.Run(OpBackup, port)
 	if err != nil {
 		c.Log.Errorf("Failed to upload snapshot to bucket: %s", err.Error())
 		if c.bucket.Delete(c.ctx, file) != nil {
@@ -89,13 +92,13 @@ func (c *Conn) Delete(file string) bool {
 // Download will perform restore operation for given file.
 // It will create a TCP server through which client can
 // connect and download data from cloud blob storage file
-func (c *Conn) Download(file string) bool {
+func (c *Conn) Download(file string, port int) bool {
 	c.file = file
 	s := &Server{
 		Log: c.Log,
 		cl:  c,
 	}
-	err := s.Run(OpRestore)
+	err := s.Run(OpRestore, port)
 	if err != nil {
 		c.Log.Errorf("Failed to receive snapshot from bucket: %s", err.Error())
 		return false
@@ -152,11 +155,42 @@ func (c *Conn) GenerateRemoteFilename(file, backup string) string {
 	return c.backupPathPrefix + "/" + backupDir + "/" + backup + "/" + c.prefix + "-" + file + "-" + backup
 }
 
-// ListKeys return list of Keys -- files/directories
+// GenerateRemoteFileWithSchd will create a file-name specific for given backup and schedule name
+func (c *Conn) GenerateRemoteFileWithSchd(file, schdname, backup string) string {
+	filePath := backupDir + "/" + backup + "/" + c.prefix
+	if len(schdname) > 0 {
+		filePath += "-" + schdname
+	}
+
+	if c.backupPathPrefix == "" {
+		return filePath + "-" + file + "-" + backup
+	}
+
+	return c.backupPathPrefix + "/" + filePath + "-" + file + "-" + backup
+}
+
+func (c *Conn) GetFileNameWithSchd(file, schdname string) string {
+	return schdname + "-" + file
+}
+
+// ConnStateReset resets the channel and exit server flag
+func (c *Conn) ConnStateReset() {
+	ch := make(chan bool, 1)
+	c.ConnReady = &ch
+	c.ExitServer = false
+}
+
+// ConnReadyWait will return when connection is ready to accept the connection
+func (c *Conn) ConnReadyWait() bool {
+	ok := <-*c.ConnReady
+	return ok
+}
+
+// listKeys return list of Keys -- files/directories
 // Note:
-// - List may contain incomplete list of keys, check for error before using list
-// - ListKeys uses '/' as delimiter.
-func (c *Conn) ListKeys(prefix string, keyType int) ([]string, error) {
+// - list may contain incomplete list of keys, check for error before using list
+// - listKeys uses '/' as delimiter.
+func (c *Conn) listKeys(prefix string, keyType int) ([]string, error) {
 	keys := []string{}
 
 	lister := c.bucket.List(&blob.ListOptions{
@@ -175,17 +209,18 @@ func (c *Conn) ListKeys(prefix string, keyType int) ([]string, error) {
 		}
 
 		switch keyType {
-		case KeyBoth:
-		case KeyFile:
+		case ListKeyBoth:
+		case ListKeyFile:
 			if obj.IsDir {
 				continue
 			}
-		case KeyDirectory:
+		case ListKeyDir:
 			if !obj.IsDir {
 				continue
 			}
 		default:
 			c.Log.Warningf("Invalid keyType=%d, Ignored", keyType)
+			continue
 		}
 
 		keys = append(keys, obj.Key)
@@ -193,15 +228,47 @@ func (c *Conn) ListKeys(prefix string, keyType int) ([]string, error) {
 	return keys, nil
 }
 
-// BackupPathPrefix return 'prefix path' for the given 'backup name prefix'
-func (c *Conn) BackupPathPrefix(backupPrefix string) string {
+// bkpPathPrefix return 'prefix path' for the given 'backup name prefix'
+func (c *Conn) bkpPathPrefix(backupPrefix string) string {
 	if c.backupPathPrefix == "" {
 		return backupDir + "/" + backupPrefix
 	}
 	return c.backupPathPrefix + "/" + backupDir + "/" + backupPrefix
 }
 
-// FilePathPrefix generate prefix for the given file name prefix using 'configured file prefix'
-func (c *Conn) FilePathPrefix(filePrefix string) string {
+// filePathPrefix generate prefix for the given file name prefix using 'configured file prefix'
+func (c *Conn) filePathPrefix(filePrefix string) string {
 	return c.prefix + "-" + filePrefix
+}
+
+// GetSnapListFromCloud gets the list of a snapshot for the given backup name
+// the argument should be same as that of GenerateRemoteFilename(file, backup) call
+// used while doing the backup of the volume
+func (c *Conn) GetSnapListFromCloud(file, backup string) ([]string, error) {
+	var snapList []string
+
+	// list directory having schedule/backup name as prefix
+	dirs, err := c.listKeys(c.bkpPathPrefix(backup), ListKeyDir)
+	if err != nil {
+		return snapList, errors.Wrapf(err, "failed to get list of directory")
+	}
+
+	for _, dir := range dirs {
+		// list files for dir having volume name as prefix
+		files, err := c.listKeys(dir+c.filePathPrefix(file), ListKeyFile)
+		if err != nil {
+			return snapList, errors.Wrapf(err, "failed to get list of snapshot file at path=%v", dir)
+		}
+
+		if len(files) != 0 {
+			// snapshot exist in the backup directory
+
+			// add backup name from dir path to snapList
+			s := strings.Split(dir, "/")
+
+			// dir will contain path with trailing '/', example: 'backups/b-0/'
+			snapList = append(snapList, s[len(s)-2])
+		}
+	}
+	return snapList, nil
 }

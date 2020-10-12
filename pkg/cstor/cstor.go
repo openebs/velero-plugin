@@ -18,7 +18,6 @@ package cstor
 
 import (
 	"net"
-	"strconv"
 	"strings"
 	"time"
 
@@ -64,6 +63,12 @@ const (
 
 	// SnapshotIDIdentifier is a word to generate snapshotID from volume name and backup name
 	SnapshotIDIdentifier = "-velero-bkp-"
+
+	// port to connect for restoring the data
+	CstorRestorePort = 9000
+
+	// port to connect for backup
+	CstorBackupPort = 9001
 )
 
 // Plugin defines snapshot plugin for CStor volume
@@ -180,7 +185,7 @@ func (p *Plugin) getServerAddress() string {
 		if ok && !networkIP.IP.IsLoopback() && networkIP.IP.To4() != nil {
 			ip := networkIP.IP.String()
 			p.Log.Infof("Ip address of velero-plugin server: %s", ip)
-			return ip + ":" + strconv.Itoa(cloud.RecieverPort)
+			return ip
 		}
 	}
 	return ""
@@ -426,7 +431,7 @@ func (p *Plugin) CreateSnapshot(volumeID, volumeAZ string, tags map[string]strin
 
 	go p.checkBackupStatus(bkp, vol.isCSIVolume)
 
-	ok = p.cl.Upload(filename, size)
+	ok = p.cl.Upload(filename, size, CstorBackupPort)
 	if !ok {
 		return "", errors.New("failed to upload snapshot")
 	}
@@ -534,16 +539,17 @@ func (p *Plugin) SetVolumeID(unstructuredPV runtime.Unstructured, volumeID strin
 	vol := p.volumes[volumeID]
 
 	if p.local {
-		fsType := pv.Spec.PersistentVolumeSource.ISCSI.FSType
-
-		pv.Spec.PersistentVolumeSource = v1.PersistentVolumeSource{
-			ISCSI: &vol.iscsi,
+		if !vol.isCSIVolume {
+			fsType := pv.Spec.PersistentVolumeSource.ISCSI.FSType
+			pv.Spec.PersistentVolumeSource = v1.PersistentVolumeSource{
+				ISCSI: &vol.iscsi,
+			}
+			// Set Old PV fsType
+			pv.Spec.PersistentVolumeSource.ISCSI.FSType = fsType
+		} else {
+			pv.Spec.PersistentVolumeSource.CSI.VolumeHandle = vol.volname
 		}
-
-		// Set Old PV fsType
-		pv.Spec.PersistentVolumeSource.ISCSI.FSType = fsType
 	}
-
 	pv.Name = vol.volname
 
 	res, err := runtime.DefaultUnstructuredConverter.ToUnstructured(pv)

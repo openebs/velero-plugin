@@ -176,11 +176,13 @@ func (p *Plugin) sendBackupRequest(vol *Volume) (*v1alpha1.CStorBackup, error) {
 
 	scheduleName := p.getScheduleName(vol.backupName) // This will be backup/schedule name
 
+	serverAddr := p.cstorServerAddr + ":" + strconv.Itoa(CstorBackupPort)
+
 	bkpSpec := &v1alpha1.CStorBackupSpec{
 		BackupName: scheduleName,
 		VolumeName: vol.volname,
 		SnapName:   vol.backupName,
-		BackupDest: p.cstorServerAddr,
+		BackupDest: serverAddr,
 		LocalSnap:  p.local,
 	}
 
@@ -213,7 +215,8 @@ func (p *Plugin) sendBackupRequest(vol *Volume) (*v1alpha1.CStorBackup, error) {
 func (p *Plugin) sendRestoreRequest(vol *Volume) (*v1alpha1.CStorRestore, error) {
 	var url string
 
-	restoreSrc := p.cstorServerAddr
+	restoreSrc := p.cstorServerAddr + ":" + strconv.Itoa(CstorRestorePort)
+
 	if p.local {
 		restoreSrc = vol.srcVolname
 	}
@@ -251,7 +254,6 @@ func (p *Plugin) sendRestoreRequest(vol *Volume) (*v1alpha1.CStorRestore, error)
 	// if apiserver is having version <=1.8 then it will return empty response
 	ok, err := isEmptyRestResponse(data)
 	if !ok && err == nil {
-		// TODO: for CSI base volume response type may be different
 		err = p.updateVolCASInfo(data, vol.volname)
 		if err != nil {
 			err = errors.Wrapf(err, "Error parsing restore API response")
