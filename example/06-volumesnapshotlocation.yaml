@@ -40,6 +40,8 @@ spec:
     # namespace -- namespace in which openebs is installed (default: openebs)
     namespace: <OPENEBS_NAMESPACE>
 
+    # restoreAllIncrementalSnapshots -- set it to "true", to restore all the backups from base backup to the given backup
+    restoreAllIncrementalSnapshots: "false"
 
 ### Sample VolumeSnapshotLocation YAML for various cloud-providers
 # # For GCP
