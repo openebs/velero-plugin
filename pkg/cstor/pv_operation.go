@@ -66,7 +66,7 @@ func (p *Plugin) updateVolCASInfo(data []byte, volumeID string) error {
 func (p *Plugin) restoreVolumeFromCloud(vol *Volume) error {
 	var (
 		snapshotList []string
-		err error
+		err          error
 	)
 
 	targetBackupName := vol.backupName
