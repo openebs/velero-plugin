@@ -26,3 +26,4 @@ spec:
     region: minio
     s3Url: MINIO_ENDPOINT
     s3ForcePathStyle: "true"
+    restoreAllIncrementalSnapshots: "true"
