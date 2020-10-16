@@ -1,3 +1,29 @@
+v2.2.0 / 2020-10-13
+========================
+* use schedule name to identify the scheduled backup for ZFS-LocalPV ([#124](https://github.com/openebs/velero-plugin/pull/124),[@pawanpraka1](https://github.com/pawanpraka1))
+* fixing the backup deletion for ZFS-LocalPV ([#128](https://github.com/openebs/velero-plugin/pull/128),[@pawanpraka1](https://github.com/pawanpraka1))
+* Added support to use custom certificate and option to skip certificate verification for s3 object storage ([#115](https://github.com/openebs/velero-plugin/pull/115),[@mynktl](https://github.com/mynktl))
+* adding support to restore on different setup/nodes ([#118](https://github.com/openebs/velero-plugin/pull/118),[@pawanpraka1](https://github.com/pawanpraka1))
+* making log level available for velero plugin ([#116](https://github.com/openebs/velero-plugin/pull/116),[@pawanpraka1](https://github.com/pawanpraka1))
+* wait for plugin server to be ready before doing backup/restore ([#117](https://github.com/openebs/velero-plugin/pull/117),[@pawanpraka1](https://github.com/pawanpraka1))
+* adding support to do incremental backup/restore for ZFS-LocalPV ([#121](https://github.com/openebs/velero-plugin/pull/121),[@pawanpraka1](https://github.com/pawanpraka1))
+
+
+v2.2.0-RC2 / 2020-10-12
+========================
+* use schedule name to identify the scheduled backup for ZFS-LocalPV ([#124](https://github.com/openebs/velero-plugin/pull/124),[@pawanpraka1](https://github.com/pawanpraka1))
+* fixing the backup deletion for ZFS-LocalPV ([#128](https://github.com/openebs/velero-plugin/pull/128),[@pawanpraka1](https://github.com/pawanpraka1))
+
+
+v2.2.0-RC1 / 2020-10-08
+========================
+* Added support to use custom certificate and option to skip certificate verification for s3 object storage ([#115](https://github.com/openebs/velero-plugin/pull/115),[@mynktl](https://github.com/mynktl))
+* adding support to restore on different setup/nodes ([#118](https://github.com/openebs/velero-plugin/pull/118),[@pawanpraka1](https://github.com/pawanpraka1))
+* making log level available for velero plugin ([#116](https://github.com/openebs/velero-plugin/pull/116),[@pawanpraka1](https://github.com/pawanpraka1))
+* wait for plugin server to be ready before doing backup/restore ([#117](https://github.com/openebs/velero-plugin/pull/117),[@pawanpraka1](https://github.com/pawanpraka1))
+* adding support to do incremental backup/restore for ZFS-LocalPV ([#121](https://github.com/openebs/velero-plugin/pull/121),[@pawanpraka1](https://github.com/pawanpraka1))
+
+
 v2.1.0 / 2020-09-15
 ========================
 * adding support for parallel backup and restore ([#111](https://github.com/openebs/velero-plugin/pull/111),[@pawanpraka1](https://github.com/pawanpraka1))
