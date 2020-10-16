@@ -517,7 +517,7 @@ func (p *Plugin) CreateVolumeFromSnapshot(snapshotID, volumeType, volumeAZ strin
 			return "", errors.Wrapf(err, "Failed to read PVC for volumeID=%s snap=%s", volumeID, snapName)
 		}
 
-		err = p.restoreVolumeFromCloud(newVol)
+		err = p.restoreVolumeFromCloud(newVol, snapName)
 	}
 
 	if err != nil {

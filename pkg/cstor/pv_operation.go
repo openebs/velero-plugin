@@ -63,17 +63,15 @@ func (p *Plugin) updateVolCASInfo(data []byte, volumeID string) error {
 // Note: cstor snapshots are incremental in nature, so restore will be executed
 // from base snapshot to incremental snapshot 'vol.backupName' if p.restoreAllSnapshots is set
 // else restore will be performed for the given backup only.
-func (p *Plugin) restoreVolumeFromCloud(vol *Volume) error {
+func (p *Plugin) restoreVolumeFromCloud(vol *Volume, targetBackupName string) error {
 	var (
 		snapshotList []string
 		err          error
 	)
 
-	targetBackupName := vol.backupName
-
 	if p.restoreAllSnapshots {
 		// We are restoring from base backup to targeted Backup
-		snapshotList, err = p.cl.GetSnapListFromCloud(vol.snapshotTag, p.getScheduleName(vol.backupName))
+		snapshotList, err = p.cl.GetSnapListFromCloud(vol.snapshotTag, p.getScheduleName(targetBackupName))
 		if err != nil {
 			return err
 		}
