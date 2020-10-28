@@ -80,6 +80,14 @@ func (p *Plugin) restoreVolumeFromCloud(vol *Volume, targetBackupName string) er
 		snapshotList = []string{targetBackupName}
 	}
 
+	if len(snapshotList) == 0 {
+		return errors.Errorf("Snapshot list is empty")
+	}
+
+	if !contains(snapshotList, targetBackupName) {
+		return errors.Errorf("Targeted backup=%s not found in snapshot list", targetBackupName)
+	}
+
 	// snapshots are created using timestamp, we need to sort it in ascending order
 	sort.Strings(snapshotList)
 
@@ -206,5 +214,16 @@ func isCSIPv(pv v1.PersistentVolume) bool {
 		pv.Spec.CSI.Driver == openebsCSIName {
 		return true
 	}
+	return false
+}
+
+// contains return true if given target string exists in slice s
+func contains(s []string, target string) bool {
+	for _, v := range s {
+		if v == target {
+			return true
+		}
+	}
+
 	return false
 }
