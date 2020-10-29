@@ -265,7 +265,7 @@ To restore in different namespace, run the following command:
 velero restore create --from-backup backup_name --restore-volumes=true --namespace-mappings source_ns:destination_ns
 ```
 
-Once restore for remote backup is completed, You need to set targetip in relevant replica. Refer [Setting targetip in replica](#setting-targetip-in-replica).
+**Once restore for remote backup is completed, You need to set targetip in relevant replica. Refer [Setting targetip in replica](#setting-targetip-in-replica).**
 
 #### Setting targetip in replica
 After restore for remote backup is completed, you need to set target-ip for the volume in pool pod. If restore is from local snapshot then you don't need to update target-ip

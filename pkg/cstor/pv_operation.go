@@ -80,7 +80,6 @@ func (p *Plugin) restoreVolumeFromCloud(vol *Volume, targetBackupName string) er
 		snapshotList = []string{targetBackupName}
 	}
 
-
 	if !contains(snapshotList, targetBackupName) {
 		return errors.Errorf("Targeted backup=%s not found in snapshot list", targetBackupName)
 	}
