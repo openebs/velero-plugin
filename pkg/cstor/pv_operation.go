@@ -100,7 +100,7 @@ func (p *Plugin) restoreVolumeFromCloud(vol *Volume, targetBackupName string) er
 		// If the snapshot doesn't exist, skip the restore for that snapshot.
 		// Since the snapshots are incremental, we need to continue to restore for the next snapshot.
 		if !exists {
-			p.Log.Warningf("Remote snapshot=%s doesn't exist, skipping restore of this snapshot", snap, err)
+			p.Log.Warningf("Remote snapshot=%s doesn't exist, skipping restore of this snapshot", snap)
 			continue
 		}
 
