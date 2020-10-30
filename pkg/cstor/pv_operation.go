@@ -18,6 +18,7 @@ package cstor
 
 import (
 	"encoding/json"
+	"sort"
 
 	uuid "github.com/gofrs/uuid"
 	v1alpha1 "github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
@@ -58,7 +59,71 @@ func (p *Plugin) updateVolCASInfo(data []byte, volumeID string) error {
 	return nil
 }
 
-func (p *Plugin) restoreVolumeFromCloud(vol *Volume) error {
+// restoreVolumeFromCloud restore remote snapshot for the given volume
+// Note: cstor snapshots are incremental in nature, so restore will be executed
+// from base snapshot to incremental snapshot 'vol.backupName' if p.restoreAllSnapshots is set
+// else restore will be performed for the given backup only.
+func (p *Plugin) restoreVolumeFromCloud(vol *Volume, targetBackupName string) error {
+	var (
+		snapshotList []string
+		err          error
+	)
+
+	if p.restoreAllSnapshots {
+		// We are restoring from base backup to targeted Backup
+		snapshotList, err = p.cl.GetSnapListFromCloud(vol.snapshotTag, p.getScheduleName(targetBackupName))
+		if err != nil {
+			return err
+		}
+	} else {
+		// We are restoring only given backup
+		snapshotList = []string{targetBackupName}
+	}
+
+	if !contains(snapshotList, targetBackupName) {
+		return errors.Errorf("Targeted backup=%s not found in snapshot list", targetBackupName)
+	}
+
+	// snapshots are created using timestamp, we need to sort it in ascending order
+	sort.Strings(snapshotList)
+
+	for _, snap := range snapshotList {
+		// Check if snapshot file exists or not.
+		// There is a possibility where only PVC file exists,
+		// in case of failed/partially-failed backup, but not snapshot file.
+		exists, err := p.cl.FileExists(vol.snapshotTag, snap)
+		if err != nil {
+			p.Log.Errorf("Failed to check remote snapshot=%s, skipping restore of this snapshot, err=%s", snap, err)
+			continue
+		}
+
+		// If the snapshot doesn't exist, skip the restore for that snapshot.
+		// Since the snapshots are incremental, we need to continue to restore for the next snapshot.
+		if !exists {
+			p.Log.Warningf("Remote snapshot=%s doesn't exist, skipping restore of this snapshot", snap)
+			continue
+		}
+
+		p.Log.Infof("Restoring snapshot=%s", snap)
+
+		vol.backupName = snap
+
+		err = p.restoreSnapshotFromCloud(vol)
+		if err != nil {
+			return errors.Wrapf(err, "failed to restor snapshot=%s", snap)
+		}
+		p.Log.Infof("Restore of snapshot=%s completed", snap)
+
+		if snap == targetBackupName {
+			// we restored till the targetBackupName, no need to restore next snapshot
+			break
+		}
+	}
+	return nil
+}
+
+// restoreSnapshotFromCloud restore snapshot 'vol.backupName` to volume 'vol.volname'
+func (p *Plugin) restoreSnapshotFromCloud(vol *Volume) error {
 	p.cl.ExitServer = false
 
 	restore, err := p.sendRestoreRequest(vol)
@@ -161,5 +226,16 @@ func isCSIPv(pv v1.PersistentVolume) bool {
 		pv.Spec.CSI.Driver == openebsCSIName {
 		return true
 	}
+	return false
+}
+
+// contains return true if given target string exists in slice s
+func contains(s []string, target string) bool {
+	for _, v := range s {
+		if v == target {
+			return true
+		}
+	}
+
 	return false
 }

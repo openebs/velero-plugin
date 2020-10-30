@@ -1,0 +1,1 @@
+Adding new config parameter "restoreAllIncrementalSnapshots" to restore all the scheduled backups, from base backup to the given backup, using single restore

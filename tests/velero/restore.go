@@ -78,27 +78,19 @@ func (c *ClientSet) GetScheduledBackups(schedule string) ([]string, error) {
 	return bkplist, nil
 }
 
-// CreateRestoreFromSchedule restore from given schedule's n'th backup for ns Namespace
-func (c *ClientSet) CreateRestoreFromSchedule(ns, targetedNs, schedule string, n int) (v1.RestorePhase, error) {
-	var status v1.RestorePhase
-	var err error
+// CreateRestore create restore from given backup/schedule for ns Namespace to targetedNs
+// Arguments:
+// - ns : source namespace or namespace from backup
+// - targetedNs : targeted namespace for namespace 'ns'
+// - backup : name of the backup, from which restore will happen
+// - schedule : name of schedule, from which restore should happen. If mentioned, backup should be empty
+func (c *ClientSet) CreateRestore(ns, targetedNs, backup, schedule string) (v1.RestorePhase, error) {
+	var (
+		status      v1.RestorePhase
+		restoreName string
+		err         error
+	)
 
-	bkplist, err := c.GetScheduledBackups(schedule)
-	if err != nil {
-		return "", err
-	}
-	bkplist = bkplist[n:]
-	for _, bkp := range bkplist {
-		if status, err = c.CreateRestore(ns, targetedNs, bkp); status != v1.RestorePhaseCompleted {
-			break
-		}
-	}
-	return status, err
-}
-
-// CreateRestore create restore from given backup for ns Namespace to targetedNs
-func (c *ClientSet) CreateRestore(ns, targetedNs, backup string) (v1.RestorePhase, error) {
-	var status v1.RestorePhase
 	snapVolume := true
 	nsMapping := make(map[string]string)
 
@@ -106,7 +98,12 @@ func (c *ClientSet) CreateRestore(ns, targetedNs, backup string) (v1.RestorePhas
 		nsMapping[ns] = targetedNs
 	}
 
-	restoreName, err := c.generateRestoreName(backup)
+	if backup != "" {
+		restoreName, err = c.generateRestoreName(backup)
+	} else {
+		restoreName, err = c.generateRestoreName(schedule)
+	}
+
 	if err != nil {
 		return status, err
 	}
@@ -120,6 +117,7 @@ func (c *ClientSet) CreateRestore(ns, targetedNs, backup string) (v1.RestorePhas
 			IncludedNamespaces: []string{ns},
 			RestorePVs:         &snapVolume,
 			BackupName:         backup,
+			ScheduleName:       schedule,
 			NamespaceMapping:   nsMapping,
 		},
 	}

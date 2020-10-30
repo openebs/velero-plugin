@@ -61,6 +61,9 @@ const (
 	// LocalSnapshot config key for local snapshot
 	LocalSnapshot = "local"
 
+	// RestoreAllIncrementalSnapshots config key for restoring all incremental snapshots
+	RestoreAllIncrementalSnapshots = "restoreAllIncrementalSnapshots"
+
 	// SnapshotIDIdentifier is a word to generate snapshotID from volume name and backup name
 	SnapshotIDIdentifier = "-velero-bkp-"
 
@@ -120,6 +123,9 @@ type Plugin struct {
 
 	// if only local snapshot enabled
 	local bool
+
+	// if set then restore will restore from base snapshot to given snapshot, including incremental snapshots
+	restoreAllSnapshots bool
 }
 
 // Snapshot describes snapshot object information
@@ -258,6 +264,10 @@ func (p *Plugin) Init(config map[string]string) error {
 
 	if err := velero.InitializeClientSet(conf); err != nil {
 		return errors.Wrapf(err, "failed to initialize velero clientSet")
+	}
+
+	if restoreAllSnapshots, ok := config[RestoreAllIncrementalSnapshots]; ok && restoreAllSnapshots == "true" {
+		p.restoreAllSnapshots = true
 	}
 
 	p.cl = &cloud.Conn{Log: p.Log}
@@ -507,7 +517,7 @@ func (p *Plugin) CreateVolumeFromSnapshot(snapshotID, volumeType, volumeAZ strin
 			return "", errors.Wrapf(err, "Failed to read PVC for volumeID=%s snap=%s", volumeID, snapName)
 		}
 
-		err = p.restoreVolumeFromCloud(newVol)
+		err = p.restoreVolumeFromCloud(newVol, snapName)
 	}
 
 	if err != nil {

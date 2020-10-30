@@ -23,12 +23,13 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
+	v1 "github.com/vmware-tanzu/velero/pkg/apis/velero/v1"
+	corev1 "k8s.io/api/core/v1"
+
 	app "github.com/openebs/velero-plugin/tests/app"
 	k8s "github.com/openebs/velero-plugin/tests/k8s"
 	openebs "github.com/openebs/velero-plugin/tests/openebs"
 	velero "github.com/openebs/velero-plugin/tests/velero"
-	v1 "github.com/vmware-tanzu/velero/pkg/apis/velero/v1"
-	corev1 "k8s.io/api/core/v1"
 )
 
 const (
@@ -144,7 +145,7 @@ var _ = Describe("Backup/Restore Test", func() {
 			)
 
 			By("Restoring from a non-scheduled backup")
-			status, err = velero.Client.CreateRestore(AppNs, AppNs, backupName)
+			status, err = velero.Client.CreateRestore(AppNs, AppNs, backupName, "")
 			if err != nil || status != v1.RestorePhaseCompleted {
 				dumpLogs()
 			}
@@ -162,28 +163,14 @@ var _ = Describe("Backup/Restore Test", func() {
 			Expect(ok).To(BeTrue(), "CVR for PVC=%s are not in errored state", app.PVCName)
 		})
 
-		It("Restore from scheduled backup without base-backup", func() {
-			var status v1.RestorePhase
-
-			By("Restoring from a scheduled backup")
-			status, err = velero.Client.CreateRestoreFromSchedule(AppNs, AppNs, scheduleName, 1)
-			if err != nil || status != v1.RestorePhasePartiallyFailed {
-				dumpLogs()
-			}
-
-			Expect(err).NotTo(HaveOccurred(), "Failed to create a restore from schedule=%s", scheduleName)
-			Expect(status).To(Equal(v1.RestorePhasePartiallyFailed), "Restore for schedule=%s should have failed", scheduleName)
-
-		})
-
-		It("Restore from scheduled backup using base-backup", func() {
+		It("Restore from scheduled backup", func() {
 			var (
 				status v1.RestorePhase
 				phase  corev1.PersistentVolumeClaimPhase
 			)
 
 			By("Restoring from a scheduled backup")
-			status, err = velero.Client.CreateRestoreFromSchedule(AppNs, AppNs, scheduleName, 0)
+			status, err = velero.Client.CreateRestore(AppNs, AppNs, "", scheduleName)
 			if err != nil || status != v1.RestorePhaseCompleted {
 				dumpLogs()
 			}
@@ -226,7 +213,7 @@ var _ = Describe("Backup/Restore Test", func() {
 			var status v1.RestorePhase
 
 			By("Restoring from a non-scheduled backup to a different namespace")
-			status, err = velero.Client.CreateRestore(AppNs, TargetedNs, backupName)
+			status, err = velero.Client.CreateRestore(AppNs, TargetedNs, backupName, "")
 			if err != nil || status != v1.RestorePhaseCompleted {
 				dumpLogs()
 			}
@@ -248,7 +235,7 @@ var _ = Describe("Backup/Restore Test", func() {
 			var status v1.RestorePhase
 
 			By("Restoring from a scheduled backup to a different namespace")
-			status, err = velero.Client.CreateRestoreFromSchedule(AppNs, TargetedNs, scheduleName, 0)
+			status, err = velero.Client.CreateRestore(AppNs, TargetedNs, "", scheduleName)
 			if err != nil || status != v1.RestorePhaseCompleted {
 				dumpLogs()
 			}
