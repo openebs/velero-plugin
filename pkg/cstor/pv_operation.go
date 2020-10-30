@@ -88,11 +88,27 @@ func (p *Plugin) restoreVolumeFromCloud(vol *Volume, targetBackupName string) er
 	sort.Strings(snapshotList)
 
 	for _, snap := range snapshotList {
+		// Check if snapshot file exists or not.
+		// There is a possibility where only PVC file exists,
+		// in case of failed/partially-failed backup, but not snapshot file.
+		exists, err := p.cl.FileExists(vol.snapshotTag, snap)
+		if err != nil {
+			p.Log.Errorf("Failed to check remote snapshot=%s, skipping restore of this snapshot, err=%s", snap, err)
+			continue
+		}
+
+		// If the snapshot doesn't exist, skip the restore for that snapshot.
+		// Since the snapshots are incremental, we need to continue to restore for the next snapshot.
+		if !exists {
+			p.Log.Warningf("Remote snapshot=%s doesn't exist, skipping restore of this snapshot", snap, err)
+			continue
+		}
+
 		p.Log.Infof("Restoring snapshot=%s", snap)
 
 		vol.backupName = snap
 
-		err := p.restoreSnapshotFromCloud(vol)
+		err = p.restoreSnapshotFromCloud(vol)
 		if err != nil {
 			return errors.Wrapf(err, "failed to restor snapshot=%s", snap)
 		}

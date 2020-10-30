@@ -272,3 +272,12 @@ func (c *Conn) GetSnapListFromCloud(file, backup string) ([]string, error) {
 	}
 	return snapList, nil
 }
+
+// FileExists check if the given file exists or not in the given backup
+// the argument should be the same as that of GenerateRemoteFilename(file, backup) call
+// used while doing the backup of the volume
+func (c *Conn) FileExists(file, backup string) (bool, error) {
+	c.Log.Debugf("Checking if file=%s exist", c.GenerateRemoteFilename(file, backup))
+
+	return c.bucket.Exists(c.ctx, c.GenerateRemoteFilename(file, backup))
+}
