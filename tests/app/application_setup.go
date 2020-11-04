@@ -71,8 +71,14 @@ func DestroyApplication(appYaml, ns string) error {
 	if err := yaml.Unmarshal([]byte(appYaml), &p); err != nil {
 		return err
 	}
-	return k8s.Client.
+	err := k8s.Client.
 		CoreV1().
 		Pods(ns).
 		Delete(p.Name, &metav1.DeleteOptions{})
+
+	if !k8serrors.IsNotFound(err) {
+		return err
+	}
+
+	return nil
 }

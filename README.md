@@ -281,6 +281,34 @@ kubectl exec -it <POOL_POD> -c cstor-pool -n openebs -- bash
 zfs set io.openebs:targetip=<TARGET_IP> <POOL_NAME/VOLUME_NAME>
 ```
 
+- Using bash script
+```shell script
+#set correct pod name
+pool_pod=POOL_POD
+
+for pool_pvc in $(kubectl exec $pool_pod -c cstor-pool -n openebs -- bash -c "zfs get io.openebs:targetip" | grep io.openebs:targetip | grep pvc | grep -v '@' | cut -d" " -f1)
+do
+  svc=$(echo $pool_pvc | cut -d/ -f2)
+  ip=$(kubectl get svc -n openebs $svc -ojsonpath='{.spec.clusterIP}')
+  kubectl exec $pool_pod -c cstor-pool -n openebs -- bash -c "zfs set io.openebs:targetip=$ip $pool_pvc"
+done
+```
+
+You can automate this process by setting the config parameter `autoSetTargetIP` to `"true"` in volumesnapshotlocation.
+Note that `restoreAllIncrementalSnapshots=true` implies `autoSetTargetIP=true`
+
+```
+apiVersion: velero.io/v1
+kind: VolumeSnapshotLocation
+metadata:
+  ...
+spec:
+  config:
+    ...
+    ...
+    autoSetTargetIP: "true"
+```
+
 ### Creating a scheduled remote backup
 OpenEBS velero-plugin provides incremental remote backup support for CStor persistent volumes for scheduled backups. This means, the first backup of the schedule includes a snapshot of all volume data, and the subsequent backups include the snapshot of modified data from the previous backup
 

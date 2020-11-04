@@ -64,6 +64,9 @@ const (
 	// RestoreAllIncrementalSnapshots config key for restoring all incremental snapshots
 	RestoreAllIncrementalSnapshots = "restoreAllIncrementalSnapshots"
 
+	// AutoSetTargetIP config key for setting the targetip automatically after successful restore
+	AutoSetTargetIP = "autoSetTargetIP"
+
 	// SnapshotIDIdentifier is a word to generate snapshotID from volume name and backup name
 	SnapshotIDIdentifier = "-velero-bkp-"
 
@@ -126,6 +129,9 @@ type Plugin struct {
 
 	// if set then restore will restore from base snapshot to given snapshot, including incremental snapshots
 	restoreAllSnapshots bool
+
+	// if set then targetip will be set after successful restore
+	autoSetTargetIP bool
 }
 
 // Snapshot describes snapshot object information
@@ -268,6 +274,11 @@ func (p *Plugin) Init(config map[string]string) error {
 
 	if restoreAllSnapshots, ok := config[RestoreAllIncrementalSnapshots]; ok && restoreAllSnapshots == "true" {
 		p.restoreAllSnapshots = true
+		p.autoSetTargetIP = true
+	}
+
+	if autoSetTargetIP, ok := config[AutoSetTargetIP]; ok {
+		p.autoSetTargetIP = autoSetTargetIP == "true"
 	}
 
 	p.cl = &cloud.Conn{Log: p.Log}
@@ -526,6 +537,12 @@ func (p *Plugin) CreateVolumeFromSnapshot(snapshotID, volumeType, volumeAZ strin
 	}
 
 	if newVol.restoreStatus == v1alpha1.RSTCStorStatusDone {
+		if p.autoSetTargetIP {
+			if err := p.markCVRsAsRestoreCompleted(newVol); err != nil {
+				return newVol.volname, err
+			}
+		}
+
 		p.Log.Infof("Restore completed for CStor volume:%s snapshot:%s", volumeID, snapName)
 		return newVol.volname, nil
 	}

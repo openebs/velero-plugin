@@ -22,6 +22,7 @@ import (
 
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -46,6 +47,18 @@ func (k *KubeClient) waitForPVCBound(pvc, ns string) (corev1.PersistentVolumeCla
 		if phase == corev1.ClaimBound {
 			return phase, nil
 		}
+		time.Sleep(5 * time.Second)
+	}
+}
+
+func (k *KubeClient) WaitForPVCCleanup(pvc, ns string) error {
+	for {
+		_, err := k.GetPVCPhase(pvc, ns)
+
+		if k8serrors.IsNotFound(err) {
+			return nil
+		}
+
 		time.Sleep(5 * time.Second)
 	}
 }
@@ -125,6 +138,11 @@ func (k *KubeClient) WaitForDeploymentCleanup(labelSelector, ns string) error {
 			List(metav1.ListOptions{
 				LabelSelector: labelSelector,
 			})
+
+		if k8serrors.IsNotFound(err) {
+			return nil
+		}
+
 		if err != nil {
 			return err
 		} else if len(deploymentList.Items) == 0 {

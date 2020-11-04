@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/ghodss/yaml"
+	clientsetv1 "github.com/openebs/api/pkg/client/clientset/versioned"
 	v1alpha1 "github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
 	clientset "github.com/openebs/maya/pkg/client/generated/clientset/versioned"
 	config "github.com/openebs/velero-plugin/tests/config"
@@ -31,6 +32,10 @@ import (
 // ClientSet interface for OpenEBS API
 type ClientSet struct {
 	clientset.Interface
+}
+
+type ClientSetV1 struct {
+	clientsetv1.Interface
 }
 
 var (
@@ -133,7 +138,13 @@ func (c *ClientSet) DeleteVolume(pvcYAML, pvcNs string) error {
 		return err
 	}
 
-	return k8s.Client.WaitForDeploymentCleanup(
+	err = k8s.Client.WaitForDeploymentCleanup(
 		PVDeploymentLabel+"="+pv,
 		OpenEBSNs)
+
+	if err != nil {
+		return err
+	}
+
+	return k8s.Client.WaitForPVCCleanup(pvc.Name, pvc.Namespace)
 }

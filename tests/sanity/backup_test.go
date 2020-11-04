@@ -158,8 +158,8 @@ var _ = Describe("Backup/Restore Test", func() {
 			Expect(perr).NotTo(HaveOccurred(), "Failed to verify PVC=%s bound status for namespace=%s", app.PVCName, AppNs)
 			Expect(phase).To(Equal(corev1.ClaimBound), "PVC=%s not bound", app.PVCName)
 
-			By("Checking if restored CVR are in error state")
-			ok := openebs.Client.CheckCVRStatus(app.PVCName, AppNs, v1alpha1.CVRStatusError)
+			By("Checking if restored CVR are in healthy state")
+			ok := openebs.Client.CheckCVRStatus(app.PVCName, AppNs, v1alpha1.CVRStatusOnline)
 			Expect(ok).To(BeTrue(), "CVR for PVC=%s are not in errored state", app.PVCName)
 		})
 
@@ -182,8 +182,8 @@ var _ = Describe("Backup/Restore Test", func() {
 			Expect(err).NotTo(HaveOccurred(), "Failed to verify PVC=%s bound status for namespace=%s", app.PVCName, AppNs)
 			Expect(phase).To(Equal(corev1.ClaimBound), "PVC=%s not bound", app.PVCName)
 
-			By("Checking if restored CVR are in error state")
-			ok := openebs.Client.CheckCVRStatus(app.PVCName, AppNs, v1alpha1.CVRStatusError)
+			By("Checking if restored CVR are in healthy state")
+			ok := openebs.Client.CheckCVRStatus(app.PVCName, AppNs, v1alpha1.CVRStatusOnline)
 			Expect(ok).To(BeTrue(), "CVR for PVC=%s are not in errored state", app.PVCName)
 
 			By("Checking if restore has created snapshot or not")
@@ -226,8 +226,8 @@ var _ = Describe("Backup/Restore Test", func() {
 			Expect(perr).NotTo(HaveOccurred(), "Failed to verify PVC=%s bound status for namespace=%s", app.PVCName, TargetedNs)
 			Expect(phase).To(Equal(corev1.ClaimBound), "PVC=%s not bound", app.PVCName)
 
-			By("Checking if restored CVR are in error state")
-			ok := openebs.Client.CheckCVRStatus(app.PVCName, TargetedNs, v1alpha1.CVRStatusError)
+			By("Checking if restored CVR are in healthy state")
+			ok := openebs.Client.CheckCVRStatus(app.PVCName, TargetedNs, v1alpha1.CVRStatusOnline)
 			Expect(ok).To(BeTrue(), "CVR for PVC=%s is not in errored state", app.PVCName)
 		})
 
@@ -247,8 +247,8 @@ var _ = Describe("Backup/Restore Test", func() {
 			Expect(err).NotTo(HaveOccurred(), "Failed to verify PVC=%s bound status for namespace=%s", app.PVCName, TargetedNs)
 			Expect(phase).To(Equal(corev1.ClaimBound), "PVC=%s not bound", app.PVCName)
 
-			By("Checking if restored CVR are in error state")
-			ok := openebs.Client.CheckCVRStatus(app.PVCName, TargetedNs, v1alpha1.CVRStatusError)
+			By("Checking if restored CVR are in healthy state")
+			ok := openebs.Client.CheckCVRStatus(app.PVCName, TargetedNs, v1alpha1.CVRStatusOnline)
 			Expect(ok).To(BeTrue(), "CVR for PVC=%s is not in errored state", app.PVCName)
 
 			By("Checking if restore has created snapshot or not")
