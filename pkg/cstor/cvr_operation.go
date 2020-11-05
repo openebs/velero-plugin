@@ -62,7 +62,6 @@ func (p *Plugin) waitForTargetIpToBeSetInAllCVRs(vol *Volume) error {
 
 func (p *Plugin) waitForAllCVRsToBeInValidStatus(vol *Volume, statuses []string) error {
 	replicaCount := p.getCVRCount(vol.volname, vol.isCSIVolume)
-
 	if replicaCount == -1 {
 		return errors.Errorf("Failed to fetch replicaCount for volume{%s}", vol.volname)
 	}
@@ -173,7 +172,7 @@ func (p *Plugin) markCVRsAsRestoreCompleted(vol *Volume) error {
 		return err
 	}
 
-	p.Log.Infof("Waiting for all CVRs to be ready")
+	p.Log.Infof("Marking restore as completed on CVRs")
 	if err := p.markRestoreAsCompleted(vol); err != nil {
 		p.Log.Errorf("Failed to mark restore as completed : %s", err)
 		return err
