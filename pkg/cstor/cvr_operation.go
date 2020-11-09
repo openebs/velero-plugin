@@ -178,7 +178,7 @@ func (p *Plugin) markCVRsAsRestoreCompleted(vol *Volume) error {
 		return err
 	}
 
-	p.Log.Infof("Waiting for target ip to be set ono all CVRs")
+	p.Log.Infof("Waiting for target ip to be set on all CVRs")
 	if err := p.waitForTargetIpToBeSetInAllCVRs(vol); err != nil {
 		return err
 	}

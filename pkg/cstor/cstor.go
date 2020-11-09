@@ -17,6 +17,7 @@ limitations under the License.
 package cstor
 
 import (
+	"fmt"
 	"net"
 	"strings"
 	"time"
@@ -539,7 +540,12 @@ func (p *Plugin) CreateVolumeFromSnapshot(snapshotID, volumeType, volumeAZ strin
 	if newVol.restoreStatus == v1alpha1.RSTCStorStatusDone {
 		if p.autoSetTargetIP {
 			if err := p.markCVRsAsRestoreCompleted(newVol); err != nil {
-				return newVol.volname, err
+				readmeUrl := "https://github.com/openebs/velero-plugin#setting-targetip-in-replica"
+				errMsg := fmt.Sprintf(
+					"Error setting targetip on CVR, need to set it manually. Refer: %s",
+					readmeUrl,
+				)
+				return newVol.volname, errors.Wrapf(err, errMsg)
 			}
 		}
 
