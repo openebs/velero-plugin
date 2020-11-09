@@ -60,7 +60,7 @@ endif
 
 export DBUILD_ARGS=--build-arg DBUILD_DATE=${DBUILD_DATE} --build-arg DBUILD_REPO_URL=${DBUILD_REPO_URL} --build-arg DBUILD_SITE_URL=${DBUILD_SITE_URL}
 
-IMAGE = ${IMAGE_ORG}/velero-plugin
+IMAGE = ${IMAGE_ORG}/velero-plugin-amd64
 
 # if the architecture is arm64, image name will have arm64 suffix
 ifeq (${ARCH}, arm64)

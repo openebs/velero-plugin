@@ -14,7 +14,7 @@
 
 # This Dockerfile builds velero-plugin
 
-FROM alpine:3.10.4
+FROM alpine:3.11.5
 RUN mkdir /plugins
 ADD velero-* /plugins/
 USER nobody:nobody

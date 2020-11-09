@@ -39,7 +39,7 @@ COPY . .
 
 RUN make build
 
-FROM alpine:3.10.4
+FROM alpine:3.11.5
 
 ARG BUILD_DATE
 ARG DBUILD_DATE
