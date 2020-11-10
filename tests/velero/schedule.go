@@ -27,7 +27,7 @@ import (
 )
 
 func (c *ClientSet) generateScheduleName() (string, error) {
-	for i := 0; i < 10; {
+	for i := 0; i < 10; i++ {
 		b := generateRandomString(8)
 		if b == "" {
 			continue

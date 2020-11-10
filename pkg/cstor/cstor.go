@@ -53,6 +53,7 @@ const (
 	restoreStatusInterval = 5
 	openebsVolumeLabel    = "openebs.io/cas-type"
 	openebsCSIName        = "cstor.csi.openebs.io"
+	trueStr               = "true"
 )
 
 const (
@@ -248,7 +249,7 @@ func (p *Plugin) Init(config map[string]string) error {
 	}
 
 	if p.mayaAddr == "" && p.cvcAddr == "" {
-		return errors.New("faile to get address for maya-apiserver/cvc-server service")
+		return errors.New("failed to get address for maya-apiserver/cvc-server service")
 	}
 
 	p.cstorServerAddr = p.getServerAddress()
@@ -264,7 +265,7 @@ func (p *Plugin) Init(config map[string]string) error {
 		p.snapshots = make(map[string]*Snapshot)
 	}
 
-	if local, ok := config[LocalSnapshot]; ok && local == "true" {
+	if local, ok := config[LocalSnapshot]; ok && isTrue(local) {
 		p.local = true
 		return nil
 	}
@@ -273,13 +274,13 @@ func (p *Plugin) Init(config map[string]string) error {
 		return errors.Wrapf(err, "failed to initialize velero clientSet")
 	}
 
-	if restoreAllSnapshots, ok := config[RestoreAllIncrementalSnapshots]; ok && restoreAllSnapshots == "true" {
+	if restoreAllSnapshots, ok := config[RestoreAllIncrementalSnapshots]; ok && isTrue(restoreAllSnapshots) {
 		p.restoreAllSnapshots = true
 		p.autoSetTargetIP = true
 	}
 
 	if autoSetTargetIP, ok := config[AutoSetTargetIP]; ok {
-		p.autoSetTargetIP = autoSetTargetIP == "true"
+		p.autoSetTargetIP = isTrue(autoSetTargetIP)
 	}
 
 	p.cl = &cloud.Conn{Log: p.Log}
@@ -631,4 +632,9 @@ func getInfoFromSnapshotID(snapshotID string) (volumeID, backupName string, err 
 
 func generateSnapshotID(volumeID, backupName string) string {
 	return volumeID + SnapshotIDIdentifier + backupName
+}
+
+func isTrue(str string) bool {
+	str = strings.ToLower(str)
+	return str == trueStr || str == "yes" || str == "1"
 }

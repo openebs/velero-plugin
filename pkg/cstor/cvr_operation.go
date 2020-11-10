@@ -208,10 +208,11 @@ func (p *Plugin) markRestoreAsCompletedForCSIBasedCVRs(vol *Volume) error {
 	}
 
 	var errs []string
-	for _, cvr := range cvrList.Items {
+	for i := range cvrList.Items {
+		cvr := cvrList.Items[i]
 		p.Log.Infof("Updating CVRs %s", cvr.Name)
 
-		cvr.Annotations[restoreCompletedAnnotation] = "true"
+		cvr.Annotations[restoreCompletedAnnotation] = trueStr
 		_, err := replicas.Update(&cvr)
 
 		if err != nil {
@@ -241,10 +242,11 @@ func (p *Plugin) markRestoreAsCompletedForNonCSIBasedCVRs(vol *Volume) error {
 	}
 
 	var errs []string
-	for _, cvr := range cvrList.Items {
+	for i := range cvrList.Items {
+		cvr := cvrList.Items[i]
 		p.Log.Infof("Updating CVRs %s", cvr.Name)
 
-		cvr.Annotations[restoreCompletedAnnotation] = "true"
+		cvr.Annotations[restoreCompletedAnnotation] = trueStr
 		_, err := replicas.Update(&cvr)
 
 		if err != nil {
