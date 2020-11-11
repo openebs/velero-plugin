@@ -57,5 +57,5 @@ docker.buildx.plugin:
 
 .PHONY: buildx.push.plugin
 buildx.push.plugin:
-	BUILDX=true DIMAGE=${IMAGE_ORG}/velero-plugin ./scripts/buildxpush.sh
+	BUILDX=true DIMAGE=${IMAGE_ORG}/velero-plugin ./script/buildxpush.sh
 
