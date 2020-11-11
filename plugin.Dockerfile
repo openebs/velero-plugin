@@ -14,12 +14,33 @@
 
 # This Dockerfile builds velero-plugin
 
-FROM alpine:3.11.5
-RUN mkdir /plugins
-ADD velero-* /plugins/
-USER nobody:nobody
+FROM golang:1.14.7 as build
 
-ARG ARCH
+ARG TARGETOS
+ARG TARGETARCH
+ARG TARGETVARIANT=""
+
+ENV GO111MODULE=on \
+  GOOS=${TARGETOS} \
+  GOARCH=${TARGETARCH} \
+  GOARM=${TARGETVARIANT} \
+  DEBIAN_FRONTEND=noninteractive \
+  PATH="/root/go/bin:${PATH}"
+
+WORKDIR /go/src/github.com/openebs/velero-plugin/
+
+RUN apt-get update && apt-get install -y make git
+
+COPY go.mod go.sum ./
+# Get dependancies - will also be cached if we won't change mod/sum
+RUN go mod download
+
+COPY . .
+
+RUN make build
+
+FROM alpine:3.11.5
+
 ARG BUILD_DATE
 ARG DBUILD_DATE
 ARG DBUILD_REPO_URL
@@ -31,5 +52,9 @@ LABEL org.label-schema.description="OpenEBS velero-plugin"
 LABEL org.label-schema.build-date=$DBUILD_DATE
 LABEL org.label-schema.vcs-url=$DBUILD_REPO_URL
 LABEL org.label-schema.url=$DBUILD_SITE_URL
+
+RUN mkdir /plugins
+COPY --from=build /go/src/github.com/openebs/velero-plugin/_output/velero-* /plugins/
+USER nobody:nobody
 
 ENTRYPOINT ["/bin/ash", "-c", "cp /plugins/* /target/."]
