@@ -1,0 +1,1 @@
+Multi-arch container image support for velero plugin. Migrate the multi-arch builds to github-action to support amd64 and arm64 architectures.
