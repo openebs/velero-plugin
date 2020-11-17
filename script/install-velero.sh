@@ -107,4 +107,4 @@ ${velero} install \
 
 sed "s/MINIO_ENDPOINT/http:\/\/$MINIO_SERVER_IP\:9000/" script/volumesnapshotlocation.yaml > /tmp/s.yaml
 kubectl apply -f /tmp/s.yaml
-${velero} plugin add openebs/velero-plugin:ci
+${velero} plugin add openebs/velero-plugin-amd64:ci
