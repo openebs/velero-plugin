@@ -52,6 +52,7 @@ var (
 	SnapshotLocation string
 )
 
+// #nosec
 var seededRand *rand.Rand = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 func init() {
@@ -75,7 +76,7 @@ func generateRandomString(length int) string {
 }
 
 func (c *ClientSet) generateBackupName() (string, error) {
-	for i := 0; i < 10; {
+	for i := 0; i < 10; i++ {
 		b := generateRandomString(8)
 		if b == "" {
 			continue

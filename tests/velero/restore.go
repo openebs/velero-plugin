@@ -42,7 +42,7 @@ func (rc byCreationTimeStamp) Less(i, j int) bool {
 }
 
 func (c *ClientSet) generateRestoreName(backup string) (string, error) {
-	for i := 0; i < 10; {
+	for i := 0; i < 10; i++ {
 		r := generateRandomString(8) + "-" + backup
 		if r == "" {
 			continue

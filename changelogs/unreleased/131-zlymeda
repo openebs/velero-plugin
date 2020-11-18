@@ -1,0 +1,1 @@
+Marking CVRs after successful restore with openebs.io/restore-completed if autoSetTargetIP=true or restoreAllIncrementalSnapshots=true

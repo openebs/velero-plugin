@@ -39,7 +39,7 @@ func (p *BlockStore) Init(config map[string]string) error {
 	return p.plugin.Init(config)
 }
 
-// CreateVolumeFromSnapshot Create a volume form given snapshot
+// CreateVolumeFromSnapshot Create a volume from given snapshot
 func (p *BlockStore) CreateVolumeFromSnapshot(snapshotID, volumeType, volumeAZ string, iops *int64) (string, error) {
 	return p.plugin.CreateVolumeFromSnapshot(snapshotID, volumeType, volumeAZ, iops)
 }

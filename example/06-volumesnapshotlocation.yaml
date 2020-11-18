@@ -43,6 +43,9 @@ spec:
     # restoreAllIncrementalSnapshots -- set it to "true", to restore all the backups from base backup to the given backup
     restoreAllIncrementalSnapshots: "false"
 
+    # autoSetTargetIP -- set it to "true", to automatically set target ip on CVR after successful restore
+    autoSetTargetIP: "true"
+
 ### Sample VolumeSnapshotLocation YAML for various cloud-providers
 # # For GCP
 #---

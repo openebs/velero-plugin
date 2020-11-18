@@ -133,7 +133,13 @@ func (c *ClientSet) DeleteVolume(pvcYAML, pvcNs string) error {
 		return err
 	}
 
-	return k8s.Client.WaitForDeploymentCleanup(
+	err = k8s.Client.WaitForDeploymentCleanup(
 		PVDeploymentLabel+"="+pv,
 		OpenEBSNs)
+
+	if err != nil {
+		return err
+	}
+
+	return k8s.Client.WaitForPVCCleanup(pvc.Name, pvc.Namespace)
 }

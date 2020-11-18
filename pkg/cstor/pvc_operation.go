@@ -137,7 +137,7 @@ func (p *Plugin) createPVC(volumeID, snapName string) (*Volume, error) {
 		if err != nil || pvc.Status.Phase == v1.ClaimLost {
 			if err = p.K8sClient.
 				CoreV1().
-				PersistentVolumeClaims(pvc.Namespace).
+				PersistentVolumeClaims(rpvc.Namespace).
 				Delete(rpvc.Name, nil); err != nil {
 				p.Log.Warnf("Failed to delete pvc {%s/%s} : %s", rpvc.Namespace, rpvc.Name, err.Error())
 			}
