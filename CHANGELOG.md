@@ -1,3 +1,21 @@
+v2.3.0 / 2020-11-14
+========================
+* Multi-arch container image support for velero plugin. Migrate the multi-arch builds to github-action to support amd64 and arm64 architectures. ([#133](https://github.com/openebs/velero-plugin/pull/133),[@prateek](https://github.com/prateek))
+* Adding github action workflows to build multiarch images using docker buildx. ([#132](https://github.com/openebs/velero-plugin/pull/132),[@shubham14bajpai](https://github.com/shubham14bajpai))
+* Adding new config parameter "restoreAllIncrementalSnapshots" to restore all the scheduled backups, from base backup to the given backup, using single restore ([#99](https://github.com/openebs/velero-plugin/pull/99),[@mynktl](https://github.com/mynktl))
+
+
+v2.3.0-RC2 / 2020-11-13
+========================
+
+
+v2.3.0-RC1 / 2020-11-13
+========================
+* Multi-arch container image support for velero plugin. Migrate the multi-arch builds to github-action to support amd64 and arm64 architectures. ([#133](https://github.com/openebs/velero-plugin/pull/133),[@prateek](https://github.com/prateek))
+* Adding github action workflows to build multiarch images using docker buildx. ([#132](https://github.com/openebs/velero-plugin/pull/132),[@shubham14bajpai](https://github.com/shubham14bajpai))
+* Adding new config parameter "restoreAllIncrementalSnapshots" to restore all the scheduled backups, from base backup to the given backup, using single restore ([#99](https://github.com/openebs/velero-plugin/pull/99),[@mynktl](https://github.com/mynktl))
+
+
 v2.2.0 / 2020-10-13
 ========================
 * use schedule name to identify the scheduled backup for ZFS-LocalPV ([#124](https://github.com/openebs/velero-plugin/pull/124),[@pawanpraka1](https://github.com/pawanpraka1))
