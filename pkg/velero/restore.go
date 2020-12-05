@@ -64,7 +64,7 @@ func GetRestoreNamespace(ns, bkpName string, log logrus.FieldLogger) (string, er
 // if node mapping found then it will return the mapping/target nodename
 func GetTargetNode(k8s *kubernetes.Clientset, node string) (string, error) {
 	opts := metav1.ListOptions{
-		LabelSelector: "velero.io/plugin-config,velero.io/change-pvc-node=RestoreItemAction",
+		LabelSelector: "velero.io/plugin-config,velero.io/change-pvc-node-selector=RestoreItemAction",
 	}
 
 	list, err := k8s.CoreV1().ConfigMaps(veleroNs).List(opts)
