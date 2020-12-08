@@ -58,9 +58,6 @@ var _ = BeforeSuite(func() {
 	err = app.CreateNamespace(AppNs)
 	Expect(err).NotTo(HaveOccurred())
 
-	err = app.CreateNamespace(TargetedNs)
-	Expect(err).NotTo(HaveOccurred())
-
 	err = k8s.Client.CreateStorageClass(openebs.SCYaml)
 	Expect(err).NotTo(HaveOccurred())
 
@@ -134,6 +131,7 @@ var _ = Describe("Backup/Restore Test", func() {
 			By("Destroying Application and Volume")
 			err = app.DestroyApplication(app.BusyboxYaml, AppNs)
 			Expect(err).NotTo(HaveOccurred(), "Failed to destroy application in namespace=%s", AppNs)
+
 			err = openebs.Client.DeleteVolume(openebs.PVCYaml, AppNs)
 			Expect(err).NotTo(HaveOccurred(), "Failed to delete volume for namespace=%s", AppNs)
 		})
@@ -211,8 +209,12 @@ var _ = Describe("Backup/Restore Test", func() {
 			By("Destroying Application and Volume")
 			err = app.DestroyApplication(app.BusyboxYaml, TargetedNs)
 			Expect(err).NotTo(HaveOccurred(), "Failed to destroy application in namespace=%s", TargetedNs)
+
 			err = openebs.Client.DeleteVolume(openebs.PVCYaml, TargetedNs)
 			Expect(err).NotTo(HaveOccurred(), "Failed to delete volume for namespace=%s", TargetedNs)
+
+			err = app.DestroyNamespace(TargetedNs)
+			Expect(err).NotTo(HaveOccurred(), "Failed to delete namespace=%s", TargetedNs)
 		})
 
 		It("Restore from non-scheduled backup to different Namespace", func() {

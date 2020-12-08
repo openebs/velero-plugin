@@ -26,13 +26,19 @@ import (
 	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 )
 
-// PVCWaitCount control time limit for createPVC
-var PVCWaitCount = 100
+const (
+	// PVCWaitCount control time limit for createPVC
+	PVCWaitCount = 100
 
-// PVCCheckInterval defines amount of delay for PVC bound check
-var PVCCheckInterval = 5 * time.Second
+	// NamespaceCreateTimeout defines timeout for namespace creation
+	NamespaceCreateTimeout = 5 * time.Minute
+
+	// PVCCheckInterval defines amount of delay for PVC bound check
+	PVCCheckInterval = 5 * time.Second
+)
 
 // backupPVC perform backup for given volume's PVC
 func (p *Plugin) backupPVC(volumeID string) error {
@@ -102,6 +108,12 @@ func (p *Plugin) createPVC(volumeID, snapName string) (*Volume, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	err = p.EnsureNamespaceOrCreate(targetedNs)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error verifying namespace")
+	}
+
 	pvc.Namespace = targetedNs
 
 	newVol, err := p.getVolumeFromPVC(*pvc)
@@ -299,4 +311,66 @@ func (p *Plugin) removePVCAnnotationKey(pvc *v1.PersistentVolumeClaim, annotatio
 		PersistentVolumeClaims(pvc.Namespace).
 		Update(pvc)
 	return err
+}
+
+// EnsureNamespaceOrCreate ensure that given namespace exists and ready
+// - If namespace exists and ready to use then it will return nil
+// - If namespace is in terminating state then function will wait for ns removal and re-create it
+// - If namespace doesn't exist then function will create it
+func (p *Plugin) EnsureNamespaceOrCreate(ns string) error {
+	checkNs := func(namespace string) (bool, error) {
+		var isNsReady bool
+
+		err := wait.PollImmediate(time.Second, NamespaceCreateTimeout, func() (bool, error) {
+			p.Log.Debugf("Checking namespace=%s", namespace)
+
+			obj, err := p.K8sClient.CoreV1().Namespaces().Get(namespace, metav1.GetOptions{})
+			if err != nil {
+				if !k8serrors.IsNotFound(err) {
+					return false, err
+				}
+
+				// namespace doesn't exist
+				return true, nil
+			}
+
+			if obj.GetDeletionTimestamp() != nil || obj.Status.Phase == v1.NamespaceTerminating {
+				// will wait till namespace get deleted
+				return false, nil
+			}
+
+			if obj.Status.Phase == v1.NamespaceActive {
+				isNsReady = true
+			}
+
+			return isNsReady, nil
+		})
+
+		return isNsReady, err
+	}
+
+	isReady, err := checkNs(ns)
+	if err != nil {
+		return errors.Wrapf(err, "failed to check namespace")
+	}
+
+	if isReady {
+		return nil
+	}
+
+	// namespace doesn't exist, create it
+	nsObj := &v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: ns,
+		},
+	}
+
+	p.Log.Infof("Creating namespace=%s", ns)
+
+	_, err = p.K8sClient.CoreV1().Namespaces().Create(nsObj)
+	if err != nil {
+		return errors.Wrapf(err, "failed to create namespace")
+	}
+
+	return nil
 }

@@ -157,6 +157,30 @@ func (k *KubeClient) WaitForDeploymentCleanup(labelSelector, ns string) error {
 	}
 }
 
+// WaitForNamespaceCleanup wait for cleanup of the given namespace
+func (k *KubeClient) WaitForNamespaceCleanup(ns string) error {
+	dumpLog := 0
+	for {
+		_, err := k.CoreV1().Namespaces().Get(ns, metav1.GetOptions{})
+
+		if k8serrors.IsNotFound(err) {
+			return nil
+		}
+
+		if err != nil {
+			return err
+		}
+
+		if dumpLog > 6 {
+			fmt.Printf("Waiting for cleanup of namespace %s\n", ns)
+			dumpLog = 0
+		}
+
+		dumpLog++
+		time.Sleep(5 * time.Second)
+	}
+}
+
 // GetPodList return list of pod for given label and namespace
 func (k *KubeClient) GetPodList(ns, label string) (*corev1.PodList, error) {
 	return k.CoreV1().Pods(ns).List(metav1.ListOptions{
