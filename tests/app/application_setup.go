@@ -45,6 +45,18 @@ func CreateNamespace(ns string) error {
 	return err
 }
 
+// DestroyNamespace destory the given namespace
+func DestroyNamespace(ns string) error {
+	err := k8s.Client.CoreV1().Namespaces().Delete(ns, &metav1.DeleteOptions{})
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			return nil
+		}
+		return k8s.Client.WaitForNamespaceCleanup(ns)
+	}
+	return nil
+}
+
 // DeployApplication deploy application
 func DeployApplication(appYaml, ns string) error {
 	var p corev1.Pod
