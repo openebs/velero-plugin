@@ -1,3 +1,21 @@
+v2.4.0 / 2020-12-13
+========================
+* Marking CVRs after successful restore with openebs.io/restore-completed if autoSetTargetIP=true or restoreAllIncrementalSnapshots=true ([#131](https://github.com/openebs/velero-plugin/pull/131),[@zlymeda](https://github.com/zlymeda))
+* updating the label selector for restoring the ZFS-LocalPV volumes on different node ([#139](https://github.com/openebs/velero-plugin/pull/139),[@pawanpraka1](https://github.com/pawanpraka1))
+* Adding support to create destination namespace, for restore, if it doesn't exist ([#140](https://github.com/openebs/velero-plugin/pull/140),[@mynktl](https://github.com/mynktl))
+
+
+v2.4.0-RC2 / 2020-12-12
+========================
+
+
+v2.4.0-RC1 / 2020-12-10
+========================
+* Marking CVRs after successful restore with openebs.io/restore-completed if autoSetTargetIP=true or restoreAllIncrementalSnapshots=true ([#131](https://github.com/openebs/velero-plugin/pull/131),[@zlymeda](https://github.com/zlymeda))
+* updating the label selector for restoring the ZFS-LocalPV volumes on different node ([#139](https://github.com/openebs/velero-plugin/pull/139),[@pawanpraka1](https://github.com/pawanpraka1))
+* Adding support to create destination namespace, for restore, if it doesn't exist ([#140](https://github.com/openebs/velero-plugin/pull/140),[@mynktl](https://github.com/mynktl))
+
+
 v2.3.0 / 2020-11-14
 ========================
 * Multi-arch container image support for velero plugin. Migrate the multi-arch builds to github-action to support amd64 and arm64 architectures. ([#133](https://github.com/openebs/velero-plugin/pull/133),[@prateek](https://github.com/prateek))
