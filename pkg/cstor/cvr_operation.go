@@ -54,12 +54,6 @@ func (p *Plugin) waitForAllCVRs(vol *Volume) error {
 	return p.waitForAllCVRsToBeInValidStatus(vol, validCvrStatuses)
 }
 
-// waitForTargetIpToBeSetInAllCVRs will ensure that all CVR had
-// target ip set in zfs
-func (p *Plugin) waitForTargetIpToBeSetInAllCVRs(vol *Volume) error {
-	return p.waitForAllCVRsToBeInValidStatus(vol, validCvrStatusesWithoutError)
-}
-
 func (p *Plugin) waitForAllCVRsToBeInValidStatus(vol *Volume, statuses []string) error {
 	replicaCount := p.getCVRCount(vol.volname, vol.isCSIVolume)
 	if replicaCount == -1 {
@@ -164,8 +158,9 @@ func (p *Plugin) getCVRCount(volname string, isCSIVolume bool) int {
 	return obj.Spec.ReplicationFactor
 }
 
-// markCVRsAsRestoreCompleted wait for all CVRs to be ready, then marks CVRs are restore completed
-// and wait for CVRs to be in non-error state
+// markCVRsAsRestoreCompleted annotate relevant CVR with restoreCompletedAnnotation
+// Note: It will not wait for CVR to become healthy. This is mainly to avoid the scenarios
+// where target-affinity is used.
 func (p *Plugin) markCVRsAsRestoreCompleted(vol *Volume) error {
 	p.Log.Infof("Waiting for all CVRs to be ready")
 	if err := p.waitForAllCVRs(vol); err != nil {
@@ -178,11 +173,7 @@ func (p *Plugin) markCVRsAsRestoreCompleted(vol *Volume) error {
 		return err
 	}
 
-	p.Log.Infof("Waiting for target ip to be set on all CVRs")
-	if err := p.waitForTargetIpToBeSetInAllCVRs(vol); err != nil {
-		return err
-	}
-
+	p.Log.Infof("Successfully annotated all CVRs")
 	return nil
 }
 
