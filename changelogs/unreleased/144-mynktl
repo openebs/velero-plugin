@@ -1,0 +1,1 @@
+Removing wait on setting target-ip for CVR. This fixes the restore for application pod having target-affinity set.
