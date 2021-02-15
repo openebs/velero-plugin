@@ -1,3 +1,29 @@
+v2.6.0 / 2021-02-13
+========================
+
+
+v2.6.0-RC2 / 2021-02-11
+========================
+
+
+v2.6.0-RC1 / 2021-02-08
+========================
+
+
+v2.5.0 / 2021-01-13
+========================
+* Removing wait on setting target-ip for CVR. This fixes the restore for application pod having target-affinity set. ([#144](https://github.com/openebs/velero-plugin/pull/140),[@mynktl](https://github.com/mynktl))
+
+
+v2.5.0-RC2 / 2021-01-11
+========================
+
+
+v2.5.0-RC1 / 2021-01-08
+========================
+* Removing wait on setting target-ip for CVR. This fixes the restore for application pod having target-affinity set. ([#144](https://github.com/openebs/velero-plugin/pull/140),[@mynktl](https://github.com/mynktl))
+
+
 v2.4.0 / 2020-12-13
 ========================
 * Marking CVRs after successful restore with openebs.io/restore-completed if autoSetTargetIP=true or restoreAllIncrementalSnapshots=true ([#131](https://github.com/openebs/velero-plugin/pull/131),[@zlymeda](https://github.com/zlymeda))
