@@ -38,6 +38,7 @@ require (
 )
 
 replace (
+	github.com/openebs/zfs-localpv => github.com/pawanpraka1/zfs-localpv v0.0.0-20210216132356-3da301606743
 	k8s.io/api => k8s.io/api v0.15.12
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.15.12
 	k8s.io/apimachinery => k8s.io/apimachinery v0.15.13-beta.0

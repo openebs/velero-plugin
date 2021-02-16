@@ -37,7 +37,7 @@ const (
 	restoreStatusInterval = 5
 )
 
-func (p *Plugin) createVolume(pvname string, bkpname string, bkpZV *apis.ZFSVolume) (*apis.ZFSVolume, error) {
+func (p *Plugin) buildZFSVolume(pvname string, bkpname string, bkpZV *apis.ZFSVolume) (*apis.ZFSVolume, error) {
 	// get the target namespace
 	ns, err := velero.GetRestoreNamespace(bkpZV.Labels[VeleroNsKey], bkpname, p.Log)
 
@@ -97,22 +97,27 @@ func (p *Plugin) createVolume(pvname string, bkpname string, bkpZV *apis.ZFSVolu
 	rZV.Labels = map[string]string{VeleroVolKey: pvname, VeleroNsKey: ns}
 	rZV.Annotations = map[string]string{VeleroBkpKey: bkpname}
 
-	vol, err := volbuilder.NewKubeclient().WithNamespace(p.namespace).Create(rZV)
+	return rZV, nil
+}
+
+func (p *Plugin) createZFSVolume(rZV *apis.ZFSVolume) error {
+
+	_, err := volbuilder.NewKubeclient().WithNamespace(p.namespace).Create(rZV)
 	if err != nil {
 		p.Log.Errorf("zfs: create ZFSVolume failed vol %v err: %v", rZV, err)
-		return nil, err
+		return err
 	}
 
 	err = p.checkVolCreation(rZV.Name)
 	if err != nil {
 		p.Log.Errorf("zfs: checkVolCreation failed %s err: %v", rZV.Name, err)
-		return nil, err
+		return err
 	}
 
-	return vol, nil
+	return nil
 }
 
-func (p *Plugin) restoreZFSVolume(pvname, schdname, bkpname string) (*apis.ZFSVolume, error) {
+func (p *Plugin) getZFSVolume(pvname, schdname, bkpname string) (*apis.ZFSVolume, error) {
 	bkpZV := &apis.ZFSVolume{}
 
 	filename := p.cl.GenerateRemoteFileWithSchd(pvname, schdname, bkpname)
@@ -126,7 +131,7 @@ func (p *Plugin) restoreZFSVolume(pvname, schdname, bkpname string) (*apis.ZFSVo
 		return nil, errors.Errorf("zfs: failed to decode zfsvolume file=%s", filename+".zfsvol")
 	}
 
-	return p.createVolume(pvname, bkpname, bkpZV)
+	return p.buildZFSVolume(pvname, bkpname, bkpZV)
 }
 
 func (p *Plugin) destroyZFSVolume(volname string) error {
@@ -216,6 +221,7 @@ func (p *Plugin) startRestore(zv *apis.ZFSVolume, bkpname string, port int) (str
 		WithNode(node).
 		WithStatus(apis.RSTZFSStatusInit).
 		WithRemote(serverAddr).
+		WithVolSpec(zv.Spec).
 		Build()
 
 	if err != nil {
@@ -343,7 +349,7 @@ func (p *Plugin) doRestore(snapshotID string, port int) (string, error) {
 
 	p.Log.Debugf("zfs: backup list for restore %v", bkpList)
 
-	zv, err := p.restoreZFSVolume(pvname, schdname, bkpname)
+	zv, err := p.getZFSVolume(pvname, schdname, bkpname)
 	if err != nil {
 		p.Log.Errorf("zfs: restore ZFSVolume failed vol %s bkp %s err %v", pvname, bkpname, err)
 		return "", err
@@ -354,11 +360,16 @@ func (p *Plugin) doRestore(snapshotID string, port int) (string, error) {
 		err = p.dataRestore(zv, pvname, schdname, bkp, port)
 
 		if err != nil {
-			// delete the volume
-			p.destroyZFSVolume(zv.Name)
 			p.Log.Errorf("zfs: error doRestore returning snap %s err %v", snapshotID, err)
 			return "", err
 		}
+	}
+
+	// restore done, create the ZFSVolume
+	err = p.createZFSVolume(zv)
+	if err != nil {
+		p.Log.Errorf("zfs: can not create ZFS Volume, snap %s err %v", snapshotID, err)
+		return "", err
 	}
 
 	return zv.Name, nil
