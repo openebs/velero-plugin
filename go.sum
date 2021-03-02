@@ -474,10 +474,10 @@ github.com/openebs/lib-csi v0.0.0-20201218144414-a64be5d4731e h1:40mLG8RrhwHYSS3
 github.com/openebs/lib-csi v0.0.0-20201218144414-a64be5d4731e/go.mod h1:RqhCQqpcbFcAeNg54v9IOqLbY0/7S00WUa24ozC7cjI=
 github.com/openebs/maya v0.0.0-20200411140727-1c81f9e017b0 h1:9o6+N3YkssQvUlmJnqNULSxsGFO/rb1we8MtYKr5ze4=
 github.com/openebs/maya v0.0.0-20200411140727-1c81f9e017b0/go.mod h1:QQY9cOHKQwZ73qbv6O//UYUBLNV2S0MRDIfG7t5KOCk=
+github.com/openebs/zfs-localpv v1.4.1-0.20210301182642-6ec49df225fa h1:yrYcB+jDNlrkSD7FBzy1TxVcy3yB6X1ttjHeOwH304g=
+github.com/openebs/zfs-localpv v1.4.1-0.20210301182642-6ec49df225fa/go.mod h1:/gL8B1DN2eu1uBNK4cbypr8GEAnMmlf/rC7tH+yxREM=
 github.com/opentracing/opentracing-go v1.0.2/go.mod h1:UkNAQd3GIcIGf0SeVgPpRdFStlNbqXla1AfSYxPUl2o=
 github.com/openzipkin/zipkin-go v0.1.6/go.mod h1:QgAqvLzwWbR/WpD4A3cGpPtJrZXNIiJc5AZX7/PBEpw=
-github.com/pawanpraka1/zfs-localpv v0.0.0-20210216132356-3da301606743 h1:sOaikRC0siAReC7RLBNGk0MkLWJTqvFOabEbNWSbNnc=
-github.com/pawanpraka1/zfs-localpv v0.0.0-20210216132356-3da301606743/go.mod h1:/gL8B1DN2eu1uBNK4cbypr8GEAnMmlf/rC7tH+yxREM=
 github.com/pborman/uuid v0.0.0-20170612153648-e790cca94e6c/go.mod h1:VyrYX9gd7irzKovcSS6BIIEwPRkP2Wm2m9ufcdFSJ34=
 github.com/pborman/uuid v1.2.0/go.mod h1:X/NO0urCmaxf9VXbdlT7C2Yzkj2IKimNn4k+gtPdI/k=
 github.com/pelletier/go-toml v1.0.1/go.mod h1:5z9KED0ma1S8pY6P1sdut58dfprrGBbd/94hg7ilaic=

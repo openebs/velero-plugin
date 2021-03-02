@@ -17,7 +17,7 @@ require (
 	github.com/onsi/gomega v1.7.1
 	github.com/openebs/api v1.11.1-0.20200629052954-e52e2bcd8339
 	github.com/openebs/maya v0.0.0-20200411140727-1c81f9e017b0
-	github.com/openebs/zfs-localpv v1.0.0
+	github.com/openebs/zfs-localpv v1.4.1-0.20210301182642-6ec49df225fa
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.5.1 // indirect
 	github.com/sirupsen/logrus v1.5.0
@@ -38,7 +38,6 @@ require (
 )
 
 replace (
-	github.com/openebs/zfs-localpv => github.com/pawanpraka1/zfs-localpv v0.0.0-20210216132356-3da301606743
 	k8s.io/api => k8s.io/api v0.15.12
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.15.12
 	k8s.io/apimachinery => k8s.io/apimachinery v0.15.13-beta.0
