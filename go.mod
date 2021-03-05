@@ -17,7 +17,7 @@ require (
 	github.com/onsi/gomega v1.7.1
 	github.com/openebs/api v1.11.1-0.20200629052954-e52e2bcd8339
 	github.com/openebs/maya v0.0.0-20200411140727-1c81f9e017b0
-	github.com/openebs/zfs-localpv v1.0.0
+	github.com/openebs/zfs-localpv v1.4.1-0.20210301182642-6ec49df225fa
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.5.1 // indirect
 	github.com/sirupsen/logrus v1.5.0
