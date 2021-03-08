@@ -37,9 +37,46 @@ jobs:
           pattern: '*.sh'
           exclude: './vendor/*'
 
-  plugin:
+  test:
     runs-on: ubuntu-latest
     needs: ['lint']
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Set up Go 1.14
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.14.7
+      
+      - name: Setup Minikube-Kubernetes
+        uses: manusa/actions-setup-minikube@v2.3.0
+        with:
+          minikube version: v1.16.0
+          kubernetes version: v1.13.0
+          github token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Build images locally
+        run: make build && make container || exit 1;
+
+      - name: Setting environment variables
+        run: |
+          kubectl cluster-info
+          echo "KUBECONFIG=$HOME/.kube/config" >> $GITHUB_ENV
+          echo "VELERO_RELEASE=v1.0.0" >> $GITHUB_ENV
+          echo "OPENEBS_RELEASE=master" >> $GITHUB_ENV
+
+      - name: Installation
+        run: |
+          ./script/install-openebs.sh
+          ./script/install-velero.sh
+
+      - name: Running tests
+        run: make test 
+
+  plugin:
+    runs-on: ubuntu-latest
+    needs: ['test']
     steps:
       - name: Checkout
         uses: actions/checkout@v2
