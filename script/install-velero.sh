@@ -55,7 +55,7 @@ export MAPI_ADDR="http://${MAPI_SVC_ADDR}:5656"
 export KUBERNETES_SERVICE_HOST="127.0.0.1"
 export KUBECONFIG=$HOME/.kube/config
 
-wget -nv -O velero.tar.gz https://github.com/vmware-tanzu/velero/releases/download/${VELERO_RELEASE}/velero-${VELERO_RELEASE}-linux-amd64.tar.gz
+wget -nv -O velero.tar.gz https://github.com/heptio/velero/releases/download/${VELERO_RELEASE}/velero-${VELERO_RELEASE}-linux-amd64.tar.gz
 mkdir velero
 tar xf velero.tar.gz -C velero
 velero=$PWD/velero/velero-${VELERO_RELEASE}-linux-amd64/velero
