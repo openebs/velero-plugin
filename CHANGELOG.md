@@ -1,3 +1,19 @@
+v2.7.0 / 2021-03-11
+========================
+* moved travis tests to github action and removed travis.yml ([#149](https://github.com/openebs/velero-plugin/pull/149),[@shubham14bajpai](https://github.com/shubham14bajpai))
+* adding support to restore in an encrypted pool for ZFS-LocalPV ([#147](https://github.com/openebs/velero-plugin/pull/147),[@pawanpraka1](https://github.com/pawanpraka1))
+
+
+v2.7.0-RC2 / 2021-03-10
+========================
+
+
+v2.7.0-RC1 / 2021-03-08
+========================
+* moved travis tests to github action and removed travis.yml ([#149](https://github.com/openebs/velero-plugin/pull/149),[@shubham14bajpai](https://github.com/shubham14bajpai))
+* adding support to restore in an encrypted pool for ZFS-LocalPV ([#147](https://github.com/openebs/velero-plugin/pull/147),[@pawanpraka1](https://github.com/pawanpraka1))
+
+
 v2.6.0 / 2021-02-13
 ========================
 
