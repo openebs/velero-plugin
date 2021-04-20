@@ -1,3 +1,7 @@
+v2.8.0 / 2021-04-14
+========================
+
+
 v2.7.0 / 2021-03-11
 ========================
 * moved travis tests to github action and removed travis.yml ([#149](https://github.com/openebs/velero-plugin/pull/149),[@shubham14bajpai](https://github.com/shubham14bajpai))
