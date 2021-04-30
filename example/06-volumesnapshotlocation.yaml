@@ -46,6 +46,11 @@ spec:
     # autoSetTargetIP -- set it to "true", to automatically set target ip on CVR after successful restore
     autoSetTargetIP: "true"
 
+    # restApiTimeout -- http timeout for rest call between velero-plugin and openebs services
+    # if not set, default timeout will be 60s.
+    # example value: 60s, 2m..
+    restApiTimeout: 1m
+
 ### Sample VolumeSnapshotLocation YAML for various cloud-providers
 # # For GCP
 #---
@@ -60,6 +65,7 @@ spec:
 #     bucket: openebs-velero-example
 #     prefix: cstor
 #     provider: gcp
+#     restApiTimeout: 1m
 
 #
 # # For MinIO
@@ -105,6 +111,8 @@ spec:
 #     # If you want to disable certificate verification then set insecureSkipTLSVerify to "true"
 #     # By default insecureSkipTLSVerify is set to "false"
 #     insecureSkipTLSVerify: "false"
+#
+#     restApiTimeout: 1m
 
 #
 # # For AWS
@@ -143,3 +151,5 @@ spec:
 #     # If you want to disable certificate verification then set insecureSkipTLSVerify to "true"
 #     # By default insecureSkipTLSVerify is set to "false"
 #     insecureSkipTLSVerify: "false"
+#
+#     restApiTimeout: 1m
