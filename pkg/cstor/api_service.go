@@ -22,7 +22,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
-	"time"
 
 	v1alpha1 "github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
 	"github.com/pkg/errors"
@@ -39,7 +38,7 @@ func (p *Plugin) httpRestCall(url, reqtype string, data []byte) ([]byte, error) 
 	req.Header.Add("Content-Type", "application/json")
 
 	c := &http.Client{
-		Timeout: 60 * time.Second,
+		Timeout: p.restTimeout,
 	}
 
 	resp, err := c.Do(req)
@@ -302,7 +301,7 @@ func (p *Plugin) sendDeleteRequest(backup, volume, namespace, schedule string, i
 	req.URL.RawQuery = q.Encode()
 
 	c := &http.Client{
-		Timeout: 60 * time.Second,
+		Timeout: p.restTimeout,
 	}
 
 	resp, err := c.Do(req)

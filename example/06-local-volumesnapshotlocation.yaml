@@ -26,3 +26,8 @@ spec:
     namespace: <OPENEBS_NAMESPACE>
 
     local: "true"
+
+    # restApiTimeout -- http timeout for rest call between velero-plugin and openebs services
+    # if not set, default timeout will be 60s.
+    # example value: 60s, 2m..
+    restApiTimeout: 1m

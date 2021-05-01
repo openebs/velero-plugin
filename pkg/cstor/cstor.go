@@ -77,6 +77,9 @@ const (
 
 	// port to connect for backup
 	CstorBackupPort = 9001
+
+	// RestTimeOut config key for REST API timeout value
+	RestTimeOut = "restApiTimeout"
 )
 
 // Plugin defines snapshot plugin for CStor volume
@@ -134,6 +137,9 @@ type Plugin struct {
 
 	// if set then targetip will be set after successful restore
 	autoSetTargetIP bool
+
+	// restTimeout defines timeout for REST API calls
+	restTimeout time.Duration
 }
 
 // Snapshot describes snapshot object information
@@ -264,6 +270,19 @@ func (p *Plugin) Init(config map[string]string) error {
 	if p.snapshots == nil {
 		p.snapshots = make(map[string]*Snapshot)
 	}
+
+	// check for user-provided timeout values
+	if timeoutStr, ok := config[RestTimeOut]; ok {
+		timeout, err := time.ParseDuration(timeoutStr)
+		if err != nil {
+			return errors.Wrapf(err, "failed to parse restApiTimeout")
+		}
+		p.restTimeout = timeout
+	} else {
+		p.restTimeout = 60 * time.Second
+	}
+
+	p.Log.Infof("Setting restApiTimeout to %v", p.restTimeout)
 
 	if local, ok := config[LocalSnapshot]; ok && isTrue(local) {
 		p.local = true

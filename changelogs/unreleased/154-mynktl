@@ -1,0 +1,2 @@
+Adding a new VolumeSnapshotLocation config parameter restApiTimeout to configure timeout for HTTP REST request between plugin and cstor services
+
