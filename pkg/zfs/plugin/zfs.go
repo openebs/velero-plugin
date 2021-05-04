@@ -162,7 +162,7 @@ func (p *Plugin) CreateSnapshot(volumeID, volumeAZ string, tags map[string]strin
 		return "", errors.New("zfs: error get backup name")
 	}
 
-	schdname, _ := tags[VeleroSchdKey]
+	schdname := tags[VeleroSchdKey]
 
 	snapshotID, err := p.doBackup(volumeID, bkpname, schdname, ZFSBackupPort)
 

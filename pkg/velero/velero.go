@@ -40,9 +40,6 @@ func InitializeClientSet(config *rest.Config) error {
 	var err error
 
 	clientSet, err = veleroclient.NewForConfig(config)
-	if err != nil {
-		return err
-	}
 
-	return nil
+	return err
 }
