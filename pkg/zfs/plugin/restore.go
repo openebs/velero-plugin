@@ -186,7 +186,7 @@ func (p *Plugin) checkRestoreStatus(rname string) error {
 
 func (p *Plugin) checkVolCreation(volname string) error {
 
-	for true {
+	for {
 
 		getOptions := metav1.GetOptions{}
 		vol, err := volbuilder.NewKubeclient().
