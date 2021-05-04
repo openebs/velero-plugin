@@ -198,37 +198,6 @@ func (p *Plugin) createPVC(volumeID, snapName string) (*Volume, error) {
 	return vol, nil
 }
 
-// nolint: unused
-func (p *Plugin) getPVCInfo(volumeID, snapName string) (*Volume, error) {
-	pvc := &v1.PersistentVolumeClaim{}
-	var vol *Volume
-	var data []byte
-	var ok bool
-
-	filename := p.cl.GenerateRemoteFilename(volumeID, snapName)
-	if filename == "" {
-		return nil, errors.New("error creating remote file name for pvc backup")
-	}
-
-	if data, ok = p.cl.Read(filename + ".pvc"); !ok {
-		return nil, errors.New("failed to download PVC")
-	}
-
-	if err := json.Unmarshal(data, pvc); err != nil {
-		return nil, errors.New("failed to decode pvc")
-	}
-
-	vol = &Volume{
-		volname:      volumeID,
-		snapshotTag:  volumeID,
-		backupName:   snapName,
-		storageClass: *pvc.Spec.StorageClassName,
-		size:         pvc.Spec.Resources.Requests[v1.ResourceStorage],
-	}
-	p.volumes[vol.volname] = vol
-	return vol, nil
-}
-
 // getVolumeFromPVC returns volume info for given PVC if PVC is in bound state
 func (p *Plugin) getVolumeFromPVC(pvc v1.PersistentVolumeClaim) (*Volume, error) {
 	rpvc, err := p.K8sClient.
