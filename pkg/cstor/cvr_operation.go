@@ -31,11 +31,6 @@ const (
 	restoreCompletedAnnotation = "openebs.io/restore-completed"
 )
 
-var validCvrStatusesWithoutError = []string{
-	string(cstorv1.CVRStatusOnline),
-	string(cstorv1.CVRStatusDegraded),
-}
-
 var validCvrStatuses = []string{
 	string(cstorv1.CVRStatusOnline),
 	string(cstorv1.CVRStatusError),
