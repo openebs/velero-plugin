@@ -134,14 +134,6 @@ func (p *Plugin) getZFSVolume(pvname, schdname, bkpname string) (*apis.ZFSVolume
 	return p.buildZFSVolume(pvname, bkpname, bkpZV)
 }
 
-func (p *Plugin) destroyZFSVolume(volname string) error {
-	err := volbuilder.NewKubeclient().WithNamespace(p.namespace).Delete(volname)
-	if err != nil {
-		p.Log.Errorf("zfs: delete vol failed vol %s err: %v", volname, err)
-	}
-	return err
-}
-
 func (p *Plugin) isVolumeReady(volumeID string) (ready bool, err error) {
 	getOptions := metav1.GetOptions{}
 	vol, err := volbuilder.NewKubeclient().
