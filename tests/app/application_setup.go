@@ -17,6 +17,8 @@ limitations under the License.
 package app
 
 import (
+	"context"
+
 	"github.com/ghodss/yaml"
 	k8s "github.com/openebs/velero-plugin/tests/k8s"
 	corev1 "k8s.io/api/core/v1"
@@ -31,7 +33,7 @@ var (
 
 // CreateNamespace create namespace for application
 func CreateNamespace(ns string) error {
-	_, err := k8s.Client.CoreV1().Namespaces().Get(ns, metav1.GetOptions{})
+	_, err := k8s.Client.CoreV1().Namespaces().Get(context.TODO(), ns, metav1.GetOptions{})
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
 			o := &corev1.Namespace{
@@ -39,7 +41,7 @@ func CreateNamespace(ns string) error {
 					Name: ns,
 				},
 			}
-			_, err = k8s.Client.CoreV1().Namespaces().Create(o)
+			_, err = k8s.Client.CoreV1().Namespaces().Create(context.TODO(), o, metav1.CreateOptions{})
 		}
 	}
 	return err
@@ -47,7 +49,7 @@ func CreateNamespace(ns string) error {
 
 // DestroyNamespace destory the given namespace
 func DestroyNamespace(ns string) error {
-	err := k8s.Client.CoreV1().Namespaces().Delete(ns, &metav1.DeleteOptions{})
+	err := k8s.Client.CoreV1().Namespaces().Delete(context.TODO(), ns, metav1.DeleteOptions{})
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
 			return nil
@@ -64,7 +66,7 @@ func DeployApplication(appYaml, ns string) error {
 		return err
 	}
 	p.Namespace = ns
-	_, err := k8s.Client.CoreV1().Pods(ns).Create(&p)
+	_, err := k8s.Client.CoreV1().Pods(ns).Create(context.TODO(), &p, metav1.CreateOptions{})
 	if err != nil {
 		if !k8serrors.IsAlreadyExists(err) {
 			return err
@@ -86,7 +88,7 @@ func DestroyApplication(appYaml, ns string) error {
 	err := k8s.Client.
 		CoreV1().
 		Pods(ns).
-		Delete(p.Name, &metav1.DeleteOptions{})
+		Delete(context.TODO(), p.Name, metav1.DeleteOptions{})
 
 	if !k8serrors.IsNotFound(err) {
 		return err

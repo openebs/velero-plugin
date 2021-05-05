@@ -17,6 +17,7 @@ limitations under the License.
 package cstor
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"strings"
@@ -28,7 +29,7 @@ import (
 	/* Due to dependency conflict, please ensure openebs
 	 * dependency manually instead of using dep
 	 */
-	openebsapis "github.com/openebs/api/pkg/client/clientset/versioned"
+	openebsapis "github.com/openebs/api/v2/pkg/client/clientset/versioned"
 	"github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
 	openebs "github.com/openebs/maya/pkg/client/generated/clientset/versioned"
 	"github.com/openebs/velero-plugin/pkg/velero"
@@ -475,7 +476,7 @@ func (p *Plugin) getSnapInfo(snapshotID string) (*Snapshot, error) {
 	pv, err := p.K8sClient.
 		CoreV1().
 		PersistentVolumes().
-		Get(volumeID, metav1.GetOptions{})
+		Get(context.TODO(), volumeID, metav1.GetOptions{})
 	if err != nil {
 		return nil, errors.Errorf("Error fetching volume{%s} : %s", volumeID, err.Error())
 	}

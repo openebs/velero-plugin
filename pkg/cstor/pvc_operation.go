@@ -17,6 +17,7 @@ limitations under the License.
 package cstor
 
 import (
+	"context"
 	"encoding/json"
 	"time"
 
@@ -48,7 +49,7 @@ func (p *Plugin) backupPVC(volumeID string) error {
 	pvcs, err := p.K8sClient.
 		CoreV1().
 		PersistentVolumeClaims(vol.namespace).
-		List(metav1.ListOptions{})
+		List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		p.Log.Errorf("Error fetching PVC list : %s", err.Error())
 		return errors.New("failed to fetch PVC list")
@@ -136,7 +137,7 @@ func (p *Plugin) createPVC(volumeID, snapName string) (*Volume, error) {
 	rpvc, err := p.K8sClient.
 		CoreV1().
 		PersistentVolumeClaims(pvc.Namespace).
-		Create(pvc)
+		Create(context.TODO(), pvc, metav1.CreateOptions{})
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to create PVC=%s/%s", pvc.Namespace, pvc.Name)
 	}
@@ -145,12 +146,12 @@ func (p *Plugin) createPVC(volumeID, snapName string) (*Volume, error) {
 		pvc, err = p.K8sClient.
 			CoreV1().
 			PersistentVolumeClaims(rpvc.Namespace).
-			Get(rpvc.Name, metav1.GetOptions{})
+			Get(context.TODO(), rpvc.Name, metav1.GetOptions{})
 		if err != nil || pvc.Status.Phase == v1.ClaimLost {
 			if err = p.K8sClient.
 				CoreV1().
 				PersistentVolumeClaims(rpvc.Namespace).
-				Delete(rpvc.Name, nil); err != nil {
+				Delete(context.TODO(), rpvc.Name, metav1.DeleteOptions{}); err != nil {
 				p.Log.Warnf("Failed to delete pvc {%s/%s} : %s", rpvc.Namespace, rpvc.Name, err.Error())
 			}
 			return nil, errors.Wrapf(err, "failed to create PVC=%s/%s", rpvc.Namespace, rpvc.Name)
@@ -234,7 +235,7 @@ func (p *Plugin) getVolumeFromPVC(pvc v1.PersistentVolumeClaim) (*Volume, error)
 	rpvc, err := p.K8sClient.
 		CoreV1().
 		PersistentVolumeClaims(pvc.Namespace).
-		Get(pvc.Name, metav1.GetOptions{})
+		Get(context.TODO(), pvc.Name, metav1.GetOptions{})
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
 			return nil, nil
@@ -309,7 +310,7 @@ func (p *Plugin) removePVCAnnotationKey(pvc *v1.PersistentVolumeClaim, annotatio
 	_, err = p.K8sClient.
 		CoreV1().
 		PersistentVolumeClaims(pvc.Namespace).
-		Update(pvc)
+		Update(context.TODO(), pvc, metav1.UpdateOptions{})
 	return err
 }
 
@@ -324,7 +325,7 @@ func (p *Plugin) EnsureNamespaceOrCreate(ns string) error {
 		err := wait.PollImmediate(time.Second, NamespaceCreateTimeout, func() (bool, error) {
 			p.Log.Debugf("Checking namespace=%s", namespace)
 
-			obj, err := p.K8sClient.CoreV1().Namespaces().Get(namespace, metav1.GetOptions{})
+			obj, err := p.K8sClient.CoreV1().Namespaces().Get(context.TODO(), namespace, metav1.GetOptions{})
 			if err != nil {
 				if !k8serrors.IsNotFound(err) {
 					return false, err
@@ -367,7 +368,7 @@ func (p *Plugin) EnsureNamespaceOrCreate(ns string) error {
 
 	p.Log.Infof("Creating namespace=%s", ns)
 
-	_, err = p.K8sClient.CoreV1().Namespaces().Create(nsObj)
+	_, err = p.K8sClient.CoreV1().Namespaces().Create(context.TODO(), nsObj, metav1.CreateOptions{})
 	if err != nil {
 		return errors.Wrapf(err, "failed to create namespace")
 	}

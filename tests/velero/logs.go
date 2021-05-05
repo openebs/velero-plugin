@@ -34,7 +34,7 @@ func (c *ClientSet) DumpBackupLogs(backupName string) error {
 		backupName,
 		v1.DownloadTargetKindBackupLog,
 		os.Stdout,
-		time.Minute, false)
+		time.Minute, false, "")
 }
 
 // DumpLogs dump logs of velero pod on stdout

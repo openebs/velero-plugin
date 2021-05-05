@@ -17,11 +17,12 @@ limitations under the License.
 package cstor
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
 
-	cstorv1 "github.com/openebs/api/pkg/apis/cstor/v1"
+	cstorv1 "github.com/openebs/api/v2/pkg/apis/cstor/v1"
 	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -73,7 +74,7 @@ func (p *Plugin) waitFoNonCSIBasedCVRs(vol *Volume, replicaCount int, statuses [
 		cvrList, err := p.OpenEBSClient.
 			OpenebsV1alpha1().
 			CStorVolumeReplicas(p.namespace).
-			List(metav1.ListOptions{
+			List(context.TODO(), metav1.ListOptions{
 				LabelSelector: cVRPVLabel + "=" + vol.volname,
 			})
 		if err != nil {
@@ -104,7 +105,7 @@ func (p *Plugin) waitForCSIBasedCVRs(vol *Volume, replicaCount int, statuses []s
 		cvrList, err := p.OpenEBSAPIsClient.
 			CstorV1().
 			CStorVolumeReplicas(p.namespace).
-			List(metav1.ListOptions{
+			List(context.TODO(), metav1.ListOptions{
 				LabelSelector: cVRPVLabel + "=" + vol.volname,
 			})
 		if err != nil {
@@ -138,7 +139,7 @@ func (p *Plugin) getCVRCount(volname string, isCSIVolume bool) int {
 		obj, err := p.OpenEBSAPIsClient.
 			CstorV1().
 			CStorVolumes(p.namespace).
-			Get(volname, metav1.GetOptions{})
+			Get(context.TODO(), volname, metav1.GetOptions{})
 		if err != nil {
 			p.Log.Errorf("Failed to fetch cstorVolume.. %s", err)
 			return -1
@@ -150,7 +151,7 @@ func (p *Plugin) getCVRCount(volname string, isCSIVolume bool) int {
 	obj, err := p.OpenEBSClient.
 		OpenebsV1alpha1().
 		CStorVolumes(p.namespace).
-		Get(volname, metav1.GetOptions{})
+		Get(context.TODO(), volname, metav1.GetOptions{})
 	if err != nil {
 		p.Log.Errorf("Failed to fetch cstorVolume.. %s", err)
 		return -1
@@ -190,7 +191,7 @@ func (p *Plugin) markRestoreAsCompletedForCSIBasedCVRs(vol *Volume) error {
 		CStorVolumeReplicas(p.namespace)
 
 	cvrList, err := replicas.
-		List(metav1.ListOptions{
+		List(context.TODO(), metav1.ListOptions{
 			LabelSelector: cVRPVLabel + "=" + vol.volname,
 		})
 
@@ -204,7 +205,7 @@ func (p *Plugin) markRestoreAsCompletedForCSIBasedCVRs(vol *Volume) error {
 		p.Log.Infof("Updating CVRs %s", cvr.Name)
 
 		cvr.Annotations[restoreCompletedAnnotation] = trueStr
-		_, err := replicas.Update(&cvr)
+		_, err := replicas.Update(context.TODO(), &cvr, metav1.UpdateOptions{})
 
 		if err != nil {
 			p.Log.Warnf("could not update CVR %s", cvr.Name)
@@ -224,7 +225,7 @@ func (p *Plugin) markRestoreAsCompletedForNonCSIBasedCVRs(vol *Volume) error {
 		CStorVolumeReplicas(p.namespace)
 
 	cvrList, err := replicas.
-		List(metav1.ListOptions{
+		List(context.TODO(), metav1.ListOptions{
 			LabelSelector: cVRPVLabel + "=" + vol.volname,
 		})
 
@@ -238,7 +239,7 @@ func (p *Plugin) markRestoreAsCompletedForNonCSIBasedCVRs(vol *Volume) error {
 		p.Log.Infof("Updating CVRs %s", cvr.Name)
 
 		cvr.Annotations[restoreCompletedAnnotation] = trueStr
-		_, err := replicas.Update(&cvr)
+		_, err := replicas.Update(context.TODO(), &cvr, metav1.UpdateOptions{})
 
 		if err != nil {
 			p.Log.Warnf("could not update CVR %s", cvr.Name)

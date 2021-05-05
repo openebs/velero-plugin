@@ -17,6 +17,7 @@ limitations under the License.
 package velero
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -34,7 +35,7 @@ func (c *ClientSet) generateScheduleName() (string, error) {
 		}
 		_, err := c.VeleroV1().
 			Schedules(VeleroNamespace).
-			Get(b, metav1.GetOptions{})
+			Get(context.TODO(), b, metav1.GetOptions{})
 		if err != nil && k8serrors.IsNotFound(err) {
 			return b, nil
 		}
@@ -69,7 +70,7 @@ func (c *ClientSet) CreateSchedule(ns, period string, count int) (string, v1.Bac
 	}
 	o, err := c.VeleroV1().
 		Schedules(VeleroNamespace).
-		Create(sched)
+		Create(context.TODO(), sched, metav1.CreateOptions{})
 	if err != nil {
 		return "", status, err
 	}
@@ -88,7 +89,7 @@ func (c *ClientSet) waitForScheduleCompletion(name string, count int) (v1.Backup
 	for bcount := 0; bcount < count; {
 		olist, err := c.VeleroV1().
 			Backups(VeleroNamespace).
-			List(metav1.ListOptions{
+			List(context.TODO(), metav1.ListOptions{
 				LabelSelector: v1.ScheduleNameLabel + "=" + name,
 			})
 		if err != nil {
@@ -120,5 +121,5 @@ func (c *ClientSet) waitForScheduleCompletion(name string, count int) (v1.Backup
 func (c *ClientSet) DeleteSchedule(schedule string) error {
 	return c.VeleroV1().
 		Schedules(VeleroNamespace).
-		Delete(schedule, &metav1.DeleteOptions{})
+		Delete(context.TODO(), schedule, metav1.DeleteOptions{})
 }

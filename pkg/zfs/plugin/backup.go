@@ -17,6 +17,7 @@ limitations under the License.
 package plugin
 
 import (
+	"context"
 	"encoding/json"
 	"sort"
 	"strconv"
@@ -43,7 +44,7 @@ func (p *Plugin) getPV(volumeID string) (*v1.PersistentVolume, error) {
 	return p.K8sClient.
 		CoreV1().
 		PersistentVolumes().
-		Get(volumeID, metav1.GetOptions{})
+		Get(context.TODO(), volumeID, metav1.GetOptions{})
 }
 
 func (p *Plugin) uploadZFSVolume(vol *apis.ZFSVolume, filename string) error {

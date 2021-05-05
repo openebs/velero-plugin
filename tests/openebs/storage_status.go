@@ -17,6 +17,7 @@ limitations under the License.
 package openebs
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -94,7 +95,7 @@ func (c *ClientSet) getPVCCVRList(pvc, ns string) (*v1alpha1.CStorVolumeReplicaL
 
 	return c.OpenebsV1alpha1().
 		CStorVolumeReplicas(OpenEBSNs).
-		List(metav1.ListOptions{
+		List(context.TODO(), metav1.ListOptions{
 			LabelSelector: cVRPVLabel + "=" + vol,
 		})
 }
@@ -103,7 +104,7 @@ func (c *ClientSet) getPVCVolumeName(pvc, ns string) (string, error) {
 	o, err := k8s.Client.
 		CoreV1().
 		PersistentVolumeClaims(ns).
-		Get(pvc, metav1.GetOptions{})
+		Get(context.TODO(), pvc, metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}
@@ -117,7 +118,7 @@ func (c *ClientSet) getPVCVolumeName(pvc, ns string) (string, error) {
 func (c *ClientSet) CheckSnapshot(pvc, pvcNs, snapshot string) (bool, error) {
 	var availabel bool
 
-	podList, err := k8s.Client.CoreV1().Pods(OpenEBSNs).List(metav1.ListOptions{
+	podList, err := k8s.Client.CoreV1().Pods(OpenEBSNs).List(context.TODO(), metav1.ListOptions{
 		LabelSelector: string(v1alpha1.StoragePoolClaimCPK) + "=" + SPCName,
 	})
 	if err != nil {
@@ -176,7 +177,7 @@ func getVolumeNameFromCVR(k v1alpha1.CStorVolumeReplica) string {
 func (c *ClientSet) GetCStorBackups(backup, ns string) (*v1alpha1.CStorBackupList, error) {
 	return c.OpenebsV1alpha1().
 		CStorBackups(ns).
-		List(metav1.ListOptions{
+		List(context.TODO(), metav1.ListOptions{
 			LabelSelector: "openebs.io/backup=" + backup,
 		})
 }
@@ -185,7 +186,7 @@ func (c *ClientSet) GetCStorBackups(backup, ns string) (*v1alpha1.CStorBackupLis
 func (c *ClientSet) GetCStorCompletedBackups(backup, ns string) (*v1alpha1.CStorCompletedBackupList, error) {
 	return c.OpenebsV1alpha1().
 		CStorCompletedBackups(ns).
-		List(metav1.ListOptions{
+		List(context.TODO(), metav1.ListOptions{
 			LabelSelector: "openebs.io/backup=" + backup,
 		})
 }

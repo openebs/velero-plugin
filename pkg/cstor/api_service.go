@@ -18,6 +18,7 @@ package cstor
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
@@ -82,6 +83,7 @@ func (p *Plugin) getMapiAddr() (string, error) {
 		CoreV1().
 		Services(openebsNs).
 		List(
+			context.TODO(),
 			metav1.ListOptions{
 				LabelSelector: mayaAPIServiceLabel,
 			},
@@ -105,6 +107,7 @@ func (p *Plugin) getMapiAddr() (string, error) {
 		CoreV1().
 		Services(openebsNs).
 		List(
+			context.TODO(),
 			metav1.ListOptions{
 				FieldSelector: "metadata.name=" + mayaAPIServiceName,
 			})
@@ -143,6 +146,7 @@ func (p *Plugin) getCVCAddr() (string, error) {
 		CoreV1().
 		Services(openebsNs).
 		List(
+			context.TODO(),
 			metav1.ListOptions{
 				LabelSelector: cvcAPIServiceLabel,
 			},

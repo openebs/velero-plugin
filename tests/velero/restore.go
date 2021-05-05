@@ -17,6 +17,7 @@ limitations under the License.
 package velero
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"time"
@@ -49,7 +50,7 @@ func (c *ClientSet) generateRestoreName(backup string) (string, error) {
 		}
 		_, err := c.VeleroV1().
 			Restores(VeleroNamespace).
-			Get(r, metav1.GetOptions{})
+			Get(context.TODO(), r, metav1.GetOptions{})
 		if err != nil && k8serrors.IsNotFound(err) {
 			return r, nil
 		}
@@ -63,7 +64,7 @@ func (c *ClientSet) GetScheduledBackups(schedule string) ([]string, error) {
 
 	olist, err := c.VeleroV1().
 		Backups(VeleroNamespace).
-		List(metav1.ListOptions{
+		List(context.TODO(), metav1.ListOptions{
 			LabelSelector: v1.ScheduleNameLabel + "=" + schedule,
 		})
 	if err != nil && k8serrors.IsNotFound(err) {
@@ -123,7 +124,7 @@ func (c *ClientSet) CreateRestore(ns, targetedNs, backup, schedule string) (v1.R
 	}
 	o, err := c.VeleroV1().
 		Restores(VeleroNamespace).
-		Create(rst)
+		Create(context.TODO(), rst, metav1.CreateOptions{})
 	if err != nil {
 		return status, err
 	}
@@ -153,7 +154,7 @@ func (c *ClientSet) waitForRestoreCompletion(rst string) (v1.RestorePhase, error
 func (c *ClientSet) getRestore(name string) (*v1.Restore, error) {
 	return c.VeleroV1().
 		Restores(VeleroNamespace).
-		Get(name, metav1.GetOptions{})
+		Get(context.TODO(), name, metav1.GetOptions{})
 }
 
 // GetRestoredSnapshotFromSchedule list out the snapshot restored from given schedule
@@ -166,7 +167,7 @@ func (c *ClientSet) GetRestoredSnapshotFromSchedule(scheduleName string) (map[st
 	}
 
 	restoreList, err := c.VeleroV1().
-		Restores(VeleroNamespace).List(metav1.ListOptions{})
+		Restores(VeleroNamespace).List(context.TODO(), metav1.ListOptions{})
 	if err == nil {
 		for _, r := range restoreList.Items {
 			restore := r
