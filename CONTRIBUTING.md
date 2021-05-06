@@ -11,6 +11,7 @@ You can contribute to velero-plugin by filling an issue at [openebs/velero-plugi
 * If you would like to work on something more involved, please connect with the OpenEBS Contributors. See [OpenEBS Community](https://github.com/openebs/openebs/tree/master/community)
 
 ## Filing an issue
+
 ### Before filing an issue
 
 If you are unsure whether you have found a bug, please consider asking in the [Slack](https://kubernetes.slack.com/messages/openebs) first. If
@@ -29,6 +30,7 @@ When filing an issue, make sure to answer these seven questions:
 7. Logs of velero/velero pod and openebs/maya-apiserver pod.
 
 #### For maintainers
+
 * We are using labeling for the issue to track it more effectively. The following are valid labels for the issue.
    - **Bug** - If the issue is a **bug to existing feature**
    - **Enhancement** - If the issue is a **feature request**
@@ -48,6 +50,7 @@ When filing an issue, make sure to answer these seven questions:
 **If you want to introduce a new label then you need to raise a PR to update this document with the new label details.**
 
 ## Steps to Contribute
+
 velero-plugin is an Apache 2.0 Licensed project and all your commits should be signed with Developer Certificate of Origin. See [Sign your work](#sign-your-work).
 
 For setting up a development environment on your local machine, see the detailed instructions [here](developer-setup.md).
@@ -63,6 +66,7 @@ For setting up a development environment on your local machine, see the detailed
 * Submit a pull request to the original repository. See [Pull Request checklist](#pull-request-checklist)
 
 ## Pull Request Checklist
+
 * Rebase to the current master branch before submitting your pull request.
 * Commits should be as small as possible. Each commit should follow the checklist below:
   - For code changes, add tests relevant to the fixed bug or new feature.
@@ -73,6 +77,7 @@ For setting up a development environment on your local machine, see the detailed
 * PR title must follow convention: `<type>(<scope>): <subject>`.
 
   For example:
+
   ```
    feat(backup): support for backup to aws
    ^--^ ^-----^   ^-----------------------^
@@ -95,18 +100,21 @@ For setting up a development environment on your local machine, see the detailed
     * `cherry-pick` - if PR is merged in the master branch and raised to release branch(like v1.9.x)
 
 ## Code Reviews
+
 All submissions, including submissions by project members, require review. We use GitHub pull requests for this purpose. Consult [GitHub Help](https://help.github.com/en/github/collaborating-with-issues-and-pull-requests/about-pull-requests) for more information on using pull requests.
 
 * If your PR is not getting reviewed or you need a specific person to review it, please reach out to the OpenEBS Contributors. See [OpenEBS Community](https://github.com/openebs/openebs/tree/master/community)
 
-* If PR is fixing any issues from [github-issues](github.com/openebs/velero-plugin/issues) then you need to mention the issue number with a link in PR description. like: _fixes https://github.com/openebs/velero-plugin/issues/56_
+* If PR is fixing any issues from [github-issues](github.com/openebs/velero-plugin/issues) then you need to mention the issue number with a link in PR description. like: _fixes <https://github.com/openebs/velero-plugin/issues/56>_
 
 * If PR is for bug-fix and release branch(like v1.9.x) is created then cherry-pick for the same PR needs to be created against the release branch. Maintainer of the Project needs to make sure that all the bug fixes after RC release are cherry-picked to release branch and their changelog files are created under `changelogs/v1.9.x` instead of `changelogs/unreleased`, if release branch is `v1.10.x` then this folder will be `changelogs/v1.10.x`
 
 ## Design document
+
 Detailed design document for velero-plugin is available at [Google Doc](https://docs.google.com/document/d/1-4WsM0AjLORb3lTCUUGyYOY_LNdTOATFesi7kTAr7SA).
 
 ### For maintainers
+
 * We are using labeling for PR to track it more effectively. The following are valid labels for the PR.
    - **Bug** - if PR is a **bug to existing feature**
    - **Enhancement** - if PR is a **feature request**
