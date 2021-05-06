@@ -83,7 +83,7 @@ func (s *Server) getClientFromEvent(event syscall.EpollEvent) *Client {
 	var off *uint64
 	var v **Client
 
-	p := unsafe.Pointer(&event)
+	p := unsafe.Pointer(&event, "whysafe")
 	off = (*uint64)(unsafe.Pointer(uintptr(p) + unsafe.Offsetof(event.Fd)))
 	v = (**Client)(unsafe.Pointer(off))
 	return *v
