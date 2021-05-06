@@ -17,6 +17,7 @@ limitations under the License.
 package cstor
 
 import (
+	"context"
 	"encoding/json"
 	"sort"
 
@@ -154,7 +155,7 @@ func (p *Plugin) getPV(volumeID string) (*v1.PersistentVolume, error) {
 	return p.K8sClient.
 		CoreV1().
 		PersistentVolumes().
-		Get(volumeID, metav1.GetOptions{})
+		Get(context.TODO(), volumeID, metav1.GetOptions{})
 }
 
 func (p *Plugin) restoreVolumeFromLocal(vol *Volume) error {

@@ -17,6 +17,7 @@ limitations under the License.
 package k8s
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -30,7 +31,7 @@ import (
 func (k *KubeClient) GetPVCPhase(pvc, ns string) (corev1.PersistentVolumeClaimPhase, error) {
 	o, err := k.CoreV1().
 		PersistentVolumeClaims(ns).
-		Get(pvc, metav1.GetOptions{})
+		Get(context.TODO(), pvc, metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}
@@ -70,7 +71,7 @@ func (k *KubeClient) WaitForDeployment(labelSelector, ns string) error {
 	for {
 		deploymentList, err := k.ExtensionsV1beta1().
 			Deployments(ns).
-			List(metav1.ListOptions{
+			List(context.TODO(), metav1.ListOptions{
 				LabelSelector: labelSelector,
 			})
 		if err != nil {
@@ -84,7 +85,7 @@ func (k *KubeClient) WaitForDeployment(labelSelector, ns string) error {
 		for _, d := range deploymentList.Items {
 			o, err := k.ExtensionsV1beta1().
 				Deployments(d.Namespace).
-				Get(d.Name, metav1.GetOptions{})
+				Get(context.TODO(), d.Name, metav1.GetOptions{})
 			if err != nil {
 				return err
 			}
@@ -113,7 +114,7 @@ func (k *KubeClient) WaitForDeployment(labelSelector, ns string) error {
 func (k *KubeClient) WaitForPod(podName, podNamespace string) error {
 	dumpLog := 0
 	for {
-		o, err := k.CoreV1().Pods(podNamespace).Get(podName, metav1.GetOptions{})
+		o, err := k.CoreV1().Pods(podNamespace).Get(context.TODO(), podName, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
@@ -135,7 +136,7 @@ func (k *KubeClient) WaitForDeploymentCleanup(labelSelector, ns string) error {
 	for {
 		deploymentList, err := k.ExtensionsV1beta1().
 			Deployments(ns).
-			List(metav1.ListOptions{
+			List(context.TODO(), metav1.ListOptions{
 				LabelSelector: labelSelector,
 			})
 
@@ -161,7 +162,7 @@ func (k *KubeClient) WaitForDeploymentCleanup(labelSelector, ns string) error {
 func (k *KubeClient) WaitForNamespaceCleanup(ns string) error {
 	dumpLog := 0
 	for {
-		_, err := k.CoreV1().Namespaces().Get(ns, metav1.GetOptions{})
+		_, err := k.CoreV1().Namespaces().Get(context.TODO(), ns, metav1.GetOptions{})
 
 		if k8serrors.IsNotFound(err) {
 			return nil
@@ -183,7 +184,7 @@ func (k *KubeClient) WaitForNamespaceCleanup(ns string) error {
 
 // GetPodList return list of pod for given label and namespace
 func (k *KubeClient) GetPodList(ns, label string) (*corev1.PodList, error) {
-	return k.CoreV1().Pods(ns).List(metav1.ListOptions{
+	return k.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{
 		LabelSelector: label,
 	})
 }

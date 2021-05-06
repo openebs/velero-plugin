@@ -17,6 +17,7 @@ limitations under the License.
 package velero
 
 import (
+	"context"
 	"sort"
 
 	"github.com/pkg/errors"
@@ -40,7 +41,7 @@ import (
 // Above approach works because velero support sequential restore
 func GetRestoreNamespace(ns, bkpName string, log logrus.FieldLogger) (string, error) {
 	listOpts := metav1.ListOptions{}
-	list, err := clientSet.VeleroV1().Restores(veleroNs).List(listOpts)
+	list, err := clientSet.VeleroV1().Restores(veleroNs).List(context.TODO(), listOpts)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to get list of restore")
 	}
@@ -67,7 +68,7 @@ func GetTargetNode(k8s *kubernetes.Clientset, node string) (string, error) {
 		LabelSelector: "velero.io/plugin-config,velero.io/change-pvc-node-selector=RestoreItemAction",
 	}
 
-	list, err := k8s.CoreV1().ConfigMaps(veleroNs).List(opts)
+	list, err := k8s.CoreV1().ConfigMaps(veleroNs).List(context.TODO(), opts)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to get list of node mapping configmap")
 	}

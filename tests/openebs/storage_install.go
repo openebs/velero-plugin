@@ -17,6 +17,7 @@ limitations under the License.
 package openebs
 
 import (
+	"context"
 	"time"
 
 	"github.com/ghodss/yaml"
@@ -26,6 +27,7 @@ import (
 	k8s "github.com/openebs/velero-plugin/tests/k8s"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // ClientSet interface for OpenEBS API
@@ -75,7 +77,7 @@ func (c *ClientSet) CreateSPC(spcYAML string) error {
 		return err
 	}
 
-	_, err := c.OpenebsV1alpha1().StoragePoolClaims().Create(&spc)
+	_, err := c.OpenebsV1alpha1().StoragePoolClaims().Create(context.TODO(), &spc, metav1.CreateOptions{})
 	if err != nil {
 		if !k8serrors.IsAlreadyExists(err) {
 			return err

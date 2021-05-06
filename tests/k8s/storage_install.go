@@ -17,6 +17,8 @@ limitations under the License.
 package k8s
 
 import (
+	"context"
+
 	"github.com/ghodss/yaml"
 	config "github.com/openebs/velero-plugin/tests/config"
 	corev1 "k8s.io/api/core/v1"
@@ -57,7 +59,7 @@ func init() {
 
 // CreatePVC creates the PVC from given yaml
 func (k *KubeClient) CreatePVC(pvc corev1.PersistentVolumeClaim) error {
-	_, err := k.CoreV1().PersistentVolumeClaims(pvc.Namespace).Create(&pvc)
+	_, err := k.CoreV1().PersistentVolumeClaims(pvc.Namespace).Create(context.TODO(), &pvc, metav1.CreateOptions{})
 	if err != nil {
 		if !k8serrors.IsAlreadyExists(err) {
 			return err
@@ -70,7 +72,7 @@ func (k *KubeClient) CreatePVC(pvc corev1.PersistentVolumeClaim) error {
 
 // DeletePVC creates the PVC from given yaml
 func (k *KubeClient) DeletePVC(pvc corev1.PersistentVolumeClaim) error {
-	err := k.CoreV1().PersistentVolumeClaims(pvc.Namespace).Delete(pvc.Name, &metav1.DeleteOptions{})
+	err := k.CoreV1().PersistentVolumeClaims(pvc.Namespace).Delete(context.TODO(), pvc.Name, metav1.DeleteOptions{})
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
 			err = nil
@@ -87,7 +89,7 @@ func (k *KubeClient) CreateStorageClass(scYAML string) error {
 		return err
 	}
 
-	_, err := k.StorageV1().StorageClasses().Create(&sc)
+	_, err := k.StorageV1().StorageClasses().Create(context.TODO(), &sc, metav1.CreateOptions{})
 	if err != nil {
 		if !k8serrors.IsAlreadyExists(err) {
 			return err

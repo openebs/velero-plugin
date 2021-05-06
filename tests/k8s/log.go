@@ -17,6 +17,7 @@ limitations under the License.
 package k8s
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -35,7 +36,7 @@ func (k *KubeClient) DumpLogs(ns, podName, container string) error {
 		Param("container", container).
 		Param("timestamps", "true")
 
-	readCloser, err := req.Stream()
+	readCloser, err := req.Stream(context.TODO())
 	if err != nil {
 		fmt.Printf("DumpLogs: Error occurred for %s/%s:%s.. %s", ns, podName, container, err)
 		return err

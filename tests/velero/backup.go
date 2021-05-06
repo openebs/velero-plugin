@@ -17,6 +17,7 @@ limitations under the License.
 package velero
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"time"
@@ -83,7 +84,7 @@ func (c *ClientSet) generateBackupName() (string, error) {
 		}
 		_, err := c.VeleroV1().
 			Backups(VeleroNamespace).
-			Get(b, metav1.GetOptions{})
+			Get(context.TODO(), b, metav1.GetOptions{})
 		if err != nil && k8serrors.IsNotFound(err) {
 			return b, nil
 		}
@@ -114,7 +115,7 @@ func (c *ClientSet) CreateBackup(ns string) (string, v1.BackupPhase, error) {
 	}
 	o, err := c.VeleroV1().
 		Backups(VeleroNamespace).
-		Create(bkp)
+		Create(context.TODO(), bkp, metav1.CreateOptions{})
 	if err != nil {
 		return "", status, err
 	}
@@ -148,5 +149,5 @@ func (c *ClientSet) waitForBackupCompletion(name string) (v1.BackupPhase, error)
 func (c *ClientSet) getBackup(name string) (*v1.Backup, error) {
 	return c.VeleroV1().
 		Backups(VeleroNamespace).
-		Get(name, metav1.GetOptions{})
+		Get(context.TODO(), name, metav1.GetOptions{})
 }
