@@ -57,11 +57,7 @@ _Velero-plugin version **< 1.11.0** is not supported for cstor v1 volumes._
 
 _If you want to use plugin image from development branch(`master`), use **ci** tag._
 
-Plugin images are available at:
-
-For AMD64: [quay.io](http://quay.io/openebs/velero-plugin) and [hub.docker.com](https://hub.docker.com/r/openebs/velero-plugin/tags).
-
-For ARM64: [quay.io](https://quay.io/repository/openebs/velero-plugin-arm64?tab=tags) and [hub.docker.com](https://hub.docker.com/r/openebs/velero-plugin-arm64/tags).
+Multiarch (amd64/arm64) plugin images are available at [Docker Hub](https://hub.docker.com/r/openebs/velero-plugin/tags).
 
 ## Prerequisite for velero-plugin
 A Specific version of Velero needs to be installed as per the [compatibility matrix](#Compatibility-matrix) with OpenEBS versions.
@@ -74,8 +70,6 @@ For installation steps of OpenEBS, visit https://github.com/openebs/openebs/rele
 Run the following command to install development image of OpenEBS velero-plugin
 
 `velero plugin add openebs/velero-plugin:1.9.0`
-
-For ARM64, change image name to `openebs/velero-plugin-arm64`.
 
 This command will add an init container to Velero deployment to install the OpenEBS velero-plugin.
 
