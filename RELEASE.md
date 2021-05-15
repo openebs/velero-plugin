@@ -28,16 +28,9 @@ The format of the release tag is either "Release-Name-RC1" or "Release-Name" dep
 
 Once the release is triggered, github actions release workflow process has to be monitored. Once github actions release workflow is passed images are pushed to docker hub and quay.io. Images can be verified by going through docker hub and quay.io. Also the images shouldn't have any high-level vulnerabilities.
 
-Images are published at the following location:
-for AMD64:
+Multiarch (amd64/arm64) images are published at the following location:
 ```
-https://quay.io/repository/openebs/velero-plugin?tab=tags
 https://hub.docker.com/r/openebs/velero-plugin/tags
-```
-for ARM64:
-```
-https://quay.io/repository/openebs/velero-plugin-arm64?tab=tags
-https://hub.docker.com/r/openebs/velero-plugin-arm64/tags
 ```
 
 
