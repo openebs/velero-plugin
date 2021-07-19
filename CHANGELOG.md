@@ -1,4 +1,52 @@
+v2.11.0 / 2021-07-14
+========================
+
+
+v2.11.0-RC2 / 2021-07-12
+========================
+
+
+v2.11.0-RC1 / 2021-07-11
+========================
+
+
+v2.10.0 / 2021-06-14
+========================
+
+
+v2.10.0-RC2 / 2021-06-11
+========================
+
+
+v2.10.0-RC1 / 2021-06-09
+========================
+
+
+v2.9.0 / 2021-05-13
+========================
+* Adding a new VolumeSnapshotLocation config parameter restApiTimeout to configure timeout for HTTP REST request between plugin and cstor services. ([#154](https://github.com/openebs/velero-plugin/pull/154),[@mynktl](https://github.com/mynktl))
+* refact(deps): bump zfslocalpv, maya, api and k8s client-go dependencies ([#161](https://github.com/openebs/velero-plugin/pull/161),[@prateekpandey14](https://github.com/prateekpandey14))
+
+
+v2.9.0-RC2 / 2021-05-10
+========================
+
+
+v2.9.0-RC1 / 2021-05-07
+========================
+* Adding a new VolumeSnapshotLocation config parameter restApiTimeout to configure timeout for HTTP REST request between plugin and cstor services. ([#154](https://github.com/openebs/velero-plugin/pull/154),[@mynktl](https://github.com/mynktl))
+* refact(deps): bump zfslocalpv, maya, api and k8s client-go dependencies ([#161](https://github.com/openebs/velero-plugin/pull/161),[@prateekpandey14](https://github.com/prateekpandey14))
+
+
 v2.8.0 / 2021-04-14
+========================
+
+
+v2.8.0-RC2 / 2021-04-12
+========================
+
+
+v2.8.0-RC1 / 2021-04-07
 ========================
 
 
