@@ -308,7 +308,7 @@ func (p *Plugin) Init(config map[string]string) error {
 }
 
 // SetOpenEBSAPIClient sets openebs client from openebs/apis
-// Ref: https://github.com/openebs/api/tree/master/pkg/apis
+// Ref: https://github.com/openebs/api/tree/HEAD/pkg/apis
 func (p *Plugin) SetOpenEBSAPIClient(c *rest.Config) error {
 	OpenEBSAPIClient, err := openebsapis.NewForConfig(c)
 	if err != nil {
