@@ -69,7 +69,7 @@ jobs:
         run: |
           kubectl cluster-info
           echo "KUBECONFIG=$HOME/.kube/config" >> $GITHUB_ENV
-          echo "VELERO_RELEASE=v1.0.0" >> $GITHUB_ENV
+          echo "VELERO_RELEASE=v1.6.0" >> $GITHUB_ENV
           echo "OPENEBS_RELEASE=master" >> $GITHUB_ENV
 
       - name: Installation
