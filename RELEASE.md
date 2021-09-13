@@ -20,7 +20,7 @@ Once all the above tests are completed, a main release tagged image is published
 
 velero-plugin is released as a container image with a versioned tag.
 
-Before creating a release, the repo owner needs to create a separate branch from the active branch, which is `master`. Name of the branch should follow the naming convention of `v.1.9.x` if the release is for v1.9.0.
+Before creating a release, the repo owner needs to create a separate branch from the active branch, which is `develop`. Name of the branch should follow the naming convention of `v.1.9.x` if the release is for v1.9.0.
 
 Once the release branch is created, changelog from folder `changelogs/unreleased` needs to be moved to release specific folder `changelogs/v1.9.x`, if release branch is `v1.10.x` then folder will be `changelogs/v1.10.x`.
 
@@ -34,12 +34,12 @@ https://hub.docker.com/r/openebs/velero-plugin/tags
 ```
 
 
-Once a release is created, update the release description with the changelog mentioned in folder `changelog/v1.9.x`. Once the changelogs are updated in the release, the repo owner needs to create a PR to `master` with the following details:
+Once a release is created, update the release description with the changelog mentioned in folder `changelog/v1.9.x`. Once the changelogs are updated in the release, the repo owner needs to create a PR to `develop` with the following details:
 1. update the changelog from folder `changelog/v1.9.x` to file `velero-plugin/CHANGELOG-v1.9.md`
 2. If a release is an RC tag then PR should include the changes to remove the changelog from folder`changelog/v1.9.x` which are already mentioned in `velero-plugin/CHANGELOG-v1.9.md` as part of step number 1.
 3. If a release is not an RC tag then
     - PR should include the changes to remove files from `changelog/v1.9.x` folder.
-    - PR should update the root [CHANGELOG file](https://github.com/openebs/velero-plugin/blob/master/CHANGELOG.md) with contents of file `velero-plugin/CHANGELOG-v1.9.md`
+    - PR should update the root [CHANGELOG file](https://github.com/openebs/velero-plugin/blob/HEAD/CHANGELOG.md) with contents of file `velero-plugin/CHANGELOG-v1.9.md`
 
 Format of the `velero-plugin/CHANGELOG-v1.9.md` file must be as below:
 ```
