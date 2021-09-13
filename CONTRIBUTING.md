@@ -8,7 +8,7 @@ You can contribute to velero-plugin by filling an issue at [openebs/velero-plugi
 
 * If you want to file an issue for bug or feature request, please see [Filing an issue](#filing-an-issue)
 * If you are a first-time contributor, please see [Steps to Contribute](#steps-to-contribute) and code standard(code-standard.md).
-* If you would like to work on something more involved, please connect with the OpenEBS Contributors. See [OpenEBS Community](https://github.com/openebs/openebs/tree/master/community)
+* If you would like to work on something more involved, please connect with the OpenEBS Contributors. See [OpenEBS Community](https://github.com/openebs/openebs/tree/HEAD/community)
 
 ## Filing an issue
 
@@ -58,7 +58,7 @@ For setting up a development environment on your local machine, see the detailed
 * Find an issue to work on or create a new issue. The issues are maintained at [openebs/velero-plugin](https://github.com/openebs/velero-plugin/issues). You can pick up from a list of [good-first-issues](https://github.com/openebs/velero-plugin/labels/good%20first%20issue).
 * Claim your issue by commenting your intent to work on it to avoid duplication of efforts.
 * Fork the repository on GitHub.
-* Create a branch from where you want to base your work (usually master).
+* Create a branch from where you want to base your work (usually develop).
 * Commit your changes by making sure the commit messages convey the need and notes about the commit.
 * Please make sure than your code is aligned with the standard mentioned at [code-standard](code-standard.md).
 * Verify that your changes pass `make lint` or `make lint-docker` (docker version of `make lint`)
@@ -67,7 +67,7 @@ For setting up a development environment on your local machine, see the detailed
 
 ## Pull Request Checklist
 
-* Rebase to the current master branch before submitting your pull request.
+* Rebase to the current develop branch before submitting your pull request.
 * Commits should be as small as possible. Each commit should follow the checklist below:
   - For code changes, add tests relevant to the fixed bug or new feature.
   - Commit header (first line) should convey what changed
@@ -97,13 +97,13 @@ For setting up a development environment on your local machine, see the detailed
     * `style`       - formatting, missing semicolons, linting fix, etc; no significant production code changes
     * `test`        - adding missing tests, refactoring tests; no production code change
     * `refactor`    - refactoring production code, eg. renaming a variable or function name, there should not be any significant production code changes
-    * `cherry-pick` - if PR is merged in the master branch and raised to release branch(like v1.9.x)
+    * `cherry-pick` - if PR is merged in the develop branch and raised to release branch(like v1.9.x)
 
 ## Code Reviews
 
 All submissions, including submissions by project members, require review. We use GitHub pull requests for this purpose. Consult [GitHub Help](https://help.github.com/en/github/collaborating-with-issues-and-pull-requests/about-pull-requests) for more information on using pull requests.
 
-* If your PR is not getting reviewed or you need a specific person to review it, please reach out to the OpenEBS Contributors. See [OpenEBS Community](https://github.com/openebs/openebs/tree/master/community)
+* If your PR is not getting reviewed or you need a specific person to review it, please reach out to the OpenEBS Contributors. See [OpenEBS Community](https://github.com/openebs/openebs/tree/HEAD/community)
 
 * If PR is fixing any issues from [github-issues](github.com/openebs/velero-plugin/issues) then you need to mention the issue number with a link in PR description. like: _fixes <https://github.com/openebs/velero-plugin/issues/56>_
 
