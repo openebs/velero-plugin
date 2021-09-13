@@ -55,7 +55,7 @@ export MAPI_ADDR="http://${MAPI_SVC_ADDR}:5656"
 export KUBERNETES_SERVICE_HOST="127.0.0.1"
 export KUBECONFIG=$HOME/.kube/config
 
-wget -nv -O velero.tar.gz https://github.com/heptio/velero/releases/download/${VELERO_RELEASE}/velero-${VELERO_RELEASE}-linux-amd64.tar.gz
+wget -nv -O velero.tar.gz https://github.com/vmware-tanzu/velero/releases/download/${VELERO_RELEASE}/velero-${VELERO_RELEASE}-linux-amd64.tar.gz
 mkdir velero
 tar xf velero.tar.gz -C velero
 velero=$PWD/velero/velero-${VELERO_RELEASE}-linux-amd64/velero
@@ -103,6 +103,7 @@ ${velero} install \
     --bucket $BUCKET \
     --secret-file ./script/minio-credentials \
     --backup-location-config region=${REGION},s3ForcePathStyle="true",s3Url=http://${MINIO_SERVER_IP}:9000 \
+    --plugins velero/velero-plugin-for-aws-amd64:v1.2.0 \
     --wait
 
 sed "s/MINIO_ENDPOINT/http:\/\/$MINIO_SERVER_IP\:9000/" script/volumesnapshotlocation.yaml > /tmp/s.yaml

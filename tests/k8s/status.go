@@ -69,7 +69,7 @@ func (k *KubeClient) WaitForDeployment(labelSelector, ns string) error {
 	var ready bool
 	dumpLog := 0
 	for {
-		deploymentList, err := k.ExtensionsV1beta1().
+		deploymentList, err := k.AppsV1().
 			Deployments(ns).
 			List(context.TODO(), metav1.ListOptions{
 				LabelSelector: labelSelector,
@@ -83,7 +83,7 @@ func (k *KubeClient) WaitForDeployment(labelSelector, ns string) error {
 		}
 
 		for _, d := range deploymentList.Items {
-			o, err := k.ExtensionsV1beta1().
+			o, err := k.AppsV1().
 				Deployments(d.Namespace).
 				Get(context.TODO(), d.Name, metav1.GetOptions{})
 			if err != nil {
@@ -134,7 +134,7 @@ func (k *KubeClient) WaitForPod(podName, podNamespace string) error {
 func (k *KubeClient) WaitForDeploymentCleanup(labelSelector, ns string) error {
 	dumpLog := 0
 	for {
-		deploymentList, err := k.ExtensionsV1beta1().
+		deploymentList, err := k.AppsV1().
 			Deployments(ns).
 			List(context.TODO(), metav1.ListOptions{
 				LabelSelector: labelSelector,
