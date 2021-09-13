@@ -11,7 +11,7 @@ OpenEBS velero-plugin.
 [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fopenebs%2Fvelero-plugin.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fopenebs%2Fvelero-plugin?ref=badge_shield)
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/3900/badge)](https://bestpractices.coreinfrastructure.org/projects/3900)
 [![Releases](https://img.shields.io/github/v/release/openebs/velero-plugin.svg?include_prereleases&style=flat-square)](https://github.com/openebs/velero-plugin/releases)
-[![LICENSE](https://img.shields.io/github/license/openebs/velero-plugin.svg?style=flat-square)](https://github.com/openebs/velero-plugin/blob/master/LICENSE)
+[![LICENSE](https://img.shields.io/github/license/openebs/velero-plugin.svg?style=flat-square)](https://github.com/openebs/velero-plugin/blob/HEAD/LICENSE)
 
 ## Table of Contents
 - [Compatibility matrix](#compatibility-matrix)
@@ -55,7 +55,7 @@ _OpenEBS version **< 0.9** is not supported for velero-plugin._
 
 _Velero-plugin version **< 1.11.0** is not supported for cstor v1 volumes._
 
-_If you want to use plugin image from development branch(`master`), use **ci** tag._
+_If you want to use plugin image from development branch(`develop`), use **ci** tag._
 
 Multiarch (amd64/arm64) plugin images are available at [Docker Hub](https://hub.docker.com/r/openebs/velero-plugin/tags).
 
@@ -326,7 +326,7 @@ NAME            STATUS    CREATED                         SCHEDULE      BACKUP T
 newschedule     Enabled   2019-05-13 15:15:39 +0530 IST   */5 * * * *   720h0m0s     2m ago        <none>
 ```
 
-During the first backup iteration of a schedule, full data of the volume will be backed up. For later backup iterations of a schedule, only modified or new data from the previous iteration will be backed up. Since Velero backup comes with [retain policy](https://velero.io/docs/master/how-velero-works/#set-a-backup-to-expire), you may need to update the retain policy using argument `--ttl` while creating a schedule. Since scheduled backups are incremental backup, if first backup(or base backup) gets expired then you won't be able to restore from that schedule. 
+During the first backup iteration of a schedule, full data of the volume will be backed up. For later backup iterations of a schedule, only modified or new data from the previous iteration will be backed up. Since Velero backup comes with [retain policy](https://velero.io/docs/main/how-velero-works/#set-a-backup-to-expire), you may need to update the retain policy using argument `--ttl` while creating a schedule. Since scheduled backups are incremental backup, if first backup(or base backup) gets expired then you won't be able to restore from that schedule. 
 
 *Note:*
 - _If backup name ends with "-20190513104034" format then it is considered as part of scheduled backup_
