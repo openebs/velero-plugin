@@ -446,10 +446,19 @@ func (p *Plugin) CreateSnapshot(volumeID, volumeAZ string, tags map[string]strin
 	}
 
 	if !p.local {
-		// If cloud snapshot is configured then we need to backup PVC also
+		// If cloud snapshot is configured then we need to backup PVC,PV, CVC also
+		p.Log.Infof("backup PVC, PV, CVC first")
 		err := p.backupPVC(volumeID)
 		if err != nil {
 			return "", errors.Wrapf(err, "failed to create backup for PVC")
+		}
+		err = p.backupPV(volumeID)
+		if err != nil {
+			return "", errors.Wrapf(err, "failed to create backup for PV")
+		}
+		err = p.backupCVC(volumeID)
+		if err != nil {
+			return "", errors.Wrapf(err, "failed to create backup for CVC")
 		}
 	}
 

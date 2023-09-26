@@ -56,6 +56,7 @@ func (p *Plugin) waitForAllCVRsToBeInValidStatus(vol *Volume, statuses []string)
 		return errors.Errorf("Failed to fetch replicaCount for volume{%s}", vol.volname)
 	}
 
+	p.Log.Infof("Waiting for all CVRs of PV(%s) to be ready, replicaCount=%d", vol.volname, replicaCount)
 	if vol.isCSIVolume {
 		return p.waitForCSIBasedCVRs(vol, replicaCount, statuses)
 	}

@@ -25,6 +25,7 @@ import (
 	v1alpha1 "github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -70,6 +71,7 @@ func (p *Plugin) restoreVolumeFromCloud(vol *Volume, targetBackupName string) er
 		err          error
 	)
 
+	p.Log.Info("Restoring volume data from cloud")
 	if p.restoreAllSnapshots {
 		// We are restoring from base backup to targeted Backup
 		snapshotList, err = p.cl.GetSnapListFromCloud(vol.snapshotTag, p.getScheduleName(targetBackupName))
@@ -239,4 +241,98 @@ func contains(s []string, target string) bool {
 	}
 
 	return false
+}
+
+// backupPV perform backup for given volume's PV
+func (p *Plugin) backupPV(volumeID string) error {
+	vol := p.volumes[volumeID]
+
+	bkpPv, err := p.K8sClient.
+		CoreV1().
+		PersistentVolumes().
+		Get(context.TODO(), vol.volname, metav1.GetOptions{})
+	if err != nil {
+		p.Log.Errorf("Error fetching PV(%s): %s", vol.volname, err.Error())
+		return errors.New("failed to fetch PV")
+	}
+
+	data, err := json.MarshalIndent(bkpPv, "", "\t")
+	if err != nil {
+		return errors.New("error doing json parsing")
+	}
+
+	filename := p.cl.GenerateRemoteFilename(vol.volname, vol.backupName)
+	if filename == "" {
+		return errors.New("error creating remote file name for pvc backup")
+	}
+
+	if ok := p.cl.Write(data, filename+".pv"); !ok {
+		return errors.New("failed to upload PV")
+	}
+
+	return nil
+}
+
+// restorePV create PV for given volume name
+func (p *Plugin) restorePV(volumeID, snapName string) error {
+	_, err := p.K8sClient.
+		CoreV1().
+		PersistentVolumes().
+		Get(context.TODO(), volumeID, metav1.GetOptions{})
+	if err == nil {
+		p.Log.Infof("PV=%s already exists, skip restore", volumeID)
+		return nil
+	}
+	if !k8serrors.IsNotFound(err) {
+		return errors.Wrapf(err, "failed to get PV=%s", volumeID)
+	}
+
+	pv, err := p.downloadPV(volumeID, snapName)
+	if err != nil {
+		return errors.Wrapf(err, "failed to download pv")
+	}
+
+	// Add annotation PVCreatedByKey, with value 'restore' to PV
+	pv.Annotations = make(map[string]string)
+	pv.Annotations[v1alpha1.PVCreatedByKey] = "restore"
+	pv.ManagedFields = nil
+	pv.Finalizers = nil
+	if pv.Spec.ClaimRef != nil {
+		pv.Spec.ClaimRef.ResourceVersion = ""
+		pv.Spec.ClaimRef.UID = ""
+	}
+	pv.CreationTimestamp = metav1.Time{}
+	pv.ResourceVersion = ""
+	pv.UID = ""
+	pv.Status = v1.PersistentVolumeStatus{}
+
+	_, err = p.K8sClient.
+		CoreV1().
+		PersistentVolumes().
+		Create(context.TODO(), pv, metav1.CreateOptions{})
+	if err != nil {
+		if !k8serrors.IsAlreadyExists(err) {
+			return errors.Wrapf(err, "failed to create PV=%s", pv.Name)
+		}
+		p.Log.Infof("PV=%s already exists, skip restore", pv.Name)
+	}
+
+	return nil
+}
+
+func (p *Plugin) downloadPV(volumeID, snapName string) (*v1.PersistentVolume, error) {
+	pv := &v1.PersistentVolume{}
+
+	filename := p.cl.GenerateRemoteFilename(volumeID, snapName)
+
+	data, ok := p.cl.Read(filename + ".pv")
+	if !ok {
+		return nil, errors.Errorf("failed to download PV file=%s", filename+".pv")
+	}
+
+	if err := json.Unmarshal(data, pv); err != nil {
+		return nil, errors.Errorf("failed to decode pv file=%s", filename+".pv")
+	}
+
+	return pv, nil
 }

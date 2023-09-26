@@ -26,6 +26,7 @@ import (
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
@@ -128,12 +129,22 @@ func (p *Plugin) createPVC(volumeID, snapName string) (*Volume, error) {
 		return newVol, nil
 	}
 
-	p.Log.Infof("Creating PVC for volumeID:%s snapshot:%s in namespace=%s", volumeID, snapName, targetedNs)
+	// restore PV so that it can be bound to PVC
+	p.Log.Infof("Creating PV(%s) snapshot:%s", volumeID, snapName)
+	if err := p.restorePV(volumeID, snapName); err != nil {
+		return nil, errors.Wrapf(err, "failed to restore PV=%s", pvc.Spec.VolumeName)
+	}
+
+	// pending until the pv is bound to pvc
+	p.Log.Infof("Creating PVC with specified volumeID:%s, snapshot:%s in namespace=%s", volumeID, snapName, targetedNs)
 
 	pvc.Annotations = make(map[string]string)
 	// Add annotation PVCreatedByKey, with value 'restore' to PVC
 	// So that Maya-APIServer skip updating target IPAddress in CVR
 	pvc.Annotations[v1alpha1.PVCreatedByKey] = "restore"
+
+	// Specify src pvname
+	pvc.Spec.VolumeName = volumeID
 	rpvc, err := p.K8sClient.
 		CoreV1().
 		PersistentVolumeClaims(pvc.Namespace).
@@ -142,6 +153,10 @@ func (p *Plugin) createPVC(volumeID, snapName string) (*Volume, error) {
 		return nil, errors.Wrapf(err, "failed to create PVC=%s/%s", pvc.Namespace, pvc.Name)
 	}
 
+	p.Log.Infof("Creating CVC(%s) snapshot:%s", volumeID, snapName)
+	if err := p.restoreCVC(volumeID, rpvc.Name, rpvc.Namespace, snapName); err != nil {
+		return nil, errors.Wrapf(err, "failed to restore CVC=%s", volumeID)
+	}
 	for cnt := 0; cnt < PVCWaitCount; cnt++ {
 		pvc, err = p.K8sClient.
 			CoreV1().
@@ -157,7 +172,7 @@ func (p *Plugin) createPVC(volumeID, snapName string) (*Volume, error) {
 			return nil, errors.Wrapf(err, "failed to create PVC=%s/%s", rpvc.Namespace, rpvc.Name)
 		}
 		if pvc.Status.Phase == v1.ClaimBound {
-			p.Log.Infof("PVC(%v) created..", pvc.Name)
+			p.Log.Infof("PVC(%v) created, PV(%s) bound", pvc.Name, volumeID)
 			vol = &Volume{
 				volname:      pvc.Spec.VolumeName,
 				snapshotTag:  volumeID,
@@ -168,6 +183,7 @@ func (p *Plugin) createPVC(volumeID, snapName string) (*Volume, error) {
 			p.volumes[vol.volname] = vol
 			break
 		}
+		p.Log.Debugf("PV(%v) is not bound yet..", volumeID)
 		time.Sleep(PVCCheckInterval)
 	}
 
@@ -182,12 +198,10 @@ func (p *Plugin) createPVC(volumeID, snapName string) (*Volume, error) {
 		p.Log.Errorf("Failed to get PV{%s}", vol.volname)
 		return nil, errors.Wrapf(err, "failed to get pv=%s", vol.volname)
 	}
-
 	vol.isCSIVolume = isCSIPv(*pv)
 	if err = p.waitForAllCVRs(vol); err != nil {
 		return nil, err
 	}
-
 	// CVRs are created and updated, now we can remove the annotation 'PVCreatedByKey' from PVC
 	if err = p.removePVCAnnotationKey(pvc, v1alpha1.PVCreatedByKey); err != nil {
 		p.Log.Warningf("Failed to remove restore annotation from PVC=%s/%s err=%s", pvc.Namespace, pvc.Name, err)
@@ -207,6 +221,7 @@ func (p *Plugin) getVolumeFromPVC(pvc v1.PersistentVolumeClaim) (*Volume, error)
 		Get(context.TODO(), pvc.Name, metav1.GetOptions{})
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
+			p.Log.Warnf("PVC{%s} not found", pvc.Name)
 			return nil, nil
 		}
 		return nil, errors.Wrapf(err, "failed to fetch PVC{%s}", pvc.Name)
