@@ -17,6 +17,7 @@ limitations under the License.
 package cstor
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -24,6 +25,7 @@ import (
 	maya "github.com/openebs/cstor-csi/pkg/utils"
 	"github.com/pkg/errors"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // (Kasakaze)todo: Determine whether it is csiVolume, if so, cvc must be backed up
@@ -83,10 +85,13 @@ func (p *Plugin) restoreCVC(volumeID, pvcName, pvcNamespace, snapName string) er
 		rCount     = fmt.Sprint(rcvc.Spec.Provision.ReplicaCount)
 		cspcName   = rcvc.ObjectMeta.Labels["openebs.io/cstor-pool-cluster"]
 		snapshotID = ""
-		// (Kasakaze)todo: If the data is migrated to another cluster, the nodeID may not be the same
 		nodeID     = rcvc.Publish.NodeID
 		policyName = rcvc.ObjectMeta.Labels["openebs.io/volume-policy"]
 	)
+	nodeID, err = p.getValidNodeID(nodeID)
+	if err != nil {
+		return errors.Cause(err)
+	}
 
 	err = maya.ProvisionVolume(size, volumeID, rCount,
 		cspcName, snapshotID,
@@ -113,4 +118,23 @@ func (p *Plugin) downloadCVC(volumeID, snapName string) (*cstorv1.CStorVolumeCon
 	}
 
 	return cvc, nil
+}
+
+// If the backup cvc nodeID does not belong to the current cluster, use the environment variable VELERO_NODE_ID
+func (p *Plugin) getValidNodeID(nodeID string) (string, error) {
+	if nodeID == "" {
+		return p.nodeID, nil
+	}
+
+	_, err := p.K8sClient.CoreV1().Nodes().Get(context.TODO(), nodeID, metav1.GetOptions{})
+	if err != nil {
+		if !k8serrors.IsNotFound(err) {
+			return "", errors.Cause(err)
+		}
+
+		p.Log.Warnf("invalid nodeID(%s), use env VELERO_NODE_ID(%s)", nodeID, p.nodeID)
+		nodeID = p.nodeID
+	}
+
+	return nodeID, nil
 }

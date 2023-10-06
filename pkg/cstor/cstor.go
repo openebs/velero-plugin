@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"os"
 	"strings"
 	"time"
 
@@ -110,6 +111,9 @@ type Plugin struct {
 
 	// namespace in which openebs is installed, default is openebs
 	namespace string
+
+	// nodeID is used to identify the node on which the program is running
+	nodeID string
 
 	// cl stores cloud connection information
 	cl *cloud.Conn
@@ -217,6 +221,13 @@ func (p *Plugin) Init(config map[string]string) error {
 	if ns, ok := config[NAMESPACE]; ok {
 		p.namespace = ns
 	}
+
+	nodeID := os.Getenv("VELERO_NODE_ID")
+	if nodeID == "" {
+		return errors.New("env VELERO_NODE_ID not set")
+	}
+	p.Log.Infof("env VELERO_NODE_ID: ", nodeID)
+	p.nodeID = nodeID
 
 	conf, err := rest.InClusterConfig()
 	if err != nil {
