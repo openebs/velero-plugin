@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"os"
 	"strings"
 	"time"
 
@@ -110,6 +111,9 @@ type Plugin struct {
 
 	// namespace in which openebs is installed, default is openebs
 	namespace string
+
+	// nodeID is used to identify the node on which the program is running
+	nodeID string
 
 	// cl stores cloud connection information
 	cl *cloud.Conn
@@ -217,6 +221,13 @@ func (p *Plugin) Init(config map[string]string) error {
 	if ns, ok := config[NAMESPACE]; ok {
 		p.namespace = ns
 	}
+
+	nodeID := os.Getenv("VELERO_NODE_ID")
+	if nodeID == "" {
+		return errors.New("env VELERO_NODE_ID not set")
+	}
+	p.Log.Infof("env VELERO_NODE_ID: ", nodeID)
+	p.nodeID = nodeID
 
 	conf, err := rest.InClusterConfig()
 	if err != nil {
@@ -446,10 +457,19 @@ func (p *Plugin) CreateSnapshot(volumeID, volumeAZ string, tags map[string]strin
 	}
 
 	if !p.local {
-		// If cloud snapshot is configured then we need to backup PVC also
+		// If cloud snapshot is configured then we need to backup PVC,PV, CVC also
+		p.Log.Infof("backup PVC, PV, CVC first")
 		err := p.backupPVC(volumeID)
 		if err != nil {
 			return "", errors.Wrapf(err, "failed to create backup for PVC")
+		}
+		err = p.backupPV(volumeID)
+		if err != nil {
+			return "", errors.Wrapf(err, "failed to create backup for PV")
+		}
+		err = p.backupCVC(volumeID)
+		if err != nil {
+			return "", errors.Wrapf(err, "failed to create backup for CVC")
 		}
 	}
 
