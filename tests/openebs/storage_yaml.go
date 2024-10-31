@@ -36,23 +36,22 @@ spec:
 	SCYaml = `apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: openebs-cstor-sparse-auto
-  annotations:
-    openebs.io/cas-type: cstor
-    cas.openebs.io/config: |
-      - name: StoragePoolClaim
-        value: "sparse-claim-auto"
-      - name: ReplicaCount
-        value: "1"
-provisioner: openebs.io/provisioner-iscsi
+  name: openebs-zfspv
+parameters:
+  recordsize: "128k"
+  compression: "off"
+  dedup: "off"
+  fstype: "zfs"
+  poolname: "zfspv-pool"
+provisioner: zfs.csi.openebs.io
 `
 	// PVCYaml for PVC CR
 	PVCYaml = `kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
-  name: cstor-vol1-1r-claim
+  name: csi-zfspv
 spec:
-  storageClassName: openebs-cstor-sparse-auto
+  storageClassName: openebs-zfspv
   accessModes:
     - ReadWriteOnce
   resources:

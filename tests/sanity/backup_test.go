@@ -18,11 +18,10 @@ package sanity
 
 import (
 	"testing"
-	"time"
+	"fmt"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
 	v1 "github.com/vmware-tanzu/velero/pkg/apis/velero/v1"
 	corev1 "k8s.io/api/core/v1"
 
@@ -57,18 +56,19 @@ var (
 var _ = BeforeSuite(func() {
 	err = app.CreateNamespace(AppNs)
 	Expect(err).NotTo(HaveOccurred())
+	fmt.Printf("Namespace : %s created\n", AppNs)
 
 	err = k8s.Client.CreateStorageClass(openebs.SCYaml)
 	Expect(err).NotTo(HaveOccurred())
-
-	err = openebs.Client.CreateSPC(openebs.SPCYaml)
-	Expect(err).NotTo(HaveOccurred())
+	fmt.Println("Storageclass created")
 
 	err = openebs.Client.CreateVolume(openebs.PVCYaml, AppNs, true)
 	Expect(err).NotTo(HaveOccurred())
+	fmt.Println("Volume created")
 
 	err = app.DeployApplication(app.BusyboxYaml, AppNs)
 	Expect(err).NotTo(HaveOccurred())
+	fmt.Println("Application deployed")
 
 	velero.BackupLocation = BackupLocation
 	velero.SnapshotLocation = SnapshotLocation
@@ -82,10 +82,10 @@ var _ = Describe("Backup/Restore Test", func() {
 
 			By("Creating a backup")
 
-			err = openebs.Client.WaitForHealthyCVR(openebs.AppPVC)
-			Expect(err).NotTo(HaveOccurred(), "No healthy CVR for %s", openebs.AppPVC)
-			// There are chances that istgt is not updated, but replica is healthy
-			time.Sleep(30 * time.Second)
+			// err = openebs.Client.WaitForHealthyCVR(openebs.AppPVC)
+			// Expect(err).NotTo(HaveOccurred(), "No healthy CVR for %s", openebs.AppPVC)
+			// // There are chances that istgt is not updated, but replica is healthy
+			// time.Sleep(30 * time.Second)
 
 			backupName, status, err = velero.Client.CreateBackup(AppNs)
 			if (err != nil) || status != v1.BackupPhaseCompleted {
@@ -156,12 +156,6 @@ var _ = Describe("Backup/Restore Test", func() {
 			Expect(perr).NotTo(HaveOccurred(), "Failed to verify PVC=%s bound status for namespace=%s", app.PVCName, AppNs)
 			Expect(phase).To(Equal(corev1.ClaimBound), "PVC=%s not bound", app.PVCName)
 
-			By("Checking if restored CVR are in healthy state")
-			ok := openebs.Client.CheckCVRStatus(app.PVCName, AppNs, v1alpha1.CVRStatusOnline)
-			if !ok {
-				dumpLogs()
-			}
-			Expect(ok).To(BeTrue(), "CVR for PVC=%s are not in healthy state", app.PVCName)
 		})
 
 		It("Restore from scheduled backup", func() {
@@ -183,18 +177,12 @@ var _ = Describe("Backup/Restore Test", func() {
 			Expect(err).NotTo(HaveOccurred(), "Failed to verify PVC=%s bound status for namespace=%s", app.PVCName, AppNs)
 			Expect(phase).To(Equal(corev1.ClaimBound), "PVC=%s not bound", app.PVCName)
 
-			By("Checking if restored CVR are in healthy state")
-			ok := openebs.Client.CheckCVRStatus(app.PVCName, AppNs, v1alpha1.CVRStatusOnline)
-			if !ok {
-				dumpLogs()
-			}
-			Expect(ok).To(BeTrue(), "CVR for PVC=%s are not in healthy state", app.PVCName)
 
 			By("Checking if restore has created snapshot or not")
 			snapshotList, serr := velero.Client.GetRestoredSnapshotFromSchedule(scheduleName)
 			Expect(serr).NotTo(HaveOccurred())
 			for snapshot := range snapshotList {
-				ok, err = openebs.Client.CheckSnapshot(app.PVCName, AppNs, snapshot)
+				ok, err := openebs.Client.CheckSnapshot(app.PVCName, AppNs, snapshot)
 				if err != nil {
 					dumpLogs()
 				}
@@ -234,12 +222,6 @@ var _ = Describe("Backup/Restore Test", func() {
 			Expect(perr).NotTo(HaveOccurred(), "Failed to verify PVC=%s bound status for namespace=%s", app.PVCName, TargetedNs)
 			Expect(phase).To(Equal(corev1.ClaimBound), "PVC=%s not bound", app.PVCName)
 
-			By("Checking if restored CVR are in healthy state")
-			ok := openebs.Client.CheckCVRStatus(app.PVCName, TargetedNs, v1alpha1.CVRStatusOnline)
-			if !ok {
-				dumpLogs()
-			}
-			Expect(ok).To(BeTrue(), "CVR for PVC=%s is not in healthy state", app.PVCName)
 		})
 
 		It("Restore from scheduled backup to different Namespace", func() {
@@ -258,12 +240,6 @@ var _ = Describe("Backup/Restore Test", func() {
 			Expect(err).NotTo(HaveOccurred(), "Failed to verify PVC=%s bound status for namespace=%s", app.PVCName, TargetedNs)
 			Expect(phase).To(Equal(corev1.ClaimBound), "PVC=%s not bound", app.PVCName)
 
-			By("Checking if restored CVR are in healthy state")
-			ok := openebs.Client.CheckCVRStatus(app.PVCName, TargetedNs, v1alpha1.CVRStatusOnline)
-			if !ok {
-				dumpLogs()
-			}
-			Expect(ok).To(BeTrue(), "CVR for PVC=%s is not in healthy state", app.PVCName)
 
 			By("Checking if restore has created snapshot or not")
 			snapshotList, err := velero.Client.GetRestoredSnapshotFromSchedule(scheduleName)

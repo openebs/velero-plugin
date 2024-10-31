@@ -24,9 +24,10 @@ sudo service iscsid start
 sudo systemctl status iscsid  --no-pager
 echo "Installation complete"
 
-#TODO add openebs release
-kubectl apply -f https://raw.githubusercontent.com/openebs/openebs/master/k8s/openebs-operator.yaml
 
+helm repo add openebs https://openebs.github.io/openebs
+helm repo update
+helm install openebs --namespace openebs openebs/openebs --set engines.replicated.mayastor.enabled=false --set engines.local.lvm.enabled=false --create-namespace
 function waitForDeployment() {
 	DEPLOY=$1
 	NS=$2
@@ -37,7 +38,7 @@ function waitForDeployment() {
 	fi
 
 	for i in $(seq 1 50) ; do
-		kubectl get deployment -n ${NS} ${DEPLOY}
+		kubectl get deployment -n "${NS}" "${DEPLOY}"
 		kstat=$?
 		if [ $kstat -ne 0 ] && ! $CREATE ; then
 			return
@@ -62,12 +63,10 @@ function waitForDeployment() {
 function dumpMayaAPIServerLogs() {
   LC=$1
   MAPIPOD=$(kubectl get pods -o jsonpath='{.items[?(@.spec.containers[0].name=="maya-apiserver")].metadata.name}' -n openebs)
-  kubectl logs --tail=${LC} $MAPIPOD -n openebs
+  kubectl logs --tail="${LC}" "$MAPIPOD" -n openebs
   printf "\n\n"
 }
 
-waitForDeployment maya-apiserver openebs
-waitForDeployment openebs-provisioner openebs
-waitForDeployment openebs-ndm-operator openebs
+waitForDeployment openebs-zfs-localpv-controller openebs
 
 kubectl get pods --all-namespaces
