@@ -6,12 +6,10 @@ To do backup/restore of OpenEBS CStor volumes through Velero utility, you need t
 OpenEBS velero-plugin.
 
 [![Build Status](https://github.com/openebs/velero-plugin/actions/workflows/build.yml/badge.svg)](https://github.com/openebs/velero-plugin/actions/workflows/build.yml)
-[![Slack](https://img.shields.io/badge/chat!!!-slack-ff1493.svg?style=flat-square)](https://kubernetes.slack.com/messages/openebs)
+[![Slack](https://img.shields.io/badge/chat-slack-ff1493.svg?style=flat-square)](https://kubernetes.slack.com/messages/openebs)
 [![Go Report](https://goreportcard.com/badge/github.com/openebs/velero-plugin)](https://goreportcard.com/report/github.com/openebs/velero-plugin)
-[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fopenebs%2Fvelero-plugin.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fopenebs%2Fvelero-plugin?ref=badge_shield)
-[![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/3900/badge)](https://bestpractices.coreinfrastructure.org/projects/3900)
-[![Releases](https://img.shields.io/github/v/release/openebs/velero-plugin.svg?include_prereleases&style=flat-square)](https://github.com/openebs/velero-plugin/releases)
-[![LICENSE](https://img.shields.io/github/license/openebs/velero-plugin.svg?style=flat-square)](https://github.com/openebs/velero-plugin/blob/HEAD/LICENSE)
+[![FOSSA Status](https://app.fossa.com/api/projects/custom%2B162%2Fgithub.com%2Fopenebs%2Fvelero-plugin.svg?type=shield&issueType=license)](https://app.fossa.com/projects/custom%2B162%2Fgithub.com%2Fopenebs%2Fvelero-plugin?ref=badge_shield&issueType=license)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/3900/badge)](https://www.bestpractices.dev/projects/3900)
 
 ## Table of Contents
 - [Compatibility matrix](#compatibility-matrix)
@@ -400,5 +398,5 @@ Once restore for remote scheduled backup is completed, You need to set targetip 
 
 *Note: Velero clean-up the backups according to retain policy. By default retain policy is 30days. So you need to set retain policy for scheduled remote/cloud-backup accordingly.*
 
-## License
-[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fopenebs%2Fvelero-plugin.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Fopenebs%2Fvelero-plugin?ref=badge_large)
+## License Compliance
+[![FOSSA Status](https://app.fossa.com/api/projects/custom%2B162%2Fgithub.com%2Fopenebs%2Fvelero-plugin.svg?type=large&issueType=license)](https://app.fossa.com/projects/custom%2B162%2Fgithub.com%2Fopenebs%2Fvelero-plugin?ref=badge_large&issueType=license)
