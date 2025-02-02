@@ -19,7 +19,7 @@ metadata:
   name: default
   namespace: velero
 spec:
-  provider: openebs.io/cstor-blockstore
+  provider: openebs.io/zfspv-blockstore
   config:
     bucket: velero
     provider: aws

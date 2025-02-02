@@ -97,7 +97,6 @@ func (c *ClientSet) CreateSPC(spcYAML string) error {
 func (c *ClientSet) CreateVolume(pvcYAML, pvcNs string, wait bool) error {
 	var pvc corev1.PersistentVolumeClaim
 	var err error
-
 	if err = yaml.Unmarshal([]byte(pvcYAML), &pvc); err != nil {
 		return err
 	}
@@ -109,12 +108,11 @@ func (c *ClientSet) CreateVolume(pvcYAML, pvcNs string, wait bool) error {
 
 	time.Sleep(5 * time.Second)
 	PVCName = pvc.Name
-	if wait {
-		err = c.WaitForHealthyCVR(&pvc)
-	}
+
 	if err == nil {
 		AppPVC = &pvc
 	}
+
 	return err
 }
 

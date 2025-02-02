@@ -17,7 +17,7 @@ limitations under the License.
 package snapshot
 
 import (
-	"github.com/openebs/velero-plugin/pkg/cstor"
+	zfs "github.com/openebs/velero-plugin/pkg/zfs/plugin"
 	"github.com/sirupsen/logrus"
 	"github.com/vmware-tanzu/velero/pkg/plugin/velero"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -33,9 +33,9 @@ var _ velero.VolumeSnapshotter = (*BlockStore)(nil)
 
 // Init the plugin
 func (p *BlockStore) Init(config map[string]string) error {
-	p.Log.Infof("Initializing velero plugin for CStor")
+	p.Log.Infof("Initializing velero plugin for Zfs")
 
-	p.plugin = &cstor.Plugin{Log: p.Log}
+	p.plugin = &zfs.Plugin{Log: p.Log}
 	return p.plugin.Init(config)
 }
 

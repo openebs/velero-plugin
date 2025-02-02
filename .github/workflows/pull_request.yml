@@ -48,19 +48,35 @@ jobs:
     needs: ['lint']
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
-      - name: Set up Go 1.14
-        uses: actions/setup-go@v2
+      - name: Set up Go 1.20
+        uses: actions/setup-go@v4
         with:
-          go-version: 1.14.7
+          go-version: 1.20.14
+          cache: false
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: v3.10.2
+
+      - name: Setup zfs pools
+        run: |
+          sudo apt-get install zfsutils-linux -y
+          truncate -s 100G /tmp/disk.img
+          sudo zpool create zfspv-pool $(sudo losetup -f /tmp/disk.img --show)
+          sudo zpool status
       
       - name: Setup Minikube-Kubernetes
-        uses: manusa/actions-setup-minikube@v2.3.0
+        uses: medyagh/setup-minikube@latest
         with:
-          minikube version: v1.16.0
-          kubernetes version: v1.20.1
-          github token: ${{ secrets.GITHUB_TOKEN }}
+          cache: false
+          minikube-version: 1.31.1
+          driver: none
+          kubernetes-version: ${{ matrix.kubernetes }}
+          cni: calico
+          start-args: "--install-addons=false"
       
       - name: Build images locally
         run: make build && make container || exit 1;
@@ -69,7 +85,7 @@ jobs:
         run: |
           kubectl cluster-info
           echo "KUBECONFIG=$HOME/.kube/config" >> $GITHUB_ENV
-          echo "VELERO_RELEASE=v1.6.0" >> $GITHUB_ENV
+          echo "VELERO_RELEASE=v1.13.2" >> $GITHUB_ENV
           echo "OPENEBS_RELEASE=master" >> $GITHUB_ENV
 
       - name: Installation

@@ -21,7 +21,7 @@ const (
 	BusyboxYaml = `apiVersion: v1
 kind: Pod
 metadata:
-  name: busybox-cstor
+  name: busybox-zfs
   namespace: default
 spec:
   containers:
@@ -38,6 +38,6 @@ spec:
   volumes:
   - name: demo-vol1
     persistentVolumeClaim:
-      claimName: cstor-vol1-1r-claim
+      claimName: csi-zfspv
 `
 )

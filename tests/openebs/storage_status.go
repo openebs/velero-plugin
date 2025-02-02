@@ -18,9 +18,7 @@ package openebs
 
 import (
 	"context"
-	"fmt"
 	"strings"
-	"time"
 
 	v1alpha1 "github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
 	k8s "github.com/openebs/velero-plugin/tests/k8s"
@@ -38,54 +36,6 @@ const (
 	CVRMaxRetry = 5
 )
 
-// WaitForHealthyCVR wait till CVR for given PVC becomes healthy
-func (c *ClientSet) WaitForHealthyCVR(pvc *v1.PersistentVolumeClaim) error {
-	dumpLog := 0
-	for {
-		if healthy := c.CheckCVRStatus(pvc.Name,
-			pvc.Namespace,
-			v1alpha1.CVRStatusOnline); healthy {
-			break
-		}
-		time.Sleep(5 * time.Second)
-		if dumpLog > 6 {
-			fmt.Printf("Waiting for %s/%s's CVR\n", pvc.Namespace, pvc.Name)
-			dumpLog = 0
-		}
-		dumpLog++
-	}
-	return nil
-}
-
-// CheckCVRStatus check CVR status for given PVC
-func (c *ClientSet) CheckCVRStatus(pvc, ns string, status v1alpha1.CStorVolumeReplicaPhase) bool {
-	var match bool
-
-	for i := 0; i < CVRMaxRetry; i++ {
-		cvrlist, err := c.getPVCCVRList(pvc, ns)
-		if err != nil {
-			return match
-		}
-
-		match = true
-		if len(cvrlist.Items) == 0 {
-			match = false
-		}
-
-		for _, v := range cvrlist.Items {
-			if v.Status.Phase != status {
-				match = false
-			}
-		}
-
-		if match {
-			break
-		}
-		time.Sleep(5 * time.Second)
-	}
-
-	return match
-}
 
 func (c *ClientSet) getPVCCVRList(pvc, ns string) (*v1alpha1.CStorVolumeReplicaList, error) {
 	vol, err := c.getPVCVolumeName(pvc, ns)
