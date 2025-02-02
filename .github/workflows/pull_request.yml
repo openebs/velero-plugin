@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Shellcheck
         uses: reviewdog/action-shellcheck@v1
@@ -48,18 +48,18 @@ jobs:
     needs: ['lint']
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
-      - name: Set up Go 1.14
-        uses: actions/setup-go@v2
+      - name: Set up Go 1.20
+        uses: actions/setup-go@v4
         with:
-          go-version: 1.14.7
+          go-version: 1.20.14
       
       - name: Setup Minikube-Kubernetes
-        uses: manusa/actions-setup-minikube@v2.3.0
+        uses: manusa/actions-setup-minikube@v2.10.0
         with:
-          minikube version: v1.16.0
-          kubernetes version: v1.20.1
+          minikube version: v1.31.1
+          kubernetes version: v1.27.3
           github token: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Build images locally
@@ -85,7 +85,7 @@ jobs:
     needs: ['test']
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1

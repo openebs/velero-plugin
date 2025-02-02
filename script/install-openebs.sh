@@ -22,10 +22,13 @@ echo "Installing iscsi packages"
 sudo apt-get install --yes -qq open-iscsi
 sudo service iscsid start
 sudo systemctl status iscsid  --no-pager
-echo "Installation complete"
 
-#TODO add openebs release
-kubectl apply -f https://raw.githubusercontent.com/openebs/openebs/master/k8s/openebs-operator.yaml
+OPENEBS_NAMESPACE="openebs"
+helm repo add openebs https://openebs.github.io/openebs
+helm repo update
+helm install openebs --namespace $OPENEBS_NAMESPACE  openebs/openebs --create-namespace --set engines.replicated.mayastor.enabled=false  --set engines.local.lvm.enabled=false --set zfs-localpv.analytics.enabled=false
+
+echo "Installation complete"
 
 function waitForDeployment() {
 	DEPLOY=$1
@@ -66,8 +69,6 @@ function dumpMayaAPIServerLogs() {
   printf "\n\n"
 }
 
-waitForDeployment maya-apiserver openebs
-waitForDeployment openebs-provisioner openebs
-waitForDeployment openebs-ndm-operator openebs
+waitForDeployment openebs-zfs-localpv-controller openebs
 
 kubectl get pods --all-namespaces
