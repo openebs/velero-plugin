@@ -1,4 +1,4 @@
-IMAGE_ORG ?= abhinandan15
+IMAGE_ORG ?= openebs
 export IMAGE_ORG
 
 DBUILD_DATE      = $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
