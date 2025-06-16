@@ -31,7 +31,7 @@ func (p *RestorePlugin) AppliesTo() (velero.ResourceSelector, error) {
 	}, nil
 }
 
-// Execute modifies the 'openebs.io/stsAffinityGroup' annotation to reflect the restored namespace.
+// Execute modifies the 'openebs.io/stsAffinityGroup' annotation to reflect the target namespace.
 func (p *RestorePlugin) Execute(input *velero.RestoreItemActionExecuteInput) (*velero.RestoreItemActionExecuteOutput, error) {
 	item := input.Item
 
