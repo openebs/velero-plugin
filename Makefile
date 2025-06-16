@@ -1,6 +1,8 @@
 IMAGE_ORG ?= openebs
 export IMAGE_ORG
 
+GOPROXY ?= https://proxy.golang.org
+
 DBUILD_DATE      = $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
 DBUILD_REPO_URL ?= https://github.com/openebs/velero-plugin/tree/mayastor
 DBUILD_SITE_URL ?= https://openebs.io
@@ -14,7 +16,8 @@ export DBUILD_SITE_URL
 
 DBUILD_ARGS = --build-arg DBUILD_DATE=$(DBUILD_DATE) \
               --build-arg DBUILD_REPO_URL=$(DBUILD_REPO_URL) \
-              --build-arg DBUILD_SITE_URL=$(DBUILD_SITE_URL)
+              --build-arg DBUILD_SITE_URL=$(DBUILD_SITE_URL) \
+			  --build-arg=GOPROXY=$(GOPROXY)
 
 LINTERS ?= "goconst,gosec,unparam"
 
@@ -23,7 +26,7 @@ all: push-container clean
 build:
 	@echo ">> building binary"
 	@mkdir -p _output
-	CGO_ENABLED=0 go build -v -o _output/velero-plugin .
+	CGO_ENABLED=0 go build -installsuffix "static" -o _output/velero-plugin .
 
 container: lint build
 	@echo ">> building container"
