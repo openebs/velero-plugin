@@ -4,9 +4,6 @@ on:
   pull_request:
     branches:
       - 'mayastor'
-    paths-ignore:
-      - '*.md'
-      - 'LICENSE'
 
 jobs:
   verify-lint-and-build:
@@ -14,6 +11,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Filter paths
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            code:
+              - '!*.md'
+              - '!LICENSE'
+              - '**/*'
 
       - name: Set up Go
         uses: actions/setup-go@v5
