@@ -41,16 +41,12 @@ func (p *RestorePlugin) Execute(input *velero.RestoreItemActionExecuteInput) (*v
 		return nil, fmt.Errorf("failed to access metadata for backed up PVC: %w", err)
 	}
 
-	originalNS := metadata.GetNamespace()
-	restoreNS, ok := input.Restore.Spec.NamespaceMapping[originalNS]
+	backupNS := metadata.GetNamespace()
+	restoreNS, ok := input.Restore.Spec.NamespaceMapping[backupNS]
 
+	// If no namespace mapping is provided restore would happen in the backup namespace
 	if !ok || restoreNS == "" {
-		restoreNS = originalNS
-	}
-
-	if restoreNS == originalNS {
-		p.log.Infof("Skipping PVC %s: namespace unchanged (%s)", metadata.GetName(), originalNS)
-		return velero.NewRestoreItemActionExecuteOutput(item), nil
+		restoreNS = backupNS
 	}
 
 	annotations := metadata.GetAnnotations()
