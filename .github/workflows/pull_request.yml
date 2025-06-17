@@ -1,0 +1,38 @@
+name: PR CI
+
+on:
+  pull_request:
+    branches:
+      - 'mayastor'
+
+jobs:
+  verify-lint-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Filter paths
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            code:
+              - '!*.md'
+              - '!LICENSE'
+              - '**/*'
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+        id: go
+
+      - name: Run lint
+        run: make lint
+
+      - name: Build the binary
+        run: make build
+
+      - name: Build container image
+        run: make container
