@@ -33,11 +33,11 @@ container: lint build
 	@cp Dockerfile _output/Dockerfile
 	@cp go.mod go.sum _output/
 	@cp -r pkg main.go Makefile _output/
-	@sudo docker build -t $(IMAGE):$(IMAGE_TAG) $(DBUILD_ARGS) -f _output/Dockerfile _output
+	@docker build -t $(IMAGE):$(IMAGE_TAG) $(DBUILD_ARGS) -f _output/Dockerfile _output
 
-push-container: lint build container
+push-container: lint container
 	@echo ">> building container image"
-	@sudo docker push $(IMAGE):$(IMAGE_TAG)
+	@docker push $(IMAGE):$(IMAGE_TAG)
 
 gomod:
 	@echo ">> verifying go modules"
@@ -63,7 +63,7 @@ tools-check:
 	@command -v golangci-lint >/dev/null 2>&1 || { \
 		echo ">> installing golangci-lint"; \
 		curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s latest; \
-		sudo mv ./bin/golangci-lint /usr/local/bin/; \
+		mv ./bin/golangci-lint /usr/local/bin/; \
 	}
 	@command -v goimports >/dev/null 2>&1 || { \
 		echo ">> installing goimports"; \
