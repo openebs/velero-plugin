@@ -21,7 +21,7 @@ jobs:
 
       - name: Set Image Tag
         run: |
-          if [[ "${{ github.event_name }}" = "tag" ]]; then
+          if [[ "${{ github.ref_type }}" = "tag" ]]; then
             TAG="${{ github.ref_name }}"
           else
             TAG="develop"
