@@ -16,7 +16,7 @@ labels: Bug
 (Pasting long output into a [GitHub gist](https://gist.github.com) or other [Pastebin](https://pastebin.com/) is fine.)
 
 * `kubectl logs deployment/velero -n velero`
-* `kubectl logs deployment/maya-apiserver -n openebs`
+* Logs from the OpenEBS ZFS LocalPV controller and node pods
 * `velero backup describe <backupname>` or `kubectl get backup/<backupname> -n velero -o yaml`
 * `velero backup logs <backupname>`
 * `velero restore describe <restorename>` or `kubectl get restore/<restorename> -n velero -o yaml`

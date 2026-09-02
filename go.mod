@@ -8,20 +8,18 @@ require (
 	github.com/Azure/azure-pipeline-go v0.2.2 // indirect
 	github.com/Azure/azure-storage-blob-go v0.8.0 // indirect
 	github.com/aws/aws-sdk-go v1.35.24
-	github.com/ghodss/yaml v1.0.0
 	github.com/gofrs/uuid v3.2.0+incompatible
 	github.com/google/wire v0.4.0 // indirect
 	github.com/hashicorp/go-plugin v1.0.1-0.20190610192547-a1bc61569a26 // indirect
 	github.com/mattn/go-ieproxy v0.0.1 // indirect
-	github.com/onsi/ginkgo v1.15.2
-	github.com/onsi/gomega v1.10.2
-	github.com/openebs/api/v2 v2.3.0
-	github.com/openebs/maya v1.12.1-0.20210416090832-ad9c32f086d5
+	github.com/onsi/ginkgo v1.15.2 // indirect
+	github.com/onsi/gomega v1.10.2 // indirect
 	github.com/openebs/zfs-localpv v1.6.1-0.20210504173514-62b3a0b7fe5d
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.6.0
 	github.com/spf13/pflag v1.0.5
 	github.com/vmware-tanzu/velero v1.5.0
+	go.uber.org/zap v1.13.0 // indirect
 	gocloud.dev v0.15.0
 	google.golang.org/api v0.26.0
 	k8s.io/api v0.20.2

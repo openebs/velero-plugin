@@ -5,7 +5,7 @@
 
 * You have Go 1.14 installed on your local development machine.
 * You have Docker installed on your local development machine. Docker is required for building velero-plugin container images and to push them into a Kubernetes cluster for testing.
-* You have `kubectl` installed. For running integration tests, you will require an existing single node cluster with [openebs](https://blog.openebs.io/how-to-install-openebs-with-kubernetes-using-minikube-2ed488dff1c2) and [velero](https://velero.io/docs/main/basic-install/) installed. Don't worry if you don't have access to the Kubernetes cluster, raising a PR with the velero-plugin repository will run integration tests for your changes against a Minikube cluster.
+* You have `kubectl` installed if you plan to verify the plugin against a Kubernetes cluster running Velero and OpenEBS ZFS LocalPV.
 
 ## Initial Setup
 
@@ -53,15 +53,13 @@ make
 
 ```sh
 
-make container REPO=<YOUR_REPO>
+make container IMAGE=<YOUR_IMAGE>
 ```
 
 * Test your changes
-Integration tests are written in ginkgo and run against a minikube cluster. The Minikube cluster should be running to execute the tests. To install the Minikube follow the doc [here](https://kubernetes.io/docs/tasks/tools/install-minikube/).
-To run the integration tests on the minikube cluster.
 
 ```sh
-make tet
+make test
 ```
 
 ## Git Development Workflow
