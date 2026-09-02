@@ -36,7 +36,7 @@ When filing an issue, make sure to answer these seven questions:
 4. What steps did you follow to create a backup or restore?
 5. What did you expect to see?
 6. What did you see instead?
-7. Logs of velero/velero pod and openebs/maya-apiserver pod.
+7. Logs from the Velero pod and OpenEBS ZFS LocalPV controller and node pods.
 
 #### For maintainers
 

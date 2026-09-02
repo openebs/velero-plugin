@@ -49,7 +49,6 @@ Format of the `velero-plugin/CHANGELOG-v1.9.md` file must be as below:
 * Updating alpine image version for velero-plugin to 3.10.4 ([#64](https://github.com/openebs/velero-plugin/pull/64),[@mynktl](https://github.com/mynktl))
 * support for local snapshot and restore(in different namespace) ([#53](https://github.com/openebs/velero-plugin/pull/53),[@mynktl](https://github.com/mynktl))
 * added support for multiPartChunkSize for S3 based remote storage ([#55](https://github.com/openebs/velero-plugin/pull/55),[@mynktl](https://github.com/mynktl))
-* added auto clean-up of CStor volume snapshot generated for remote backup ([#57](https://github.com/openebs/velero-plugin/pull/57),[@mynktl](https://github.com/mynktl))
 
 
 1.9.0-RC2 / 2020-04-12
@@ -62,5 +61,4 @@ Format of the `velero-plugin/CHANGELOG-v1.9.md` file must be as below:
 ========================
 * support for local snapshot and restore(in different namespace) ([#53](https://github.com/openebs/velero-plugin/pull/53),[@mynktl](https://github.com/mynktl))
 * added support for multiPartChunkSize for S3 based remote storage ([#55](https://github.com/openebs/velero-plugin/pull/55),[@mynktl](https://github.com/mynktl))
-* added auto clean-up of CStor volume snapshot generated for remote backup ([#57](https://github.com/openebs/velero-plugin/pull/57),[@mynktl](https://github.com/mynktl))
 ```

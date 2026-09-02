@@ -1,155 +1,30 @@
-# Copyright 2018 the Heptio Ark contributors.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
----
 apiVersion: velero.io/v1
 kind: VolumeSnapshotLocation
 metadata:
-  # name -- volumeSnapshotLocation Name (gcp-default, aws-default...)
-  name: <LOCATION_NAME>
+  name: openebs-zfs
   namespace: velero
 spec:
-  provider: openebs.io/cstor-blockstore
+  provider: openebs.io/zfspv-blockstore
   config:
-    # bucket -- bucket Name (velero, dev-cluster...)
-    bucket: <YOUR_BUCKET>
+    # Namespace containing the ZFS LocalPV custom resources.
+    namespace: openebs
 
-    # prefix -- prefix for backed up file (default: empty), name of the backed up cstor files will be in prefix-volume_name-backup_name format)
-    prefix: <PREFIX_FOR_BACKUP_NAME>
-
-    # backupPathPrefix -- backupPathPrefix for remote backup path (default: empty), cstor backed up file be stored under "bucket/backupPathPrefix/backups/backup_name/")
-    backupPathPrefix: <PREFIX_FOR_BACKUP_PATH>
-
-    # provider -- cloud provider name (default: empty, value can be gcp, aws)
-    provider: <gcp_OR_aws>
-
-    # region -- cloud provider region
+    # Object storage provider: aws or gcp.
+    provider: aws
+    bucket: <BUCKET_NAME>
     region: <AWS_REGION>
 
-    # namespace -- namespace in which openebs is installed (default: openebs)
-    namespace: <OPENEBS_NAMESPACE>
+    # Optional object name and path prefixes.
+    prefix: zfs
+    backupPathPrefix: <BACKUP_PATH_PREFIX>
 
-    # restoreAllIncrementalSnapshots -- set it to "true", to restore all the backups from base backup to the given backup
-    restoreAllIncrementalSnapshots: "false"
+    # Optional number of incremental backups between full backups.
+    incrBackupCount: "5"
 
-    # autoSetTargetIP -- set it to "true", to automatically set target ip on CVR after successful restore
-    autoSetTargetIP: "true"
-
-    # restApiTimeout -- http timeout for rest call between velero-plugin and openebs services
-    # if not set, default timeout will be 60s.
-    # example value: 60s, 2m..
-    restApiTimeout: 1m
-
-### Sample VolumeSnapshotLocation YAML for various cloud-providers
-# # For GCP
-#---
-# apiVersion: velero.io/v1
-# kind: VolumeSnapshotLocation
-# metadata:
-#   name: gcp-bucket
-#   namespace: velero
-# spec:
-#   provider: openebs.io/cstor-blockstore
-#   config:
-#     bucket: openebs-velero-example
-#     prefix: cstor
-#     provider: gcp
-#     restApiTimeout: 1m
-
-#
-# # For MinIO
-# ---
-# apiVersion: velero.io/v1
-# kind: VolumeSnapshotLocation
-# metadata:
-#   name: minio
-#   namespace: velero
-# spec:
-#   provider: openebs.io/cstor-blockstore
-#   config:
-#     bucket: openebs-velero-example
-#
-#     prefix: cstor
-#
-#     provider: aws
-#
-#     # The region where the server is located.
-#     region: minio
-#
-#     # profile for credential, if not mentioned then plugin will use profile=default
-#     profile: user1
-#
-#     # Whether to use path-style addressing instead of virtual hosted bucket addressing.
-#     # Set to "true"
-#     s3ForcePathStyle: "true"
-#
-#     # S3 URL, By default it will be generated from "region" and "bucket"
-#     s3Url: http://minio.velero.svc:9000
-#
-#     # You can specify the multipart_chunksize  here for explicitness.
-#     # multiPartChunkSize can be from 5Mi(5*1024*1024 Bytes) to 5Gi
-#     # For more information: https://docs.min.io/docs/minio-server-limits-per-tenant.html
-#     # If not set then it will be calculated from the file size
-#     multiPartChunkSize: 64Mi
-#
-#     # If MinIO is configured with custom certificate then certificate can be passed to plugin through caCert
-#     # Value of caCert must be base64 encoded
-#     # To encode, execute command: cat ca.crt |base64 -w 0
-#     caCert: LS0tLS1CRU...tRU5EIENFUlRJRklDQVRFLS0tLS0K
-#
-#     # If you want to disable certificate verification then set insecureSkipTLSVerify to "true"
-#     # By default insecureSkipTLSVerify is set to "false"
-#     insecureSkipTLSVerify: "false"
-#
-#     restApiTimeout: 1m
-
-#
-# # For AWS
-# ---
-# apiVersion: velero.io/v1
-# kind: VolumeSnapshotLocation
-# metadata:
-#   name: aws
-#   namespace: velero
-# spec:
-#   provider: openebs.io/cstor-blockstore
-#   config:
-#     bucket: openebs-velero-example
-#
-#     prefix: cstor
-#
-#     provider: aws
-#
-#     # The AWS region where the bucket is located.
-#     region: ap-south-1
-#
-#     # profile for credential, if not mentioned then plugin will use profile=default
-#     profile: user1
-#
-#     # You can specify the multipart_chunksize  here for explicitness.
-#     # multiPartChunkSize can be from 5Mi(5*1024*1024 Bytes) to 5Gi
-#     # For more information: https://docs.aws.amazon.com/AmazonS3/latest/dev/qfacts.html
-#     # If not set then it will be calculated from the file size
-#     multiPartChunkSize: 64Mi
-#
-#     # if s3 endpoint is configured with custom certificate then certificate can be passed to plugin through caCert.
-#     # Value of caCert must be base64 encoded
-#     # To encode, execute command: cat ca.crt |base64 -w 0
-#     caCert: LS0tLS1CRU...tRU5EIENFUlRJRklDQVRFLS0tLS0K
-#
-#     # If you want to disable certificate verification then set insecureSkipTLSVerify to "true"
-#     # By default insecureSkipTLSVerify is set to "false"
-#     insecureSkipTLSVerify: "false"
-#
-#     restApiTimeout: 1m
+    # Optional settings for S3-compatible object storage.
+    # s3Url: https://s3.example.com
+    # s3ForcePathStyle: "true"
+    # profile: default
+    # multiPartChunkSize: 64Mi
+    # caCert: <BASE64_ENCODED_CA_CERT>
+    # insecureSkipTLSVerify: "false"

@@ -22,8 +22,7 @@ _Mention if this PR is part of any design or a continuation of previous PRs_
 - [ ] Fixes #<issue number>
 - [ ] PR Title follows the convention of  `<type>(<scope>): <subject>`
 - [ ] Has the change log section been updated?
-- [ ] Commit has unit tests
-- [ ] Commit has integration tests
+- [ ] Relevant tests have been added or updated
 - [ ] (Optional) Are upgrade changes included in this PR? If not, mention the issue/PR to track:
 - [ ] (Optional) If documentation changes are required, which issue on https://github.com/openebs/openebs-docs is used to track them:
 
