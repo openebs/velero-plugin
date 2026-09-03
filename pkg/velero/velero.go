@@ -3,13 +3,15 @@ package velero
 import (
 	"os"
 
-	veleroclient "github.com/vmware-tanzu/velero/pkg/generated/clientset/versioned"
+	velerov1api "github.com/vmware-tanzu/velero/pkg/apis/velero/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var (
-	// clientSet will be used to fetch velero customo resources
-	clientSet veleroclient.Interface
+	// kubeClient will be used to fetch velero custom resources
+	kubeClient client.Client
 
 	// veleroNs velero installation namespace
 	veleroNs string
@@ -21,9 +23,16 @@ func init() {
 
 // InitializeClientSet initialize velero clientset
 func InitializeClientSet(config *rest.Config) error {
-	var err error
+	scheme := runtime.NewScheme()
+	if err := velerov1api.AddToScheme(scheme); err != nil {
+		return err
+	}
 
-	clientSet, err = veleroclient.NewForConfig(config)
+	c, err := client.New(config, client.Options{Scheme: scheme})
+	if err != nil {
+		return err
+	}
 
-	return err
+	kubeClient = c
+	return nil
 }

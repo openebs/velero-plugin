@@ -3,7 +3,7 @@
 
 ## Prerequisites
 
-* You have Go 1.14 installed on your local development machine.
+* You have Go 1.26 or later installed on your local development machine.
 * You have Docker installed on your local development machine. Docker is required for building velero-plugin container images and to push them into a Kubernetes cluster for testing.
 * You have `kubectl` installed if you plan to verify the plugin against a Kubernetes cluster running Velero and OpenEBS ZFS LocalPV.
 
