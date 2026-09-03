@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/openebs/velero-plugin/pkg/zfs/utils"
-	apis "github.com/openebs/zfs-localpv/pkg/apis/openebs.io/zfs/v1"
-	"github.com/openebs/zfs-localpv/pkg/builder/bkpbuilder"
-	"github.com/openebs/zfs-localpv/pkg/builder/volbuilder"
+	apis "github.com/openebs/zfs-localpv/v2/pkg/apis/openebs.io/zfs/v1"
+	"github.com/openebs/zfs-localpv/v2/pkg/builder/bkpbuilder"
+	"github.com/openebs/zfs-localpv/v2/pkg/builder/volbuilder"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -261,7 +261,9 @@ func (p *Plugin) doBackup(volumeID string, snapname string, schdname string, por
 
 	err = p.checkBackupStatus(bkpname)
 	if err != nil {
-		p.deleteBackup(bkpname)
+		if derr := p.deleteBackup(bkpname); derr != nil {
+			p.Log.Warnf("zfs: failed to delete backup %s err: %v", bkpname, derr)
+		}
 		p.Log.Errorf("zfs: backup failed vol %s snap %s bkpname %s err: %v", volumeID, snapname, bkpname, err)
 		return "", err
 	}

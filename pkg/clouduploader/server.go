@@ -108,8 +108,8 @@ const (
 
 // ServerOperation is used to define server operation
 // We are supporting two operation :
-//	1. Backup
-//	2. Restore
+//  1. Backup
+//  2. Restore
 type ServerOperation int
 
 // acceptClient accepts remote connection
@@ -270,7 +270,7 @@ func (s *Server) Run(opType ServerOperation, port int) error {
 	}
 
 	event.Events = syscall.EPOLLIN
-	event.Fd = int32(fd)
+	event.Fd = int32(fd) //nolint:gosec // socket fd always fits in int32
 	if err = syscall.EpollCtl(epfd, syscall.EPOLL_CTL_ADD, fd, &event); err != nil {
 		s.Log.Errorf("Failed to add server fd{%v} to epoll : %s", fd, err.Error())
 		return err

@@ -6,7 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"gocloud.dev/blob"
 )
 
@@ -38,9 +38,9 @@ func (c *Conn) Upload(file string, fileSize int64, port int) bool {
 	if c.partSize == 0 {
 		// MaxUploadParts is limited to 10k
 		// 100 is arbitrary value considering snapshot metadata
-		partSize := (fileSize / s3manager.MaxUploadParts) + 100
-		if partSize < s3manager.MinUploadPartSize {
-			partSize = s3manager.MinUploadPartSize
+		partSize := (fileSize / int64(manager.MaxUploadParts)) + 100
+		if partSize < manager.MinUploadPartSize {
+			partSize = manager.MinUploadPartSize
 		}
 		c.partSize = partSize
 	}

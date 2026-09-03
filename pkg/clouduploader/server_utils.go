@@ -63,6 +63,8 @@ func (s *Server) removeFromClientList(c *Client) {
 }
 
 // getClientFromEvent returns client for given event
+//
+//nolint:gosec // client pointer is intentionally stored in the epoll event data
 func (s *Server) getClientFromEvent(event syscall.EpollEvent) *Client {
 	var off *uint64
 	var v **Client
@@ -74,6 +76,8 @@ func (s *Server) getClientFromEvent(event syscall.EpollEvent) *Client {
 }
 
 // addClientToEvent add client to given event
+//
+//nolint:gosec // client pointer is intentionally stored in the epoll event data
 func (s *Server) addClientToEvent(c *Client, event *syscall.EpollEvent) {
 	var off *uint64
 	var v **Client

@@ -9,10 +9,10 @@ import (
 
 	"github.com/openebs/velero-plugin/pkg/velero"
 	"github.com/openebs/velero-plugin/pkg/zfs/utils"
-	apis "github.com/openebs/zfs-localpv/pkg/apis/openebs.io/zfs/v1"
-	"github.com/openebs/zfs-localpv/pkg/builder/restorebuilder"
-	"github.com/openebs/zfs-localpv/pkg/builder/volbuilder"
-	"github.com/openebs/zfs-localpv/pkg/zfs"
+	apis "github.com/openebs/zfs-localpv/v2/pkg/apis/openebs.io/zfs/v1"
+	"github.com/openebs/zfs-localpv/v2/pkg/builder/restorebuilder"
+	"github.com/openebs/zfs-localpv/v2/pkg/builder/volbuilder"
+	"github.com/openebs/zfs-localpv/v2/pkg/zfs"
 	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -181,7 +181,6 @@ func (p *Plugin) checkVolCreation(volname string) error {
 		}
 		time.Sleep(restoreStatusInterval * time.Second)
 	}
-	return nil
 }
 
 // startRestore creates the ZFSRestore CR to start downloading the data and returns ZFSRestore CR name

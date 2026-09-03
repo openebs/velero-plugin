@@ -3,7 +3,7 @@ package snapshot
 import (
 	zfs "github.com/openebs/velero-plugin/pkg/zfs/plugin"
 	"github.com/sirupsen/logrus"
-	"github.com/vmware-tanzu/velero/pkg/plugin/velero"
+	velero "github.com/vmware-tanzu/velero/pkg/plugin/velero/volumesnapshotter/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 

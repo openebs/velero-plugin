@@ -9,6 +9,7 @@ import (
 	velerov1api "github.com/vmware-tanzu/velero/pkg/apis/velero/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // GetRestoreNamespace return the namespace mapping for the given namespace
@@ -20,13 +21,13 @@ import (
 //
 // plugin find the relevant restore from the sorted list(creationTimestamp in decreasing order) of
 // restore resource using following criteria:
-//		- retore is in in-progress state AND
-//		  backup for that restore matches with the backup name from snapshotID
+//   - retore is in in-progress state AND
+//     backup for that restore matches with the backup name from snapshotID
+//
 // Above approach works because velero support sequential restore
 func GetRestoreNamespace(ns, bkpName string, log logrus.FieldLogger) (string, error) {
-	listOpts := metav1.ListOptions{}
-	list, err := clientSet.VeleroV1().Restores(veleroNs).List(context.TODO(), listOpts)
-	if err != nil {
+	list := &velerov1api.RestoreList{}
+	if err := kubeClient.List(context.TODO(), list, client.InNamespace(veleroNs)); err != nil {
 		return "", errors.Wrapf(err, "failed to get list of restore")
 	}
 
