@@ -1,6 +1,6 @@
 # This Dockerfile builds velero-plugin
 
-FROM golang:1.14.7 as build
+FROM golang:1.26 AS build
 
 ARG TARGETOS
 ARG TARGETARCH
@@ -23,7 +23,7 @@ COPY . .
 
 RUN make build
 
-FROM alpine:3.11.5
+FROM alpine:3.23
 
 ARG BUILD_DATE
 ARG DBUILD_DATE

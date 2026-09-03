@@ -8,9 +8,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"gocloud.dev/blob"
@@ -154,13 +155,6 @@ func (c *Conn) setupAWS(ctx context.Context, bucketName string, config map[strin
 		return nil, errors.New("no region provided for AWS")
 	}
 
-	awsconfig := aws.NewConfig().
-		WithRegion(region)
-
-	if url, ok := config[AWSUrl]; ok {
-		awsconfig = awsconfig.WithEndpoint(url)
-	}
-
 	if s3ForcePathStyleVal != "" {
 		if s3ForcePathStyle, err = strconv.ParseBool(s3ForcePathStyleVal); err != nil {
 			return nil, errors.Wrapf(err, "failed to parse %s (expected format bool)", AWSForcePath)
@@ -179,14 +173,6 @@ func (c *Conn) setupAWS(ctx context.Context, bucketName string, config map[strin
 		}
 	}
 
-	if disablessl {
-		awsconfig = awsconfig.WithDisableSSL(true)
-	}
-
-	if s3ForcePathStyle {
-		awsconfig = awsconfig.WithS3ForcePathStyle(true)
-	}
-
 	pSize, err := getPartSize(config)
 	if err != nil {
 		return nil, errors.Wrapf(err, "invalid multiPartChunkSize")
@@ -194,17 +180,20 @@ func (c *Conn) setupAWS(ctx context.Context, bucketName string, config map[strin
 	// if partSize is 0 then it will be calculated from file size
 	c.partSize = pSize
 
-	// check if tls verification is disabled
-	if skipTLSVerification {
-		defaultTransport := http.DefaultTransport.(*http.Transport)
-		defaultTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} /* #nosec */
-
-		awsconfig = awsconfig.WithHTTPClient(&http.Client{Transport: defaultTransport})
+	loadOpts := []func(*awsconfig.LoadOptions) error{
+		awsconfig.WithRegion(region),
 	}
 
-	opts := session.Options{
-		Config:  *awsconfig,
-		Profile: profile,
+	if profile != "" {
+		loadOpts = append(loadOpts, awsconfig.WithSharedConfigProfile(profile))
+	}
+
+	// check if tls verification is disabled
+	if skipTLSVerification {
+		defaultTransport := http.DefaultTransport.(*http.Transport).Clone()
+		defaultTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} /* #nosec */
+
+		loadOpts = append(loadOpts, awsconfig.WithHTTPClient(&http.Client{Transport: defaultTransport}))
 	}
 
 	if caCert, ok := config[AWSCaCert]; ok {
@@ -213,15 +202,36 @@ func (c *Conn) setupAWS(ctx context.Context, bucketName string, config map[strin
 			if err != nil {
 				return nil, errors.Wrap(err, "invalid caCert value")
 			}
-			opts.CustomCABundle = strings.NewReader(string(caCertData))
+			loadOpts = append(loadOpts, awsconfig.WithCustomCABundle(strings.NewReader(string(caCertData))))
 		}
 	}
 
-	s := session.Must(session.NewSessionWithOptions(opts))
-	if _, err := s.Config.Credentials.Get(); err != nil {
+	cfg, err := awsconfig.LoadDefaultConfig(ctx, loadOpts...)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to load AWS config")
+	}
+
+	if _, err := cfg.Credentials.Retrieve(ctx); err != nil {
 		return nil, errors.Wrapf(err, "failed to get credentials value")
 	}
-	return s3blob.OpenBucket(ctx, s, bucketName, nil)
+
+	s3Client := s3.NewFromConfig(cfg, func(o *s3.Options) {
+		if url, ok := config[AWSUrl]; ok && url != "" {
+			// SDK v1 accepted endpoints without a scheme; keep that behaviour
+			if !strings.Contains(url, "://") {
+				scheme := "https://"
+				if disablessl {
+					scheme = "http://"
+				}
+				url = scheme + url
+			}
+			o.BaseEndpoint = aws.String(url)
+		}
+		o.UsePathStyle = s3ForcePathStyle
+		o.EndpointOptions.DisableHTTPS = disablessl
+	})
+
+	return s3blob.OpenBucket(ctx, s3Client, bucketName, nil)
 }
 
 // Init initialize connection to cloud blob storage
@@ -317,7 +327,7 @@ func (c *Conn) Destroy(rw ReadWriter, opType ServerOperation) {
 
 // getPartSize returns the multiPartChunkSize from the config
 // - if multiPartChunkSize is not specified then it will return 0
-// - if multiPartChunkSize is less then s3manager.MinUploadPartSize/5Mb then it will return an error
+// - if multiPartChunkSize is less then manager.MinUploadPartSize/5Mb then it will return an error
 // - if multiPartChunkSize is invalid then it will return an error
 func getPartSize(config map[string]string) (val int64, err error) {
 	partSize, ok := config[MultiPartChunkSize]
@@ -334,8 +344,8 @@ func getPartSize(config map[string]string) (val int64, err error) {
 	d := resource.MustParse(partSize)
 	val = d.Value()
 
-	if val < s3manager.MinUploadPartSize {
-		err = errors.Errorf("multiPartChunkSize should be more than %v", s3manager.MinUploadPartSize)
+	if val < manager.MinUploadPartSize {
+		err = errors.Errorf("multiPartChunkSize should be more than %v", manager.MinUploadPartSize)
 	}
 	return
 }
