@@ -1,6 +1,8 @@
 v3.0.0 / TBD
 ========================
 * Remove cStor support
+* Bump dependencies and move to Go 1.26
+* Add Mayastor restore item action plugin to the single velero-plugin image
 
 
 v2.11.0 / 2021-07-14
