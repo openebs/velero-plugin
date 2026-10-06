@@ -8,7 +8,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.23.2
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.110.0
 	github.com/gofrs/uuid/v5 v5.5.1
-	github.com/openebs/zfs-localpv/v2 v2.6.1-0.20260902154634-e716b4363be8
+	github.com/openebs/zfs-localpv/v2 v2.11.1
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.10.2
 	github.com/spf13/pflag v1.0.10
