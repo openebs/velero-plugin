@@ -35,6 +35,7 @@ func (c *Conn) Upload(file string, fileSize int64, port int) bool {
 	c.Log.Infof("Uploading snapshot to '%s' with provider{%s} to bucket{%s}", file, c.provider, c.bucketname)
 
 	c.file = file
+	c.partSize = c.configPartSize
 	if c.partSize == 0 {
 		// MaxUploadParts is limited to 10k
 		// 100 is arbitrary value considering snapshot metadata
