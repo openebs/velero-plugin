@@ -95,6 +95,11 @@ type Conn struct {
 	// partSize for multi-part upload, default value 5MB for AWS (8MB for GCP)
 	partSize int64
 
+	// configPartSize is the part size from the configuration (multiPartChunkSize
+	// for AWS, default chunk size for GCP). If it is 0 then partSize is
+	// calculated from the file size for every upload.
+	configPartSize int64
+
 	// exitServer, if server connection needs to be stopped or not
 	ExitServer bool
 
@@ -131,7 +136,7 @@ func (c *Conn) setupGCP(ctx context.Context, bucket string, config map[string]st
 	}
 
 	// For GCP we will use default chunk size only since uploader is not using multi-part
-	c.partSize = googleapi.DefaultUploadChunkSize
+	c.configPartSize = googleapi.DefaultUploadChunkSize
 	return gcsblob.OpenBucket(ctx, d, bucket, nil)
 }
 
@@ -178,7 +183,7 @@ func (c *Conn) setupAWS(ctx context.Context, bucketName string, config map[strin
 		return nil, errors.Wrapf(err, "invalid multiPartChunkSize")
 	}
 	// if partSize is 0 then it will be calculated from file size
-	c.partSize = pSize
+	c.configPartSize = pSize
 
 	loadOpts := []func(*awsconfig.LoadOptions) error{
 		awsconfig.WithRegion(region),
