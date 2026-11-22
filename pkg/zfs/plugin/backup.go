@@ -77,14 +77,33 @@ func (p *Plugin) getPrevSnap(volname, schdname string) (string, error) {
 		return "", err
 	}
 
+	return prevSnapFromBackups(bkpList.Items, p.incremental+1), nil
+}
+
+// prevSnapFromBackups returns the snapshot that the next backup of a schedule
+// should be taken against, given every ZFSBackup already recorded for that
+// schedule and volume. count is the size of an incremental group, so one full
+// backup plus incrBackupCount incremental ones. An empty return asks for a
+// full backup.
+func prevSnapFromBackups(items []apis.ZFSBackup, count uint64) string {
+	/*
+	 * Only a completed backup can be the base of an incremental one, so the
+	 * group is counted over those rather than over every ZFSBackup recorded
+	 * for the schedule. A backup left behind in any other state would
+	 * otherwise move the group boundary while contributing no base to
+	 * continue from.
+	 */
 	var backups []string
 
-	size := len(bkpList.Items)
-	count := p.incremental + 1
+	for _, bkp := range items {
+		if bkp.Status == apis.BKPZFSStatusDone {
+			backups = append(backups, bkp.Spec.SnapName)
+		}
+	}
 
-	if uint64(size)%count == 0 {
+	if uint64(len(backups))%count == 0 {
 		// have to start the next snapshot incremental group, take the full backup
-		return "", nil
+		return ""
 	}
 
 	/*
@@ -92,18 +111,9 @@ func (p *Plugin) getPrevSnap(volname, schdname string) (string, error) {
 	 * to get the last snapshot, sort the list of successful backups,
 	 * the previous snapshot will be the last element in the sorted list
 	 */
-	if len(bkpList.Items) > 0 {
-		for _, bkp := range bkpList.Items {
-			if bkp.Status == apis.BKPZFSStatusDone {
-				backups = append(backups, bkp.Spec.SnapName)
-			}
-		}
-		size := len(backups)
-		sort.Strings(backups)
-		return backups[size-1], nil
-	}
+	sort.Strings(backups)
 
-	return "", nil
+	return backups[len(backups)-1]
 }
 
 func (p *Plugin) createBackup(vol *apis.ZFSVolume, schdname, snapname string, port int) (string, error) {
