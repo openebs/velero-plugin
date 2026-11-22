@@ -1,0 +1,1 @@
+count only completed backups when picking the base snapshot for an incremental backup
